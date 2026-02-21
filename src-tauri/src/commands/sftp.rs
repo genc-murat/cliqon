@@ -131,3 +131,28 @@ pub async fn close_sftp(
     state.sftp_manager.close_session(&session_id);
     Ok(())
 }
+
+#[tauri::command]
+pub async fn sudo_read_file(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    path: String,
+) -> Result<String> {
+    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+        .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
+    
+    state.sftp_manager.sudo_read_file(&profile, secret.as_deref(), &path)
+}
+
+#[tauri::command]
+pub async fn sudo_write_file(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    path: String,
+    content: String,
+) -> Result<()> {
+    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+        .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
+    
+    state.sftp_manager.sudo_write_file(&profile, secret.as_deref(), &path, &content)
+}

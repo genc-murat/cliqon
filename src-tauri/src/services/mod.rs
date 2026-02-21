@@ -5,3 +5,5 @@ pub mod sftp;
 pub mod auth;
 pub mod monitor;
 pub mod net_tools;
+pub mod system;
+pub mod logging;

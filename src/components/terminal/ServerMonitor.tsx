@@ -4,6 +4,7 @@ import { Activity, Cpu, HardDrive, MemoryStick, Server, X } from 'lucide-react';
 import { SshProfile } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
+import { ServiceManager } from './ServiceManager';
 
 interface ServerMetrics {
     // ... existing interface ...
@@ -119,6 +120,7 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
     const [diskHistory, setDiskHistory] = useState<number[]>([]);
     const [loadHistory, setLoadHistory] = useState<number[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'overview' | 'services'>('overview');
     const unlistenRef = useRef<UnlistenFn | null>(null);
 
     const pushHistory = useCallback((setter: React.Dispatch<React.SetStateAction<number[]>>, value: number) => {
@@ -190,11 +192,27 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
             {/* Header */}
             {!isEmbedded && (
                 <div className="flex items-center justify-between px-5 py-2 border-b border-[var(--border-color)] bg-[var(--bg-primary)] shrink-0 select-none">
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-4 flex-1">
+                        <div className="flex items-center gap-2 shrink-0">
                             <Activity size={16} className="text-[var(--accent-color)]" />
-                            <span className="text-sm font-bold text-[var(--text-main)]">Server Monitor</span>
+                            <span className="text-sm font-bold text-[var(--text-main)]">System</span>
                         </div>
+                        <div className="flex bg-[var(--bg-sidebar)] p-0.5 rounded-lg border border-[var(--border-color)] ml-2">
+                            <button
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'overview' ? 'bg-[var(--accent-color)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                                onClick={() => setActiveTab('overview')}
+                            >
+                                Overview
+                            </button>
+                            <button
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'services' ? 'bg-[var(--accent-color)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                                onClick={() => setActiveTab('services')}
+                            >
+                                Services
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
                         {metrics && (
                             <div className="flex items-center gap-3 text-[10px] text-[var(--text-muted)] font-mono">
                                 <span className="flex items-center gap-1"><Server size={10} /> {metrics.hostname}</span>
@@ -204,124 +222,157 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
                                 <span>{metrics.uptime}</span>
                             </div>
                         )}
+                        <button
+                            onClick={onClose}
+                            className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded-lg transition-colors ml-4"
+                        >
+                            <X size={14} />
+                        </button>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded-lg transition-colors"
-                    >
-                        <X size={14} />
-                    </button>
+                </div>
+            )}
+
+            {/* Embedded mode sub-tabs */}
+            {isEmbedded && (
+                <div className="flex items-center gap-2 px-4 py-2 border-b border-[var(--border-color)] bg-[var(--bg-primary)] shrink-0">
+                    <div className="flex bg-[var(--bg-sidebar)] p-0.5 rounded-lg border border-[var(--border-color)]">
+                        <button
+                            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'overview' ? 'bg-[var(--accent-color)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                            onClick={() => setActiveTab('overview')}
+                        >
+                            Overview
+                        </button>
+                        <button
+                            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'services' ? 'bg-[var(--accent-color)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                            onClick={() => setActiveTab('services')}
+                        >
+                            Services
+                        </button>
+                    </div>
+                    {metrics && (
+                        <div className="flex items-center gap-3 text-[10px] text-[var(--text-muted)] font-mono ml-auto">
+                            <span className="flex items-center gap-1"><Server size={10} /> {metrics.hostname}</span>
+                            <span>•</span>
+                            <span>{metrics.uptime}</span>
+                        </div>
+                    )}
                 </div>
             )}
 
             {/* Content */}
-            <div className="p-4 flex-1 overflow-y-auto">
-                {error ? (
-                    <div className="text-red-400 text-xs text-center py-4">{error}</div>
-                ) : !metrics ? (
-                    <div className="flex items-center justify-center gap-2 py-6 text-[var(--text-muted)]">
-                        <Activity size={16} className="animate-pulse" />
-                        <span className="text-sm">Collecting metrics...</span>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 h-full min-h-[160px]">
-                        {/* CPU */}
-                        <div className="relative p-4 flex flex-col bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all h-full">
-                            <div className="flex items-center justify-between mb-3 shrink-0">
-                                <div className="flex items-center gap-2">
-                                    <Cpu size={14} className="text-[var(--text-muted)]" />
-                                    <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">CPU</span>
-                                </div>
-                                <div className="relative w-12 h-12">
-                                    <Gauge percent={metrics.cpu_percent} color={getColor(metrics.cpu_percent)} size={48} />
-                                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-[var(--text-main)]">
-                                        {metrics.cpu_percent.toFixed(0)}%
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="flex-1 w-full min-h-[32px] mt-2 mb-2 relative">
-                                <Sparkline data={cpuHistory} color={getColor(metrics.cpu_percent)} />
-                            </div>
-                            <div className="mt-auto flex justify-between text-[10px] text-[var(--text-muted)] shrink-0 pt-2 border-t border-[var(--border-color)]/30">
-                                <span>Load: {metrics.load_1.toFixed(2)}</span>
-                                <span>{metrics.load_5.toFixed(2)}</span>
-                                <span>{metrics.load_15.toFixed(2)}</span>
-                            </div>
+            {activeTab === 'services' ? (
+                <div className="p-0 flex-1 overflow-hidden relative">
+                    <ServiceManager profile={profile} />
+                </div>
+            ) : (
+                <div className="p-4 flex-1 overflow-y-auto w-full">
+                    {error ? (
+                        <div className="text-red-400 text-xs text-center py-4">{error}</div>
+                    ) : !metrics ? (
+                        <div className="flex items-center justify-center gap-2 py-6 text-[var(--text-muted)]">
+                            <Activity size={16} className="animate-pulse" />
+                            <span className="text-sm">Collecting metrics...</span>
                         </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 h-full min-h-[160px]">
+                            {/* CPU */}
+                            <div className="relative p-4 flex flex-col bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all h-full">
+                                <div className="flex items-center justify-between mb-3 shrink-0">
+                                    <div className="flex items-center gap-2">
+                                        <Cpu size={14} className="text-[var(--text-muted)]" />
+                                        <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">CPU</span>
+                                    </div>
+                                    <div className="relative w-12 h-12">
+                                        <Gauge percent={metrics.cpu_percent} color={getColor(metrics.cpu_percent)} size={48} />
+                                        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-[var(--text-main)]">
+                                            {metrics.cpu_percent.toFixed(0)}%
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex-1 w-full min-h-[32px] mt-2 mb-2 relative">
+                                    <Sparkline data={cpuHistory} color={getColor(metrics.cpu_percent)} />
+                                </div>
+                                <div className="mt-auto flex justify-between text-[10px] text-[var(--text-muted)] shrink-0 pt-2 border-t border-[var(--border-color)]/30">
+                                    <span>Load: {metrics.load_1.toFixed(2)}</span>
+                                    <span>{metrics.load_5.toFixed(2)}</span>
+                                    <span>{metrics.load_15.toFixed(2)}</span>
+                                </div>
+                            </div>
 
-                        {/* RAM */}
-                        <div className="relative p-4 flex flex-col bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all h-full">
-                            <div className="flex items-center justify-between mb-3 shrink-0">
-                                <div className="flex items-center gap-2">
-                                    <MemoryStick size={14} className="text-[var(--text-muted)]" />
-                                    <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Memory</span>
+                            {/* RAM */}
+                            <div className="relative p-4 flex flex-col bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all h-full">
+                                <div className="flex items-center justify-between mb-3 shrink-0">
+                                    <div className="flex items-center gap-2">
+                                        <MemoryStick size={14} className="text-[var(--text-muted)]" />
+                                        <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Memory</span>
+                                    </div>
+                                    <div className="relative w-12 h-12">
+                                        <Gauge percent={metrics.ram_percent} color={getColor(metrics.ram_percent)} size={48} />
+                                        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-[var(--text-main)]">
+                                            {metrics.ram_percent.toFixed(0)}%
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="relative w-12 h-12">
-                                    <Gauge percent={metrics.ram_percent} color={getColor(metrics.ram_percent)} size={48} />
-                                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-[var(--text-main)]">
-                                        {metrics.ram_percent.toFixed(0)}%
-                                    </span>
+                                <div className="flex-1 w-full min-h-[32px] mt-2 mb-2 relative">
+                                    <Sparkline data={ramHistory} color={getColor(metrics.ram_percent)} />
+                                </div>
+                                <div className="mt-auto flex justify-between text-[10px] text-[var(--text-muted)] shrink-0 pt-2 border-t border-[var(--border-color)]/30">
+                                    <span>{formatBytes(metrics.ram_used)}</span>
+                                    <span>/ {formatBytes(metrics.ram_total)}</span>
                                 </div>
                             </div>
-                            <div className="flex-1 w-full min-h-[32px] mt-2 mb-2 relative">
-                                <Sparkline data={ramHistory} color={getColor(metrics.ram_percent)} />
-                            </div>
-                            <div className="mt-auto flex justify-between text-[10px] text-[var(--text-muted)] shrink-0 pt-2 border-t border-[var(--border-color)]/30">
-                                <span>{formatBytes(metrics.ram_used)}</span>
-                                <span>/ {formatBytes(metrics.ram_total)}</span>
-                            </div>
-                        </div>
 
-                        {/* Disk */}
-                        <div className="relative p-4 flex flex-col bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all h-full">
-                            <div className="flex items-center justify-between mb-3 shrink-0">
-                                <div className="flex items-center gap-2">
-                                    <HardDrive size={14} className="text-[var(--text-muted)]" />
-                                    <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Disk</span>
+                            {/* Disk */}
+                            <div className="relative p-4 flex flex-col bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all h-full">
+                                <div className="flex items-center justify-between mb-3 shrink-0">
+                                    <div className="flex items-center gap-2">
+                                        <HardDrive size={14} className="text-[var(--text-muted)]" />
+                                        <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Disk</span>
+                                    </div>
+                                    <div className="relative w-12 h-12">
+                                        <Gauge percent={metrics.disk_percent} color={getColor(metrics.disk_percent)} size={48} />
+                                        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-[var(--text-main)]">
+                                            {metrics.disk_percent.toFixed(0)}%
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="relative w-12 h-12">
-                                    <Gauge percent={metrics.disk_percent} color={getColor(metrics.disk_percent)} size={48} />
-                                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-[var(--text-main)]">
-                                        {metrics.disk_percent.toFixed(0)}%
-                                    </span>
+                                <div className="flex-1 w-full min-h-[32px] mt-2 mb-2 relative">
+                                    <Sparkline data={diskHistory} color={getColor(metrics.disk_percent)} />
+                                </div>
+                                <div className="mt-auto flex justify-between text-[10px] text-[var(--text-muted)] shrink-0 pt-2 border-t border-[var(--border-color)]/30">
+                                    <span>{formatBytes(metrics.disk_used)}</span>
+                                    <span>/ {formatBytes(metrics.disk_total)}</span>
                                 </div>
                             </div>
-                            <div className="flex-1 w-full min-h-[32px] mt-2 mb-2 relative">
-                                <Sparkline data={diskHistory} color={getColor(metrics.disk_percent)} />
-                            </div>
-                            <div className="mt-auto flex justify-between text-[10px] text-[var(--text-muted)] shrink-0 pt-2 border-t border-[var(--border-color)]/30">
-                                <span>{formatBytes(metrics.disk_used)}</span>
-                                <span>/ {formatBytes(metrics.disk_total)}</span>
-                            </div>
-                        </div>
 
-                        {/* Load Average */}
-                        <div className="relative p-4 flex flex-col bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all h-full">
-                            <div className="flex items-center gap-2 mb-3 shrink-0">
-                                <Activity size={14} className="text-[var(--text-muted)]" />
-                                <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Load Avg</span>
-                            </div>
-                            <div className="flex items-end gap-3 mb-3 shrink-0">
-                                <div className="text-center">
-                                    <div className="text-lg font-black text-[var(--text-main)]">{metrics.load_1.toFixed(2)}</div>
-                                    <div className="text-[9px] text-[var(--text-muted)]">1m</div>
+                            {/* Load Average */}
+                            <div className="relative p-4 flex flex-col bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all h-full">
+                                <div className="flex items-center gap-2 mb-3 shrink-0">
+                                    <Activity size={14} className="text-[var(--text-muted)]" />
+                                    <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Load Avg</span>
                                 </div>
-                                <div className="text-center">
-                                    <div className="text-sm font-bold text-[var(--text-main)] opacity-70">{metrics.load_5.toFixed(2)}</div>
-                                    <div className="text-[9px] text-[var(--text-muted)]">5m</div>
+                                <div className="flex items-end gap-3 mb-3 shrink-0">
+                                    <div className="text-center">
+                                        <div className="text-lg font-black text-[var(--text-main)]">{metrics.load_1.toFixed(2)}</div>
+                                        <div className="text-[9px] text-[var(--text-muted)]">1m</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-sm font-bold text-[var(--text-main)] opacity-70">{metrics.load_5.toFixed(2)}</div>
+                                        <div className="text-[9px] text-[var(--text-muted)]">5m</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-xs font-bold text-[var(--text-main)] opacity-50">{metrics.load_15.toFixed(2)}</div>
+                                        <div className="text-[9px] text-[var(--text-muted)]">15m</div>
+                                    </div>
                                 </div>
-                                <div className="text-center">
-                                    <div className="text-xs font-bold text-[var(--text-main)] opacity-50">{metrics.load_15.toFixed(2)}</div>
-                                    <div className="text-[9px] text-[var(--text-muted)]">15m</div>
+                                <div className="flex-1 w-full min-h-[32px] mt-2 mb-2 relative">
+                                    <Sparkline data={loadHistory} color="#6366f1" />
                                 </div>
-                            </div>
-                            <div className="flex-1 w-full min-h-[32px] mt-2 mb-2 relative">
-                                <Sparkline data={loadHistory} color="#6366f1" />
                             </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

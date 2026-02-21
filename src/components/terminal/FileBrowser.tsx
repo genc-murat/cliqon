@@ -1,15 +1,13 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
-import {
-    Folder, File as FileIcon, ArrowUpCircle, RefreshCw, ChevronLeft, ChevronRight,
-    Download, Trash2, Edit2, Copy, Settings, TerminalSquare, FileText, Star, Bookmark, X as XIcon, Network
-} from 'lucide-react';
+import { Folder, Download, RefreshCw, ChevronRight, Edit2, Trash2, Copy, FileText, Network, ShieldAlert, Activity, ChevronLeft, ArrowUpCircle, Star, Bookmark, X as XIcon, File as FileIcon, TerminalSquare, Settings } from 'lucide-react';
 import { SshProfile, FileNode } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
 import { FilePropertiesModal } from './FilePropertiesModal';
 import { TextEditorModal } from './TextEditorModal';
 import { DockerComposeVisualizer } from './DockerComposeVisualizer';
+import { LogViewerModal } from './LogViewerModal';
 import { useSftpBookmarks } from '../../hooks/useSftpBookmarks';
 
 interface FileBrowserProps {
@@ -35,8 +33,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     const [renamingFile, setRenamingFile] = useState<FileNode | null>(null);
     const [renameValue, setRenameValue] = useState('');
     const [propsModal, setPropsModal] = useState<string | null>(null); // path
-    const [editorFile, setEditorFile] = useState<FileNode | null>(null);
+    const [editingFile, setEditingFile] = useState<FileNode | null>(null);
+    const [isSudoEdit, setIsSudoEdit] = useState<boolean>(false);
     const [visualizeComposeFile, setVisualizeComposeFile] = useState<FileNode | null>(null);
+    const [tailingFile, setTailingFile] = useState<FileNode | null>(null);
     const [statusMsg, setStatusMsg] = useState('');
     const [bookmarksOpen, setBookmarksOpen] = useState(false);
     const renameInputRef = useRef<HTMLInputElement>(null);
@@ -92,19 +92,19 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                     if (isMounted) { fetchDirectory(currentPath); showStatus('✅ Renamed'); }
                 });
                 unlistenRenameErr = await listen<string>(`sftp_rename_error_${sessionId}`, (e) => {
-                    if (isMounted) showStatus(`❌ Rename failed: ${e.payload}`);
+                    if (isMounted) showStatus(`❌ Rename failed: ${e.payload} `);
                 });
                 unlistenDeleteDone = await listen<string>(`sftp_delete_done_${sessionId}`, () => {
                     if (isMounted) { fetchDirectory(currentPath); showStatus('✅ Deleted'); }
                 });
                 unlistenDeleteErr = await listen<string>(`sftp_delete_error_${sessionId}`, (e) => {
-                    if (isMounted) showStatus(`❌ Delete failed: ${e.payload}`);
+                    if (isMounted) showStatus(`❌ Delete failed: ${e.payload} `);
                 });
 
                 await api.connectSftp(profile, sessionId);
                 if (isMounted) { setConnected(true); fetchDirectory(currentPath); }
             } catch (err: any) {
-                if (isMounted) setError(`SFTP Error: ${err}`);
+                if (isMounted) setError(`SFTP Error: ${err} `);
             }
         };
 
@@ -215,14 +215,20 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
         setPropsModal(file.path);
     };
 
-    const handleOpenEditor = (file: FileNode) => {
+    const handleOpenEditor = (file: FileNode, sudo: boolean = false) => {
+        setEditingFile(file);
+        setIsSudoEdit(sudo);
         closeContextMenu();
-        setEditorFile(file);
     };
 
     const handleVisualizeCompose = (file: FileNode) => {
         closeContextMenu();
         setVisualizeComposeFile(file);
+    };
+
+    const handleTailLog = (file: FileNode) => {
+        closeContextMenu();
+        setTailingFile(file);
     };
 
     const formatSize = (bytes: number) => {
@@ -420,18 +426,34 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                         {!contextMenu.file.is_dir && (
                             <button
                                 onClick={() => handleDownload(contextMenu.file)}
-                                className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-main)] hover:bg-[var(--hover-color)]"
+                                className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--accent-color)] hover:bg-[var(--hover-color)]"
                             >
                                 <Download size={14} className="text-[var(--accent-color)]" /> Download
                             </button>
                         )}
                         {!contextMenu.file.is_dir && (
-                            <button
-                                onClick={() => handleOpenEditor(contextMenu.file)}
-                                className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-main)] hover:bg-[var(--hover-color)]"
-                            >
-                                <FileText size={14} className="text-[var(--accent-color)]" /> Edit file
-                            </button>
+                            <>
+                                <button
+                                    onClick={() => handleOpenEditor(contextMenu.file, false)}
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-main)] hover:bg-[var(--hover-color)]"
+                                >
+                                    <FileText size={14} className="text-[var(--accent-color)]" /> Edit file
+                                </button>
+                                <button
+                                    onClick={() => handleOpenEditor(contextMenu.file, true)}
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-main)] hover:bg-[var(--hover-color)]"
+                                >
+                                    <ShieldAlert size={14} className="text-red-400" /> Sudo Edit
+                                </button>
+                                {(contextMenu.file.name.endsWith('.log') || contextMenu.file.name.endsWith('.err') || contextMenu.file.name.endsWith('.out')) && (
+                                    <button
+                                        onClick={() => handleTailLog(contextMenu.file)}
+                                        className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-main)] hover:bg-[var(--hover-color)]"
+                                    >
+                                        <Activity size={14} className="text-green-400" /> Tail Log
+                                    </button>
+                                )}
+                            </>
                         )}
                         {!contextMenu.file.is_dir && (contextMenu.file.name === 'docker-compose.yml' || contextMenu.file.name === 'docker-compose.yaml' || contextMenu.file.name === 'compose.yml' || contextMenu.file.name === 'compose.yaml') && (
                             <button
@@ -489,12 +511,24 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
             />
 
             {/* Text Editor Modal */}
-            {editorFile && (
+            {editingFile && (
                 <TextEditorModal
                     sessionId={sessionId}
-                    filePath={editorFile.path}
-                    fileName={editorFile.name}
-                    onClose={() => setEditorFile(null)}
+                    profile={profile}
+                    filePath={editingFile.path}
+                    fileName={editingFile.name}
+                    isSudo={isSudoEdit}
+                    onClose={() => setEditingFile(null)}
+                />
+            )}
+
+            {tailingFile && (
+                <LogViewerModal
+                    sessionId={sessionId}
+                    profile={profile}
+                    filePath={tailingFile.path}
+                    fileName={tailingFile.name}
+                    onClose={() => setTailingFile(null)}
                 />
             )}
 

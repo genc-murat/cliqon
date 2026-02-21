@@ -37,7 +37,9 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
   - **Rename** — Inline file and directory renaming
   - **Delete** — Securely remove remote items
   - **Copy Path** — Fast path copying to clipboard
-  - **Edit file** — Built-in text editor for remote files with syntax support and Ctrl+S to save
+  - **Edit file** — Built-in text editor for remote files with syntax support and `Ctrl+S` to save
+  - **Sudo Edit** — Elevated file editing for system-protected files using your saved credentials
+  - **Tail Log** — Live streaming viewer for `.log`, `.err`, and `.out` files with auto-scroll and real-time filtering
   - **cd to Terminal** — Instant navigation in the active terminal
 - **SFTP Bookmarks** — Save frequent paths per connection for instant access; one-click navigation from the bookmarks dropdown
 - **Properties & Permissions** — View detailed file info and interactively edit permissions (chmod)
@@ -65,6 +67,7 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - **↔ Vertically Resizable** — Adjust the monitor panel height by dragging the top handle; height is persisted per user pref
 - **Auto-Open Preference** — Optional "Auto-open on connection" setting configurable via General Settings
 - **System Insights** — Fast parsing of Hostname, OS Distribution, and Uptime via background SSH exec commands
+- **System Services Manager** — Manage `systemctl` units directly; list, search, start, stop, and restart services without typing commands; integrated as a tab within the Monitor panel.
 
 ### 🌐 Network Tools
 A comprehensive suite of **15 on-demand diagnostic tools** executed directly from the connected server via SSH:

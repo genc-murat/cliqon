@@ -11,7 +11,11 @@ use commands::sftp::*;
 use commands::monitor::*;
 use commands::net_tools::*;
 use commands::docker::*;
+use commands::system::*;
+use commands::logging::*;
 use tauri::Manager;
+use crate::services::system::SystemService;
+use crate::services::logging::LogManager;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -25,6 +29,8 @@ pub fn run() {
         .setup(|app| {
             let app_state = AppState::new(app.handle());
             app.manage(app_state);
+            app.manage(std::sync::Arc::new(SystemService::new()));
+            app.manage(std::sync::Arc::new(LogManager::new()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -48,6 +54,8 @@ pub fn run() {
             chmod_sftp,
             read_sftp_file,
             write_sftp_file,
+            sudo_read_file,
+            sudo_write_file,
             close_sftp,
             start_monitor,
             stop_monitor,
@@ -60,7 +68,11 @@ pub fn run() {
             get_docker_stats,
             read_docker_compose,
             get_docker_volumes,
-            get_docker_volume_files
+            get_docker_volume_files,
+            get_system_services,
+            manage_service,
+            start_log_tail,
+            stop_log_tail
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

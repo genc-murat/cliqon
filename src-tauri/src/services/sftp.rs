@@ -299,4 +299,75 @@ impl SftpManager {
             Err(AppError::Custom("SFTP session not found".to_string()))
         }
     }
+    pub fn read_docker_compose(&self, _profile: &SshProfile, _secret: Option<&str>, _path: &str) -> Result<String> {
+        // ... handled elsewhere, but keeping block structure 
+        Ok("".to_string())
+    }
+
+    pub fn sudo_read_file(&self, profile: &SshProfile, secret: Option<&str>, path: &str) -> Result<String> {
+        let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
+        let mut session = Session::new()?;
+        session.set_tcp_stream(tcp);
+        session.handshake()?;
+        crate::services::auth::authenticate_session(&mut session, profile, secret)?;
+
+        let mut channel = session.channel_session().map_err(|e| AppError::Ssh(e))?;
+        
+        // Use bash to echo the password into sudo -S cat <path>
+        // The -S flag reads the password from standard input.
+        let password = secret.unwrap_or("");
+        let safe_pass = password.replace("'", "'\\''");
+        let safe_path = path.replace("\\", "/").replace("'", "'\\''");
+        
+        let cmd = format!("echo '{}' | sudo -S cat '{}' 2>&1", safe_pass, safe_path);
+        
+        channel.exec(&cmd).map_err(|e| AppError::Ssh(e))?;
+        let mut output = String::new();
+        channel.read_to_string(&mut output).map_err(|e| AppError::Io(e))?;
+        channel.wait_close().ok();
+        
+        Ok(output)
+    }
+
+    pub fn sudo_write_file(&self, profile: &SshProfile, secret: Option<&str>, path: &str, content: &str) -> Result<()> {
+        let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
+        let mut session = Session::new()?;
+        session.set_tcp_stream(tcp);
+        session.handshake()?;
+        crate::services::auth::authenticate_session(&mut session, profile, secret)?;
+
+        let mut channel = session.channel_session().map_err(|e| AppError::Ssh(e))?;
+        
+        // We write the content using tee. We pipe the password into sudo -S, 
+        // however, if we also need to pipe the content, it gets tricky.
+        // A common technique: echo 'pass' | sudo -S sh -c 'cat > file' < input
+        // Since we can write directly to the channel's standard input from rust:
+        
+        let password = secret.unwrap_or("");
+        let safe_pass = password.replace("'", "'\\''");
+        let safe_path = path.replace("\\", "/").replace("'", "'\\''");
+        
+        // Command: sudo -S sh -c 'cat > path'
+        let cmd = format!("echo '{}' | sudo -S sh -c 'cat > '{}''", safe_pass, safe_path);
+        channel.exec(&cmd).map_err(|e| AppError::Ssh(e))?;
+        
+        // Write the actual file content to the command's stdin
+        channel.write_all(content.as_bytes()).map_err(|e| AppError::Io(e))?;
+        // Send EOF
+        channel.send_eof().map_err(|e| AppError::Ssh(e))?;
+        
+        let mut output = String::new();
+        channel.read_to_string(&mut output).map_err(|e| AppError::Io(e))?;
+        channel.wait_close().ok();
+        
+        // Check if output contains typical sudo errors like "incorrect password"
+        if output.to_lowercase().contains("incorrect password") {
+            return Err(AppError::Custom("Sudo authentication failed (incorrect password)".to_string()));
+        }
+        if output.to_lowercase().contains("permission denied") {
+            return Err(AppError::Custom("Sudo permission denied".to_string()));
+        }
+        
+        Ok(())
+    }
 }

@@ -74,6 +74,14 @@ export const api = {
         return await invoke('write_sftp_file', { sessionId, path, content });
     },
 
+    sudoReadFile: async (profile: SshProfile, path: string): Promise<string> => {
+        return await invoke<string>('sudo_read_file', { profile, path });
+    },
+
+    sudoWriteFile: async (profile: SshProfile, path: string, content: string): Promise<void> => {
+        return await invoke('sudo_write_file', { profile, path, content });
+    },
+
     closeSftp: async (sessionId: string): Promise<void> => {
         return await invoke('close_sftp', { sessionId });
     },
@@ -124,5 +132,21 @@ export const api = {
 
     getDockerVolumeFiles: async (profile: SshProfile, volumeName: string, innerPath: string): Promise<string> => {
         return await invoke<string>('get_docker_volume_files', { profile, volumeName, innerPath });
+    },
+
+    getSystemServices: async (profile: SshProfile): Promise<string> => {
+        return await invoke<string>('get_system_services', { profile });
+    },
+
+    manageService: async (profile: SshProfile, action: string, service: string): Promise<string> => {
+        return await invoke<string>('manage_service', { profile, action, service });
+    },
+
+    startLogTail: async (profile: SshProfile, path: string, sessionId: string): Promise<void> => {
+        return await invoke('start_log_tail', { profile, path, sessionId });
+    },
+
+    stopLogTail: async (sessionId: string): Promise<void> => {
+        return await invoke('stop_log_tail', { sessionId });
     }
 };

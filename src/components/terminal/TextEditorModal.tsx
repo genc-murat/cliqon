@@ -2,12 +2,15 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { X, Save, RefreshCw, FileText, AlertCircle, CheckCircle } from 'lucide-react';
 import { api } from '../../services/api';
+import { SshProfile } from '../../types/connection';
 
 interface TextEditorModalProps {
     sessionId: string;
+    profile: SshProfile;
     filePath: string;
     fileName: string;
     onClose: () => void;
+    isSudo?: boolean;
 }
 
 // Detect file type for syntax hints
@@ -26,7 +29,7 @@ const getLanguageHint = (name: string): string => {
 };
 
 export const TextEditorModal: React.FC<TextEditorModalProps> = ({
-    sessionId, filePath, fileName, onClose,
+    sessionId, profile, filePath, fileName, onClose, isSudo = false
 }) => {
     const [content, setContent] = useState('');
     const [originalContent, setOriginalContent] = useState('');
@@ -53,15 +56,26 @@ export const TextEditorModal: React.FC<TextEditorModalProps> = ({
 
         try {
             await new Promise<void>(async (resolve, reject) => {
-                unlistenOk = await listen<string>(`sftp_readfile_rx_${sessionId}`, (e) => {
-                    setContent(e.payload);
-                    setOriginalContent(e.payload);
-                    resolve();
-                });
-                unlistenErr = await listen<string>(`sftp_readfile_error_${sessionId}`, (e) => {
-                    reject(new Error(e.payload));
-                });
-                await api.readSftpFile(sessionId, filePath);
+                if (isSudo) {
+                    try {
+                        const data = await api.sudoReadFile(profile, filePath);
+                        setContent(data);
+                        setOriginalContent(data);
+                        resolve();
+                    } catch (e: any) {
+                        reject(new Error(e.message ?? String(e)));
+                    }
+                } else {
+                    unlistenOk = await listen<string>(`sftp_readfile_rx_${sessionId}`, (e) => {
+                        setContent(e.payload);
+                        setOriginalContent(e.payload);
+                        resolve();
+                    });
+                    unlistenErr = await listen<string>(`sftp_readfile_error_${sessionId}`, (e) => {
+                        reject(new Error(e.payload));
+                    });
+                    await api.readSftpFile(sessionId, filePath);
+                }
             });
         } catch (e: any) {
             setError(e.message ?? String(e));
@@ -80,9 +94,18 @@ export const TextEditorModal: React.FC<TextEditorModalProps> = ({
 
         try {
             await new Promise<void>(async (resolve, reject) => {
-                unlistenOk = await listen(`sftp_writefile_done_${sessionId}`, () => resolve());
-                unlistenErr = await listen<string>(`sftp_writefile_error_${sessionId}`, (e) => reject(new Error(e.payload)));
-                await api.writeSftpFile(sessionId, filePath, content);
+                if (isSudo) {
+                    try {
+                        await api.sudoWriteFile(profile, filePath, content);
+                        resolve();
+                    } catch (e: any) {
+                        reject(new Error(e.message ?? String(e)));
+                    }
+                } else {
+                    unlistenOk = await listen(`sftp_writefile_done_${sessionId}`, () => resolve());
+                    unlistenErr = await listen<string>(`sftp_writefile_error_${sessionId}`, (e) => reject(new Error(e.payload)));
+                    await api.writeSftpFile(sessionId, filePath, content);
+                }
             });
             setOriginalContent(content);
             showStatus('✅ File saved successfully', 'success');
@@ -138,12 +161,15 @@ export const TextEditorModal: React.FC<TextEditorModalProps> = ({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
             <div className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl shadow-2xl flex flex-col w-full max-w-5xl h-[80vh] overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-color)] bg-[var(--bg-sidebar)] shrink-0">
+                <div className={`flex items-center justify-between px-4 py-3 border-b shrink-0 ${isSudo ? 'bg-red-950/20 border-red-900/40' : 'bg-[var(--bg-sidebar)] border-[var(--border-color)]'}`}>
                     <div className="flex items-center gap-2 min-w-0">
-                        <FileText size={16} className="text-[var(--accent-color)] shrink-0" />
+                        <FileText size={16} className={isSudo ? "text-red-400 shrink-0" : "text-[var(--accent-color)] shrink-0"} />
                         <span className="text-sm font-semibold text-[var(--text-main)] truncate" title={filePath}>
                             {fileName}
                         </span>
+                        {isSudo && (
+                            <span className="text-[10px] font-bold text-red-100 bg-red-500 px-1.5 py-0.5 rounded tracking-wider uppercase shrink-0">Sudo Mode</span>
+                        )}
                         {isDirty && (
                             <span className="text-xs text-amber-400 shrink-0">● unsaved</span>
                         )}
@@ -163,7 +189,7 @@ export const TextEditorModal: React.FC<TextEditorModalProps> = ({
                         <button
                             onClick={handleSave}
                             disabled={saving || loading || !isDirty}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--accent-color)] text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md text-white hover:opacity-90 transition-opacity disabled:opacity-40 ${isSudo ? 'bg-red-600' : 'bg-[var(--accent-color)]'}`}
                             title="Save (Ctrl+S)"
                         >
                             <Save size={13} />

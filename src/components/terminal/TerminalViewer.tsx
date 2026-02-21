@@ -30,12 +30,21 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
 
     const getXtermTheme = useCallback(() => {
         if (terminalTheme.id === 'appTheme') {
+            const isLight = theme.type === 'light';
             return {
                 background: theme.colors.bgPrimary,
                 foreground: theme.colors.textMain,
                 cursor: theme.colors.accent,
                 selectionBackground: theme.colors.hover,
                 ...terminalTheme.colors,
+                // Override specific ANSI colors for better contrast in light mode if needed
+                ...(isLight ? {
+                    black: '#000000',
+                    white: '#333333',
+                    brightWhite: '#000000',
+                    yellow: '#859900', // Solarized-style yellow/green for visibility
+                    brightYellow: '#b58900',
+                } : {})
             };
         }
         return terminalTheme.colors;

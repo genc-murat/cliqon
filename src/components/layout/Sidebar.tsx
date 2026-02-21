@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Settings, Shield, TerminalSquare, Plus, MoreVertical, Edit2, Trash2, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Settings, Shield, TerminalSquare, Plus, MoreVertical, Edit2, Trash2, Star, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { useConnections } from '../../hooks/useConnections';
 import { ProfileModal } from '../ui/ProfileModal';
 import { SettingsModal } from '../ui/SettingsModal';
@@ -8,9 +8,13 @@ import { useResizable } from '../../hooks/useResizable';
 
 interface SidebarProps {
     onConnect?: (profile: SshProfile) => void;
+    /** Callback that lets the parent open the "Add connection" modal via keyboard shortcut */
+    openAddModalRef?: React.MutableRefObject<(() => void) | null>;
+    /** Callback that lets the parent focus the search box via keyboard shortcut */
+    focusSearchRef?: React.MutableRefObject<(() => void) | null>;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onConnect }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, focusSearchRef }) => {
     const { profiles, isLoading, saveProfile, deleteProfile } = useConnections();
     const { width, startResizing, isResizing } = useResizable(256, 160, 600);
     const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
@@ -19,6 +23,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect }) => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [editingProfile, setEditingProfile] = useState<SshProfile | null>(null);
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const searchRef = useRef<HTMLInputElement>(null);
+
+    // Expose handleAdd and search focus to parent for keyboard shortcuts
+    useEffect(() => {
+        if (openAddModalRef) openAddModalRef.current = handleAdd;
+        if (focusSearchRef) focusSearchRef.current = () => {
+            if (isCollapsed) {
+                // Expand sidebar first so the search box is visible
+                setIsCollapsed(false);
+                localStorage.setItem('sidebar-collapsed', 'false');
+                setTimeout(() => searchRef.current?.focus(), 220);
+            } else {
+                searchRef.current?.focus();
+            }
+        };
+    });
 
     const toggleCollapse = () => {
         const next = !isCollapsed;
@@ -27,13 +48,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect }) => {
         setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
     };
 
-    // Sort: favorites first, then alphabetically
-    const sortedProfiles = [...profiles].sort((a, b) => {
-        const aFav = a.is_favorite ? 1 : 0;
-        const bFav = b.is_favorite ? 1 : 0;
-        if (bFav !== aFav) return bFav - aFav;
-        return a.name.localeCompare(b.name);
-    });
+    // Filter then sort: favorites first, then alphabetically
+    const q = searchQuery.toLowerCase().trim();
+    const sortedProfiles = [...profiles]
+        .filter(p =>
+            !q ||
+            p.name.toLowerCase().includes(q) ||
+            p.host.toLowerCase().includes(q) ||
+            p.username.toLowerCase().includes(q)
+        )
+        .sort((a, b) => {
+            const aFav = a.is_favorite ? 1 : 0;
+            const bFav = b.is_favorite ? 1 : 0;
+            if (bFav !== aFav) return bFav - aFav;
+            return a.name.localeCompare(b.name);
+        });
 
     const handleAdd = () => {
         setEditingProfile(null);
@@ -112,16 +141,44 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect }) => {
                                     <button
                                         onClick={handleAdd}
                                         className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-1 rounded-md transition-colors"
+                                        title="New connection (Ctrl+N)"
                                     >
                                         <Plus size={14} />
                                     </button>
                                 </div>
+
+                                {/* Search / filter */}
+                                {profiles.length > 0 && (
+                                    <div className="relative mb-2">
+                                        <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+                                        <input
+                                            ref={searchRef}
+                                            type="text"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            placeholder="Search… (Ctrl+F)"
+                                            className="w-full pl-7 pr-6 py-1.5 text-xs bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-md text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-color)] transition-colors"
+                                        />
+                                        {searchQuery && (
+                                            <button
+                                                onClick={() => setSearchQuery('')}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                                            >
+                                                <X size={11} />
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
 
                                 {isLoading ? (
                                     <div className="text-xs text-[var(--text-muted)] py-2 text-center">Loading profiles...</div>
                                 ) : profiles.length === 0 ? (
                                     <div className="text-xs text-[var(--text-muted)] py-4 text-center border border-dashed border-[var(--border-color)] rounded-md">
                                         No connections.<br />Click + to add one.
+                                    </div>
+                                ) : sortedProfiles.length === 0 ? (
+                                    <div className="text-xs text-[var(--text-muted)] py-4 text-center border border-dashed border-[var(--border-color)] rounded-md">
+                                        No results for &quot;{searchQuery}&quot;
                                     </div>
                                 ) : (
                                     <ul className="space-y-1">

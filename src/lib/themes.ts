@@ -55,6 +55,90 @@ export const themes: Record<string, Theme> = {
             border: '#e4e4e7',    // Zinc 200
             hover: '#e4e4e7',     // Zinc 200
         }
+    },
+    nordicNight: {
+        id: 'nordicNight',
+        name: 'Nordic Night',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#2e3440',
+            bgSidebar: '#242933',
+            textMain: '#eceff4',
+            textMuted: '#d8dee9',
+            accent: '#88c0d0',
+            border: '#3b4252',
+            hover: '#434c5e',
+        }
+    },
+    midnightPurple: {
+        id: 'midnightPurple',
+        name: 'Midnight Purple',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#0f0a1f',
+            bgSidebar: '#17112b',
+            textMain: '#f3f0ff',
+            textMuted: '#b197fc',
+            accent: '#9775fa',
+            border: '#2a1f4d',
+            hover: '#3b2d66',
+        }
+    },
+    emeraldForest: {
+        id: 'emeraldForest',
+        name: 'Emerald Forest',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#020d08',
+            bgSidebar: '#04160e',
+            textMain: '#ecfdf5',
+            textMuted: '#6ee7b7',
+            accent: '#10b981',
+            border: '#064e3b',
+            hover: '#065f46',
+        }
+    },
+    cyberRose: {
+        id: 'cyberRose',
+        name: 'Cyber Rose',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#0d0221',
+            bgSidebar: '#190a3b',
+            textMain: '#fff0f6',
+            textMuted: '#f783ac',
+            accent: '#f06595',
+            border: '#49065e',
+            hover: '#5c0878',
+        }
+    },
+    solarizedDark: {
+        id: 'solarizedDark',
+        name: 'Solarized Dark',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#002b36',
+            bgSidebar: '#073642',
+            textMain: '#eee8d5',
+            textMuted: '#93a1a1',
+            accent: '#268bd2',
+            border: '#073642',
+            hover: '#586e75',
+        }
+    },
+    solarizedLight: {
+        id: 'solarizedLight',
+        name: 'Solarized Light',
+        type: 'light',
+        colors: {
+            bgPrimary: '#fdf6e3',
+            bgSidebar: '#eee8d5',
+            textMain: '#657b83',
+            textMuted: '#586e75',
+            accent: '#2aa198',
+            border: '#eee8d5',
+            hover: '#93a1a1',
+        }
     }
 };
 
@@ -90,9 +174,89 @@ export const terminalThemes: Record<string, TerminalTheme> = {
         id: 'appTheme',
         name: 'Match App Theme',
         colors: {
-            // These background/foreground values will be dynamically overridden by the app theme in TerminalViewer
             black: '#000000', red: '#cd3131', green: '#0bc261', yellow: '#e5e510', blue: '#2472c8', magenta: '#bc3fbc', cyan: '#11a8cd', white: '#e5e5e5',
             brightBlack: '#666666', brightRed: '#f14c4c', brightGreen: '#23d18b', brightYellow: '#f5f543', brightBlue: '#3b8eea', brightMagenta: '#d670d6', brightCyan: '#29b8db', brightWhite: '#e5e5e5',
+        }
+    },
+    tokyoNight: {
+        id: 'tokyoNight',
+        name: 'Tokyo Night',
+        colors: {
+            background: '#1a1b26', foreground: '#a9b1d6', cursor: '#c0caf5', selectionBackground: '#33467c',
+            black: '#15161e', red: '#f7768e', green: '#9ece6a', yellow: '#e0af68', blue: '#7aa2f7', magenta: '#bb9af7', cyan: '#7dcfff', white: '#a9b1d6',
+            brightBlack: '#414868', brightRed: '#f7768e', brightGreen: '#9ece6a', brightYellow: '#e0af68', brightBlue: '#7aa2f7', brightMagenta: '#bb9af7', brightCyan: '#7dcfff', brightWhite: '#c0caf5',
+        }
+    },
+    oneDark: {
+        id: 'oneDark',
+        name: 'One Dark',
+        colors: {
+            background: '#282c34', foreground: '#abb2bf', cursor: '#528bff', selectionBackground: '#3e4451',
+            black: '#282c34', red: '#e06c75', green: '#98c379', yellow: '#d19a66', blue: '#61afef', magenta: '#c678dd', cyan: '#56b6c2', white: '#abb2bf',
+            brightBlack: '#5c6370', brightRed: '#e06c75', brightGreen: '#98c379', brightYellow: '#d19a66', brightBlue: '#61afef', brightMagenta: '#c678dd', brightCyan: '#56b6c2', brightWhite: '#ffffff',
+        }
+    },
+    ayuMirage: {
+        id: 'ayuMirage',
+        name: 'Ayu Mirage',
+        colors: {
+            background: '#212733', foreground: '#d9d7ce', cursor: '#ffcc66', selectionBackground: '#343f4c',
+            black: '#191e2a', red: '#ed8274', green: '#a6cc70', yellow: '#fad07b', blue: '#6dcbfa', magenta: '#cfbafa', cyan: '#90e1c6', white: '#c7c7c7',
+            brightBlack: '#686868', brightRed: '#f28779', brightGreen: '#bae67e', brightYellow: '#ffd580', brightBlue: '#73d0ff', brightMagenta: '#d4bfff', brightCyan: '#95e6cb', brightWhite: '#ffffff',
+        }
+    },
+    monokai: {
+        id: 'monokai',
+        name: 'Monokai',
+        colors: {
+            background: '#272822', foreground: '#f8f8f2', cursor: '#f8f8f2', selectionBackground: '#49483e',
+            black: '#272822', red: '#f92672', green: '#a6e22e', yellow: '#f4bf75', blue: '#66d9ef', magenta: '#ae81ff', cyan: '#a1efe4', white: '#f8f8f2',
+            brightBlack: '#75715e', brightRed: '#f92672', brightGreen: '#a6e22e', brightYellow: '#f4bf75', brightBlue: '#66d9ef', brightMagenta: '#ae81ff', brightCyan: '#a1efe4', brightWhite: '#f9f8f5',
+        }
+    },
+    everforest: {
+        id: 'everforest',
+        name: 'Everforest',
+        colors: {
+            background: '#2b3339', foreground: '#d3c6aa', cursor: '#d3c6aa', selectionBackground: '#424a4e',
+            black: '#4b565c', red: '#e67e80', green: '#a7c080', yellow: '#dbbc7f', blue: '#7fbbb3', magenta: '#d699b6', cyan: '#83c092', white: '#d3c6aa',
+            brightBlack: '#4b565c', brightRed: '#e67e80', brightGreen: '#a7c080', brightYellow: '#dbbc7f', brightBlue: '#7fbbb3', brightMagenta: '#d699b6', brightCyan: '#83c092', brightWhite: '#d3c6aa',
+        }
+    },
+    nord: {
+        id: 'nord',
+        name: 'Nord',
+        colors: {
+            background: '#2e3440', foreground: '#d8dee9', cursor: '#d8dee9', selectionBackground: '#434c5e',
+            black: '#3b4252', red: '#bf616a', green: '#a3be8c', yellow: '#ebcb8b', blue: '#81a1c1', magenta: '#b48ead', cyan: '#88c0d0', white: '#e5e9f0',
+            brightBlack: '#4c566a', brightRed: '#bf616a', brightGreen: '#a3be8c', brightYellow: '#ebcb8b', brightBlue: '#81a1c1', brightMagenta: '#b48ead', brightCyan: '#8fbcbb', brightWhite: '#eceff4',
+        }
+    },
+    solarizedDark: {
+        id: 'solarizedDark',
+        name: 'Solarized Dark',
+        colors: {
+            background: '#002b36', foreground: '#839496', cursor: '#839496', selectionBackground: '#073642',
+            black: '#073642', red: '#dc322f', green: '#859900', yellow: '#b58900', blue: '#268bd2', magenta: '#d33682', cyan: '#2aa198', white: '#eee8d5',
+            brightBlack: '#002b36', brightRed: '#cb4b16', brightGreen: '#586e75', brightYellow: '#657b83', brightBlue: '#839496', brightMagenta: '#6c71c4', brightCyan: '#93a1a1', brightWhite: '#fdf6e3',
+        }
+    },
+    solarizedLight: {
+        id: 'solarizedLight',
+        name: 'Solarized Light',
+        colors: {
+            background: '#fdf6e3', foreground: '#657b83', cursor: '#657b83', selectionBackground: '#eee8d5',
+            black: '#073642', red: '#dc322f', green: '#859900', yellow: '#b58900', blue: '#268bd2', magenta: '#d33682', cyan: '#2aa198', white: '#eee8d5',
+            brightBlack: '#002b36', brightRed: '#cb4b16', brightGreen: '#586e75', brightYellow: '#657b83', brightBlue: '#839496', brightMagenta: '#6c71c4', brightCyan: '#93a1a1', brightWhite: '#fdf6e3',
+        }
+    },
+    gruvboxDark: {
+        id: 'gruvboxDark',
+        name: 'Gruvbox',
+        colors: {
+            background: '#282828', foreground: '#ebdbb2', cursor: '#ebdbb2', selectionBackground: '#504945',
+            black: '#282828', red: '#cc241d', green: '#98971a', yellow: '#d79921', blue: '#458588', magenta: '#b16286', cyan: '#689d6a', white: '#a89984',
+            brightBlack: '#928374', brightRed: '#fb4934', brightGreen: '#b8bb26', brightYellow: '#fabd2f', brightBlue: '#83a598', brightMagenta: '#d3869b', brightCyan: '#8ec07c', brightWhite: '#ebdbb2',
         }
     },
     ubuntu: {

@@ -41,6 +41,14 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
         setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
     };
 
+    // Ctrl+B global shortcut → toggle this SFTP panel (only for active tab)
+    useEffect(() => {
+        if (!isActive) return;
+        const handler = () => toggleCollapse();
+        window.addEventListener('cliqon:toggle-sftp', handler);
+        return () => window.removeEventListener('cliqon:toggle-sftp', handler);
+    }, [isActive]);
+
     const showStatus = (msg: string) => {
         setStatusMsg(msg);
         setTimeout(() => setStatusMsg(''), 3000);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar, TabData } from "./components/layout/TopBar";
 import { TerminalViewer } from "./components/terminal/TerminalViewer";
@@ -11,6 +11,10 @@ interface SessionTab extends TabData {
 function App() {
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
+
+  // Refs to allow keyboard shortcuts to trigger sidebar actions
+  const openAddModalRef = useRef<(() => void) | null>(null);
+  const focusSearchRef = useRef<(() => void) | null>(null);
 
   const handleConnect = (profile: SshProfile) => {
     // Generate a unique session ID for this tab
@@ -46,9 +50,62 @@ function App() {
     });
   };
 
+  // ─── Global Keyboard Shortcuts ──────────────────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!e.ctrlKey) return;
+
+      // Ctrl+Tab / Ctrl+Shift+Tab → cycle through SSH tabs
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        setTabs(prev => {
+          if (prev.length < 2) return prev;
+          const idx = prev.findIndex(t => t.id === activeTab);
+          const next = e.shiftKey
+            ? (idx - 1 + prev.length) % prev.length
+            : (idx + 1) % prev.length;
+          setActiveTab(prev[next].id);
+          return prev;
+        });
+        return;
+      }
+
+      // Ctrl+N → Open "Add connection" modal
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        openAddModalRef.current?.();
+        return;
+      }
+
+      // Ctrl+B → Toggle SFTP browser panel (broadcast to active TerminalViewer)
+      if (e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('cliqon:toggle-sftp'));
+        return;
+      }
+
+      // Ctrl+F → Focus sidebar search
+      if (e.key === 'f' || e.key === 'F') {
+        // Only intercept when no other input is focused
+        const tag = (document.activeElement as HTMLElement)?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        e.preventDefault();
+        focusSearchRef.current?.();
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab]);
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-main)] transition-colors duration-200">
-      <Sidebar onConnect={handleConnect} />
+      <Sidebar
+        onConnect={handleConnect}
+        openAddModalRef={openAddModalRef}
+        focusSearchRef={focusSearchRef}
+      />
 
       <div className="flex-1 flex flex-col h-full bg-[var(--bg-primary)] min-w-0">
         <TopBar

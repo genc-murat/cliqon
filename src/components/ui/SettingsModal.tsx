@@ -79,23 +79,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                         key={t.id}
                                         onClick={() => setTerminalTheme(t.id)}
                                         className={`
-                                            flex items-center justify-between p-3 rounded-lg border text-left transition-all
+                                            flex flex-col p-3 rounded-lg border text-left transition-all
                                             ${terminalTheme.id === t.id
                                                 ? 'border-[var(--accent-color)] bg-[var(--accent-color)]/10 ring-1 ring-[var(--accent-color)] ring-opacity-50'
                                                 : 'border-[var(--border-color)] bg-[var(--bg-sidebar)] hover:border-[var(--text-muted)]'
                                             }
                                         `}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div
-                                                className="w-5 h-5 rounded-full border border-black/20"
-                                                style={{ backgroundColor: t.id === 'appTheme' ? 'var(--bg-primary)' : t.colors.background }}
-                                            />
-                                            <span className="text-sm font-medium text-[var(--text-main)]">{t.name}</span>
+                                        <div className="flex items-center justify-between w-full mb-2">
+                                            <div className="flex items-center gap-3">
+                                                <div
+                                                    className="w-4 h-4 rounded-full border border-black/20"
+                                                    style={{ backgroundColor: t.id === 'appTheme' ? 'var(--bg-primary)' : t.colors.background }}
+                                                />
+                                                <span className="text-sm font-medium text-[var(--text-main)]">{t.name}</span>
+                                            </div>
+                                            {terminalTheme.id === t.id && (
+                                                <div className="w-2 h-2 rounded-full bg-[var(--accent-color)]" />
+                                            )}
                                         </div>
-                                        {terminalTheme.id === t.id && (
-                                            <div className="w-2 h-2 rounded-full bg-[var(--accent-color)]" />
-                                        )}
+
+                                        {/* ANSI Palette Preview */}
+                                        <div className="flex gap-1 mt-1">
+                                            {['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'].map((c) => (
+                                                <div
+                                                    key={c}
+                                                    className="w-2.5 h-1.5 rounded-full border border-black/10"
+                                                    style={{ backgroundColor: (t.colors as any)[c] }}
+                                                />
+                                            ))}
+                                        </div>
                                     </button>
                                 ))}
                             </div>
@@ -118,8 +131,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                                 key={f.id}
                                                 onClick={() => setTerminalFont({ fontFamily: f.value })}
                                                 className={`p-2.5 rounded-lg border text-left text-sm transition-all truncate ${terminalFont.fontFamily === f.value
-                                                        ? 'border-[var(--accent-color)] bg-[var(--accent-color)]/10 ring-1 ring-[var(--accent-color)]'
-                                                        : 'border-[var(--border-color)] bg-[var(--bg-sidebar)] hover:border-[var(--text-muted)]'
+                                                    ? 'border-[var(--accent-color)] bg-[var(--accent-color)]/10 ring-1 ring-[var(--accent-color)]'
+                                                    : 'border-[var(--border-color)] bg-[var(--bg-sidebar)] hover:border-[var(--text-muted)]'
                                                     }`}
                                                 style={{ fontFamily: f.value }}
                                             >

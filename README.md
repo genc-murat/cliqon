@@ -10,12 +10,14 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - Save, edit, and delete SSH connection profiles
 - **Favorites** — star any connection to pin it to the top of the list
 - **Color Accents** — assign a custom color per connection (left-border highlight + subtle background tint in the sidebar)
+- **Search & Filter** — real-time search by profile name, hostname, or username; favorites always appear first
 - Supports **Password**, **Private Key**, and **SSH Agent** authentication
 
 ### 💻 Terminal
 - **xterm.js** rendering with **WebGL** acceleration for smooth, low-latency output
 - **Multi-Tab** — run multiple SSH sessions side-by-side
-- **Terminal Themes** — Match App Theme, Ubuntu, Campbell, Dracula, Cyberpunk and more
+- **Terminal Themes** — 14+ built-in themes including Tokyo Night, One Dark, Nord, Solarized, Monokai, and Gruvbox
+- **Dynamic ANSI Colors** — "Match App Theme" automatically switches between Light and Dark optimized ANSI palettes for maximum readability
 - **Font Settings** — choose font family (JetBrains Mono, Fira Code, Cascadia Code, Consolas, etc.), font size (10–24 px), and line height — with a live preview in Settings
 
 ### 📁 SFTP File Browser
@@ -37,8 +39,8 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - Add/delete snippets with a clean sidebar panel
 
 ### 🎨 Theming & Appearance
-- Three built-in **app themes**: Modern Dark, Glass Dark, Modern Light
-- Fully independent **terminal color themes** with accurate 16-color palettes
+- **App Themes** — 9+ high-quality themes: Nordic Night, Midnight Purple, Emerald Forest, Cyber Rose, Solarized, Glass Dark, and more
+- **Terminal Palette Preview** — Visualize font colors (ANSI) directly in the Settings menu
 - **Collapsible panels** — Sidebar, SFTP Browser, and Snippet Manager can each be collapsed to an icon rail for maximum terminal space; sidebar state is persisted across restarts
 
 ### 🔐 Security
@@ -48,6 +50,15 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 ### ↔️ Resizable Panels
 - Drag to resize the Sidebar, SFTP Browser, and Snippet Manager panels
 - Terminal reflows automatically after any panel resize or collapse
+
+### ⌨️ Keyboard Shortcuts
+| Shortcut | Action |
+|---|---|
+| `Ctrl + Tab` | Switch to next SSH tab |
+| `Ctrl + Shift + Tab` | Switch to previous SSH tab |
+| `Ctrl + N` | Open "New Connection" modal |
+| `Ctrl + B` | Toggle SFTP browser panel |
+| `Ctrl + F` | Focus sidebar connection search |
 
 ---
 

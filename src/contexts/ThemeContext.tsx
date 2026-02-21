@@ -12,6 +12,8 @@ interface ThemeContextType {
     setTerminalCursorStyle: (style: 'block' | 'underline' | 'bar') => void;
     availableThemes: Theme[];
     availableTerminalThemes: TerminalTheme[];
+    autoOpenMonitor: boolean;
+    setAutoOpenMonitor: (open: boolean) => void;
 }
 
 export const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -46,6 +48,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return (saved as any) || 'block';
     });
 
+    const [autoOpenMonitor, setAutoOpenMonitorState] = useState<boolean>(() => {
+        const saved = localStorage.getItem('cliqon-auto-open-monitor');
+        return saved === 'true';
+    });
+
     const setTheme = (themeId: string) => {
         if (themes[themeId]) {
             setThemeState(themes[themeId]);
@@ -71,6 +78,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const setTerminalCursorStyle = (style: 'block' | 'underline' | 'bar') => {
         setTerminalCursorStyleState(style);
         localStorage.setItem('cliqon-terminal-cursor', style);
+    };
+
+    const setAutoOpenMonitor = (open: boolean) => {
+        setAutoOpenMonitorState(open);
+        localStorage.setItem('cliqon-auto-open-monitor', String(open));
     };
 
     useEffect(() => {
@@ -103,7 +115,9 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             terminalCursorStyle,
             setTerminalCursorStyle,
             availableThemes: Object.values(themes),
-            availableTerminalThemes: Object.values(terminalThemes)
+            availableTerminalThemes: Object.values(terminalThemes),
+            autoOpenMonitor,
+            setAutoOpenMonitor
         }}>
             {children}
         </ThemeContext.Provider>

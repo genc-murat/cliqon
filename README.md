@@ -49,7 +49,7 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - Add/delete snippets with a clean sidebar panel
 
 ### Theming & Appearance
-- **App Themes** — 16+ high-quality themes: Synthwave Neon, Matrix, Deep Sea, Nordic Night, Midnight Purple, Autumn Leaves, Rose Gold, and many more
+- **App Themes** — 20+ high-quality themes: Synthwave Neon, Matrix, Deep Sea, Nordic Night, Midnight Purple, Autumn Leaves, Rose Gold, and many more
 - **Sidebar-Driven Settings** — Completely redesigned, premium settings interface for easier customization
 - **Terminal Palette Preview** — Visualize font colors (ANSI) directly in the Settings menu
 - **Collapsible panels** — Sidebar, SFTP Browser, and Snippet Manager can each be collapsed to an icon rail for maximum terminal space; sidebar state is persisted across restarts
@@ -58,15 +58,23 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - Passwords and key passphrases stored via **OS Keyring** (Keychain on macOS, libsecret on Linux, Windows Credential Manager)
 - Obfuscated local fallback for environments where the system keyring is unavailable
 
-### ↔Resizable Panels
-- Drag to resize the Sidebar, SFTP Browser, and Snippet Manager panels
-- Terminal reflows automatically after any panel resize or collapse
+### Server Health Monitor
+- **Real-Time Dashboard** — Live CPU, RAM, Disk, and Load Average metrics
+- **Visual Analytics** — Integrated circular gauges and SVG sparkline charts with historical tracking
+- **Dynamic Thresholds** — Professional color-coded indicators (Green/Amber/Red) for instant health status
+- **↔ Vertically Resizable** — Adjust the monitor panel height by dragging the top handle; height is persisted per user pref
+- **Auto-Open Preference** — Optional "Auto-open on connection" setting configurable via General Settings
+- **System Insights** — Fast parsing of Hostname, OS Distribution, and Uptime via background SSH exec commands
+
+### ↕ Resizable Panels & Layout
+- **Intelligent Resizing** — Interactively drag to resize the Sidebar, SFTP Browser, Snippet Manager, and Server Monitor
+- **Layout Persistence** — All panel widths and the monitor height are saved to local storage
+- **Terminal Reflow** — xterm.js automatically adjusts columns and rows when panels are resized or collapsed
 
 ### Built-in Text Editor
-- Edit remote files directly without downloading
-- **Syntax Hints** — Automatic language detection based on file extension
-- **Line Numbers** — Monospace gutter for code reference
-- **Power Features** — Ctrl+S to save instantly to the server, Tab-to-space conversion
+- **Remote Editing** — Modify files directly on the server without manual download/upload cycles
+- **Syntax Highlighting** — Automatic language detection for code and config files
+- **Developer Ready** — Line numbers, monospace gutter, and `Ctrl+S` instant save integration
 
 ### Keyboard Shortcuts
 | Shortcut | Action |

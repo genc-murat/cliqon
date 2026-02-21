@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Palette, Terminal as TerminalIcon, Monitor, Info, Check } from 'lucide-react';
+import { X, Palette, Terminal as TerminalIcon, Monitor, Info, Check, Activity } from 'lucide-react';
 import { Logo } from '../layout/Logo';
 import { useTheme } from '../../hooks/useTheme';
 import { terminalFontFamilies } from '../../lib/themes';
@@ -16,7 +16,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         availableThemes, setTheme, theme,
         availableTerminalThemes, terminalTheme, setTerminalTheme,
         terminalFont, setTerminalFont,
-        terminalCursorStyle, setTerminalCursorStyle
+        terminalCursorStyle, setTerminalCursorStyle,
+        autoOpenMonitor, setAutoOpenMonitor
     } = useTheme();
 
     const [activeSection, setActiveSection] = useState<SettingsSection>('appearance');
@@ -278,12 +279,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                         )}
 
                         {activeSection === 'general' && (
-                            <section className="flex flex-col items-center justify-center h-full text-center space-y-4 animate-in fade-in duration-500">
-                                <div className="p-6 bg-[var(--hover-color)] rounded-full text-[var(--text-muted)]">
-                                    <Monitor size={48} />
+                            <section className="space-y-8 max-w-2xl animate-in slide-in-from-bottom-4 duration-300">
+                                <div>
+                                    <h3 className="text-lg font-bold text-[var(--text-main)] mb-1">Session Behaviors</h3>
+                                    <p className="text-sm text-[var(--text-muted)] mb-6">Configure how new terminal sessions behave.</p>
+
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between p-4 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-2xl hover:border-[var(--text-muted)] transition-all group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="p-2 bg-[var(--accent-color)]/10 rounded-xl text-[var(--accent-color)]">
+                                                    <Activity size={20} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-[var(--text-main)]">Auto-open Server Monitor</h4>
+                                                    <p className="text-xs text-[var(--text-muted)]">Automatically open the health dashboard on connection</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setAutoOpenMonitor(!autoOpenMonitor)}
+                                                className={`
+                                                    relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none
+                                                    ${autoOpenMonitor ? 'bg-[var(--accent-color)]' : 'bg-[var(--hover-color)]'}
+                                                `}
+                                            >
+                                                <div className={`
+                                                    absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200
+                                                    ${autoOpenMonitor ? 'translate-x-6' : 'translate-x-0'}
+                                                `} />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <h3 className="text-xl font-bold text-[var(--text-main)]">General Settings</h3>
-                                <p className="text-[var(--text-muted)] max-w-sm">System integrity and general app behaviors will be configurable here in the next update.</p>
+
+                                <div className="pt-8 border-t border-[var(--border-color)] flex flex-col items-center justify-center text-center space-y-4 opacity-50">
+                                    <div className="p-6 bg-[var(--hover-color)] rounded-full text-[var(--text-muted)]">
+                                        <Monitor size={48} />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-[var(--text-main)]">More Settings Coming Soon</h3>
+                                    <p className="text-xs text-[var(--text-muted)] max-w-sm">System integrity and per-protocol behaviors will be configurable here.</p>
+                                </div>
                             </section>
                         )}
 

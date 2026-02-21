@@ -1,32 +1,58 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-export function useResizable(defaultWidth: number, minWidth: number, maxWidth: number, direction: 'left' | 'right' = 'left') {
-    const [width, setWidth] = useState(defaultWidth);
+export type ResizeDirection = 'left' | 'right' | 'top' | 'bottom';
+
+export function useResizable(
+    defaultSize: number,
+    minSize: number,
+    maxSize: number,
+    direction: ResizeDirection = 'left',
+    storageKey?: string
+) {
+    const isVertical = direction === 'top' || direction === 'bottom';
+
+    const [size, setSize] = useState(() => {
+        if (storageKey) {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) return parseInt(saved, 10);
+        }
+        return defaultSize;
+    });
+
     const [isResizing, setIsResizing] = useState(false);
-    const resizeRef = useRef({ startX: 0, startWidth: 0 });
+    const resizeRef = useRef({ startPos: 0, startSize: 0 });
 
     const startResizing = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         setIsResizing(true);
         resizeRef.current = {
-            startX: e.clientX,
-            startWidth: width,
+            startPos: isVertical ? e.clientY : e.clientX,
+            startSize: size,
         };
-    }, [width]);
+    }, [size, isVertical]);
 
     useEffect(() => {
         if (!isResizing) return;
 
         const handleMouseMove = (e: MouseEvent) => {
-            const { startX, startWidth } = resizeRef.current;
-            const delta = e.clientX - startX;
-            // If the handle is on the left side of a right-anchored panel, dragging left (negative delta) means increasing width
-            const newWidth = direction === 'left'
-                ? Math.min(Math.max(startWidth + delta, minWidth), maxWidth)
-                : Math.min(Math.max(startWidth - delta, minWidth), maxWidth);
-            setWidth(newWidth);
-            // Fire a custom event to force xterm to resize since the container changes
+            const { startPos, startSize } = resizeRef.current;
+            const delta = (isVertical ? e.clientY : e.clientX) - startPos;
+
+            let newSize = startSize;
+            if (direction === 'left') newSize = startSize + delta;
+            else if (direction === 'right') newSize = startSize - delta;
+            else if (direction === 'bottom') newSize = startSize + delta;
+            else if (direction === 'top') newSize = startSize - delta;
+
+            const clampedSize = Math.min(Math.max(newSize, minSize), maxSize);
+            setSize(clampedSize);
+
+            if (storageKey) {
+                localStorage.setItem(storageKey, clampedSize.toString());
+            }
+
+            // Fire a custom event to force xterm/layout to resize
             window.dispatchEvent(new Event('resize'));
         };
 
@@ -37,7 +63,7 @@ export function useResizable(defaultWidth: number, minWidth: number, maxWidth: n
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
 
-        document.body.style.cursor = 'col-resize';
+        document.body.style.cursor = isVertical ? 'row-resize' : 'col-resize';
         document.body.style.userSelect = 'none';
 
         return () => {
@@ -46,7 +72,13 @@ export function useResizable(defaultWidth: number, minWidth: number, maxWidth: n
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
         };
-    }, [isResizing, minWidth, maxWidth, direction]);
+    }, [isResizing, minSize, maxSize, direction, isVertical, storageKey]);
 
-    return { width, startResizing, isResizing };
+    return {
+        size,
+        width: isVertical ? undefined : size,
+        height: isVertical ? size : undefined,
+        startResizing,
+        isResizing
+    };
 }

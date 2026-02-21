@@ -76,5 +76,13 @@ export const api = {
 
     closeSftp: async (sessionId: string): Promise<void> => {
         return await invoke('close_sftp', { sessionId });
+    },
+
+    startMonitor: async (profile: SshProfile, sessionId: string): Promise<void> => {
+        return await invoke('start_monitor', { profile, sessionId });
+    },
+
+    stopMonitor: async (sessionId: string): Promise<void> => {
+        return await invoke('stop_monitor', { sessionId });
     }
 };

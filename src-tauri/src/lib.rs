@@ -8,6 +8,7 @@ use state::app_state::AppState;
 use commands::profile::*;
 use commands::terminal::*;
 use commands::sftp::*;
+use commands::monitor::*;
 use tauri::Manager;
 
 #[tauri::command]
@@ -45,7 +46,9 @@ pub fn run() {
             chmod_sftp,
             read_sftp_file,
             write_sftp_file,
-            close_sftp
+            close_sftp,
+            start_monitor,
+            stop_monitor
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

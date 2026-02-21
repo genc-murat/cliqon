@@ -2,13 +2,16 @@ import { useState, useEffect, useRef } from "react";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar, TabData } from "./components/layout/TopBar";
 import { SplitView, Pane } from './components/terminal/SplitView';
+import { ServerMonitor } from './components/terminal/ServerMonitor';
 import { Logo } from './components/layout/Logo';
+import { useTheme } from "./hooks/useTheme";
 import { SshProfile } from "./types/connection";
 
 interface SessionTab extends TabData {
   profile: SshProfile;
   panes: Pane[];
   activePane: string | null;
+  monitorOpen: boolean;
 }
 
 function App() {
@@ -18,6 +21,7 @@ function App() {
   // Refs to allow keyboard shortcuts to trigger sidebar actions
   const openAddModalRef = useRef<(() => void) | null>(null);
   const focusSearchRef = useRef<(() => void) | null>(null);
+  const { autoOpenMonitor } = useTheme();
 
   const handleConnect = (profile: SshProfile) => {
     const sessionId = crypto.randomUUID();
@@ -28,6 +32,7 @@ function App() {
       profile,
       panes: [pane],
       activePane: pane.id,
+      monitorOpen: autoOpenMonitor,
     };
     setTabs(prev => [...prev, newTab]);
     setActiveTab(sessionId);
@@ -74,6 +79,12 @@ function App() {
       }
       return nextTabs;
     });
+  };
+
+  const handleToggleMonitor = (tabId: string) => {
+    setTabs(prev => prev.map(tab =>
+      tab.id === tabId ? { ...tab, monitorOpen: !tab.monitorOpen } : tab
+    ));
   };
 
   // ─── Global Keyboard Shortcuts ──────────────────────────────────────────────
@@ -146,6 +157,8 @@ function App() {
           onTabClose={handleTabClose}
           onTabSelect={(id) => setActiveTab(id)}
           onSplit={handleSplitPane}
+          onToggleMonitor={handleToggleMonitor}
+          isMonitorOpen={tabs.find(t => t.id === activeTab)?.monitorOpen}
         />
 
         {/* Main Terminal Area */}
@@ -157,14 +170,24 @@ function App() {
             </div>
           ) : (
             tabs.map((tab) => (
-              <SplitView
-                key={tab.id}
-                panes={tab.panes}
-                activePane={tab.activePane}
-                isTabActive={activeTab === tab.id}
-                onPaneClose={(paneId) => handlePaneClose(tab.id, paneId)}
-                onPaneActivate={(paneId) => handlePaneActivate(tab.id, paneId)}
-              />
+              <div key={tab.id} className={`absolute inset-0 flex flex-col ${activeTab === tab.id ? '' : 'hidden'}`}>
+                <div className="flex-1 relative min-h-0">
+                  <SplitView
+                    panes={tab.panes}
+                    activePane={tab.activePane}
+                    isTabActive={activeTab === tab.id}
+                    onPaneClose={(paneId) => handlePaneClose(tab.id, paneId)}
+                    onPaneActivate={(paneId) => handlePaneActivate(tab.id, paneId)}
+                  />
+                </div>
+                {tab.monitorOpen && activeTab === tab.id && (
+                  <ServerMonitor
+                    profile={tab.profile}
+                    sessionId={tab.id}
+                    onClose={() => handleToggleMonitor(tab.id)}
+                  />
+                )}
+              </div>
             ))
           )}
         </div>

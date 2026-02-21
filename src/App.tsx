@@ -3,6 +3,7 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar, TabData } from "./components/layout/TopBar";
 import { SplitView, Pane } from './components/terminal/SplitView';
 import { ServerMonitor } from './components/terminal/ServerMonitor';
+import { NetworkTools } from './components/terminal/NetworkTools';
 import { Logo } from './components/layout/Logo';
 import { useTheme } from "./hooks/useTheme";
 import { SshProfile } from "./types/connection";
@@ -12,6 +13,7 @@ interface SessionTab extends TabData {
   panes: Pane[];
   activePane: string | null;
   monitorOpen: boolean;
+  networkToolsOpen: boolean;
 }
 
 function App() {
@@ -33,6 +35,7 @@ function App() {
       panes: [pane],
       activePane: pane.id,
       monitorOpen: autoOpenMonitor,
+      networkToolsOpen: false,
     };
     setTabs(prev => [...prev, newTab]);
     setActiveTab(sessionId);
@@ -84,6 +87,12 @@ function App() {
   const handleToggleMonitor = (tabId: string) => {
     setTabs(prev => prev.map(tab =>
       tab.id === tabId ? { ...tab, monitorOpen: !tab.monitorOpen } : tab
+    ));
+  };
+
+  const handleToggleNetworkTools = (tabId: string) => {
+    setTabs(prev => prev.map(tab =>
+      tab.id === tabId ? { ...tab, networkToolsOpen: !tab.networkToolsOpen } : tab
     ));
   };
 
@@ -159,6 +168,8 @@ function App() {
           onSplit={handleSplitPane}
           onToggleMonitor={handleToggleMonitor}
           isMonitorOpen={tabs.find(t => t.id === activeTab)?.monitorOpen}
+          onToggleNetworkTools={handleToggleNetworkTools}
+          isNetworkToolsOpen={tabs.find(t => t.id === activeTab)?.networkToolsOpen}
         />
 
         {/* Main Terminal Area */}
@@ -185,6 +196,13 @@ function App() {
                     profile={tab.profile}
                     sessionId={tab.id}
                     onClose={() => handleToggleMonitor(tab.id)}
+                  />
+                )}
+                {tab.networkToolsOpen && activeTab === tab.id && (
+                  <NetworkTools
+                    profile={tab.profile}
+                    sessionId={tab.id}
+                    onClose={() => handleToggleNetworkTools(tab.id)}
                   />
                 )}
               </div>

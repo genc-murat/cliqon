@@ -66,6 +66,13 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - **Auto-Open Preference** — Optional "Auto-open on connection" setting configurable via General Settings
 - **System Insights** — Fast parsing of Hostname, OS Distribution, and Uptime via background SSH exec commands
 
+### 🌐 Network Tools
+- **Ping** — Run remote ICMP ping with latency sparkline chart and Min/Avg/Max summary cards
+- **Traceroute** — Visualize network hops in a clean table with Host, IP, and RTT columns
+- **DNS Lookup** — Query DNS records with color-coded type badges (A, AAAA, CNAME, MX)
+- **On-Demand** — Run diagnostics from the connected server via SSH exec; no continuous polling
+- **Copy Output** — One-click clipboard copy of raw command output
+
 ### ↕ Resizable Panels & Layout
 - **Intelligent Resizing** — Interactively drag to resize the Sidebar, SFTP Browser, Snippet Manager, and Server Monitor
 - **Layout Persistence** — All panel widths and the monitor height are saved to local storage

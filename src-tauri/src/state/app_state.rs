@@ -3,6 +3,7 @@ use crate::services::store::ProfileStore;
 use crate::services::ssh::SshManager;
 use crate::services::sftp::SftpManager;
 use crate::services::monitor::MonitorManager;
+use crate::services::net_tools::NetToolManager;
 use tauri::AppHandle;
 
 pub struct AppState {
@@ -10,6 +11,7 @@ pub struct AppState {
     pub ssh_manager: SshManager,
     pub sftp_manager: SftpManager,
     pub monitor_manager: MonitorManager,
+    pub net_tool_manager: NetToolManager,
 }
 
 impl AppState {
@@ -19,6 +21,7 @@ impl AppState {
             ssh_manager: SshManager::new(),
             sftp_manager: SftpManager::new(),
             monitor_manager: MonitorManager::new(),
+            net_tool_manager: NetToolManager::new(),
         }
     }
 }

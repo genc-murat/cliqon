@@ -84,5 +84,9 @@ export const api = {
 
     stopMonitor: async (sessionId: string): Promise<void> => {
         return await invoke('stop_monitor', { sessionId });
+    },
+
+    runNetTool: async (profile: SshProfile, sessionId: string, toolType: string, target: string): Promise<string> => {
+        return await invoke<string>('run_net_tool', { profile, sessionId, toolType, target });
     }
 };

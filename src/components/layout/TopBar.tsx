@@ -13,9 +13,11 @@ interface TopBarProps {
     onSplit?: (id: string) => void;
     onToggleMonitor?: (id: string) => void;
     isMonitorOpen?: boolean;
+    onToggleNetworkTools?: (id: string) => void;
+    isNetworkToolsOpen?: boolean;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ tabs, activeTab, onTabClose, onTabSelect, onSplit, onToggleMonitor, isMonitorOpen }) => {
+export const TopBar: React.FC<TopBarProps> = ({ tabs, activeTab, onTabClose, onTabSelect, onSplit, onToggleMonitor, isMonitorOpen, onToggleNetworkTools, isNetworkToolsOpen }) => {
     return (
         <div className="h-[52px] w-full bg-[var(--bg-primary)] border-b border-[var(--border-color)] flex items-end px-2 gap-1 overflow-x-auto shrink-0 hide-scrollbar pt-2">
             {tabs.map((tab) => (
@@ -50,6 +52,15 @@ export const TopBar: React.FC<TopBarProps> = ({ tabs, activeTab, onTabClose, onT
                             title="Server Monitor"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg>
+                        </button>
+                    )}
+                    {activeTab === tab.id && onToggleNetworkTools && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onToggleNetworkTools(tab.id); }}
+                            className={`rounded-md p-0.5 transition-opacity hover:bg-[var(--hover-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] ${isNetworkToolsOpen ? 'opacity-100 text-[var(--accent-color)]' : 'opacity-0 group-hover:opacity-100'}`}
+                            title="Network Tools"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
                         </button>
                     )}
                     <button

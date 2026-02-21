@@ -9,6 +9,7 @@ use commands::profile::*;
 use commands::terminal::*;
 use commands::sftp::*;
 use commands::monitor::*;
+use commands::net_tools::*;
 use tauri::Manager;
 
 #[tauri::command]
@@ -48,7 +49,8 @@ pub fn run() {
             write_sftp_file,
             close_sftp,
             start_monitor,
-            stop_monitor
+            stop_monitor,
+            run_net_tool
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

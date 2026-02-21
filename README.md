@@ -1,10 +1,25 @@
-<p align="center">
-  <img src="src/assets/logo.png" width="128" alt="Cliqon Logo">
-</p>
-
 # Cliqon — Modern SSH & SFTP Client
 
-Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the desktop. Built with **Tauri 2** (Rust backend) and a **React + TypeScript** frontend.
+[![Release](https://img.shields.io/github/v/release/genc-murat/cliqon?style=flat-square)](https://github.com/genc-murat/cliqon/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/genc-murat/cliqon/release.yml?style=flat-square)](https://github.com/genc-murat/cliqon/actions)
+[![License](https://img.shields.io/github/license/genc-murat/cliqon?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-blue?style=flat-square)](https://github.com/genc-murat/cliqon/releases)
+
+Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the desktop. Built with **Tauri 2** (Rust backend) and a **React + TypeScript** frontend, it offers a premium, modern experience for developers and DevOps engineers.
+
+> [!TIP]
+> **Get Started:** Download the latest version for your OS from the [Releases](https://github.com/genc-murat/cliqon/releases) page.
+
+---
+
+## Why Cliqon?
+
+While there are many SSH clients, Cliqon is built for the **modern developer workflow**:
+- **Performance First:** Native performance with a Rust backend (Tauri 2) and WebGL-accelerated terminal.
+- **Seamless Collaboration:** Zero-config, P2P network sharing to securely send profiles to teammates.
+- **Intelligence:** ML-powered autocomplete that learns your habits locally and privately.
+- **Integrated Toolbox:** Docker management, server health monitoring, and 15+ network diagnostic tools built-in.
+- **Deep Customization:** 20+ premium themes and fine-grained UI control.
 
 ---
 

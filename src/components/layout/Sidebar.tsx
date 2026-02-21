@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     Settings, Shield, TerminalSquare, Plus, MoreVertical, Edit2, Trash2,
-    Star, ChevronLeft, ChevronRight, ChevronDown, Search, X, Folder,
-    Upload, Key, Lock, Link, LayoutGrid, List, Zap
+    Star, ChevronDown, Search, X, Folder,
+    Upload, Key, Lock, Link, LayoutGrid, List, Zap,
+    ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useConnections } from '../../hooks/useConnections';
 import { ProfileModal } from '../ui/ProfileModal';
@@ -368,10 +369,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
             {/* Collapse Toggle */}
             <button
                 onClick={toggleCollapse}
-                className="absolute -right-3 top-6 z-50 w-6 h-6 rounded-full bg-[var(--bg-sidebar)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] shadow-sm transition-colors"
+                className="absolute -right-2 top-6 z-50 w-4 h-6 rounded-sm bg-[var(--bg-sidebar)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] shadow-sm transition-colors"
                 title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-                {isCollapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+                {isCollapsed ? <ChevronRight size={11} strokeWidth={3} /> : <ChevronLeft size={11} strokeWidth={3} />}
             </button>
 
             {/* Main content */}

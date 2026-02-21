@@ -80,10 +80,10 @@ export const SnippetManager: React.FC<SnippetManagerProps> = ({ profile, session
             {/* Collapse Toggle on Left edge */}
             <button
                 onClick={toggleCollapse}
-                className="absolute -left-3 top-3 z-30 w-6 h-6 rounded-full bg-[var(--bg-sidebar)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] shadow-sm transition-colors"
+                className="absolute -left-2 top-3 z-30 w-4 h-6 rounded-sm bg-[var(--bg-sidebar)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] shadow-sm transition-colors"
                 title={isCollapsed ? 'Expand snippets' : 'Collapse snippets'}
             >
-                {isCollapsed ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
+                {isCollapsed ? <ChevronLeft size={11} strokeWidth={3} /> : <ChevronRight size={11} strokeWidth={3} />}
             </button>
 
             {isCollapsed ? (

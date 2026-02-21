@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
-import { Folder, Download, RefreshCw, ChevronRight, Edit2, Trash2, Copy, FileText, Network, ShieldAlert, Activity, ChevronLeft, ArrowUpCircle, Star, Bookmark, X as XIcon, File as FileIcon, TerminalSquare, Settings } from 'lucide-react';
+import { Folder, Download, RefreshCw, ChevronLeft, ChevronRight, Edit2, Trash2, Copy, FileText, Network, ShieldAlert, Activity, ArrowUpCircle, Star, Bookmark, X as XIcon, File as FileIcon, TerminalSquare, Settings } from 'lucide-react';
 import { SshProfile, FileNode } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
@@ -249,10 +249,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                 {/* Collapse Toggle */}
                 <button
                     onClick={(e) => { e.stopPropagation(); toggleCollapse(); }}
-                    className="absolute -right-3 top-3 z-30 w-6 h-6 rounded-full bg-[var(--bg-sidebar)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] shadow-sm transition-colors"
+                    className="absolute -right-2 top-3 z-30 w-4 h-6 rounded-sm bg-[var(--bg-sidebar)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] shadow-sm transition-colors"
                     title={isCollapsed ? 'Expand SFTP browser' : 'Collapse SFTP browser'}
                 >
-                    {isCollapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+                    {isCollapsed ? <ChevronRight size={11} strokeWidth={3} /> : <ChevronLeft size={11} strokeWidth={3} />}
                 </button>
 
                 {isCollapsed ? (

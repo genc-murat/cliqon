@@ -204,12 +204,12 @@ body {
   justify-content: center;
   min-width: 18px;
   height: 16px;
-  padding: 0 4px;
-  font-size: 10px;
-  font-weight: 600;
-  border-radius: 8px;
-  background: var(--hover-color);
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--border-color);
   color: var(--text-muted);
+  font-weight: 600;
 }
 
 /* Compact list mode */
@@ -293,9 +293,9 @@ body {
 }
 
 .topbar-tab-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
   flex-shrink: 0;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.15);
   transition: box-shadow 0.2s;

@@ -237,6 +237,104 @@ export const themes: Record<string, Theme> = {
             border: '#b0c4de',
             hover: '#add8e6',
         }
+    },
+    cyberpunkRed: {
+        id: 'cyberpunkRed',
+        name: 'Cyberpunk Red',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#050505',
+            bgSidebar: '#0f0505',
+            textMain: '#ff0000',
+            textMuted: '#9b0000',
+            accent: '#ff0000',
+            border: '#2a0a0a',
+            hover: '#3a0a0a',
+        }
+    },
+    forestMoss: {
+        id: 'forestMoss',
+        name: 'Forest Moss',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#0a0f0a',
+            bgSidebar: '#141a14',
+            textMain: '#d4e0d4',
+            textMuted: '#7a8a7a',
+            accent: '#5c7a5c',
+            border: '#1f2a1f',
+            hover: '#2a3a2a',
+        }
+    },
+    hackerVoid: {
+        id: 'hackerVoid',
+        name: 'Hacker Void',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#000000',
+            bgSidebar: '#020202',
+            textMain: '#bfff00',
+            textMuted: '#4b6600',
+            accent: '#bfff00',
+            border: '#121212',
+            hover: '#1a1a1a',
+        }
+    },
+    midnightTokyo: {
+        id: 'midnightTokyo',
+        name: 'Midnight Tokyo',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#020617',
+            bgSidebar: '#0f172a',
+            textMain: '#f8fafc',
+            textMuted: '#94a3b8',
+            accent: '#d946ef',
+            border: '#1e293b',
+            hover: '#334155',
+        }
+    },
+    coffeeShop: {
+        id: 'coffeeShop',
+        name: 'Coffee Shop',
+        type: 'light',
+        colors: {
+            bgPrimary: '#fafaf9',
+            bgSidebar: '#f5f5f4',
+            textMain: '#44403c',
+            textMuted: '#a8a29e',
+            accent: '#78350f',
+            border: '#e7e5e4',
+            hover: '#d6d3d1',
+        }
+    },
+    amethyst: {
+        id: 'amethyst',
+        name: 'Amethyst Dreams',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#0d061f',
+            bgSidebar: '#1a0b3b',
+            textMain: '#f3e8ff',
+            textMuted: '#a78bfa',
+            accent: '#c084fc',
+            border: '#2e1065',
+            hover: '#4c1d95',
+        }
+    },
+    sketchbook: {
+        id: 'sketchbook',
+        name: 'Sketchbook',
+        type: 'light',
+        colors: {
+            bgPrimary: '#ffffff',
+            bgSidebar: '#fafafa',
+            textMain: '#000000',
+            textMuted: '#71717a',
+            accent: '#000000',
+            border: '#000000',
+            hover: '#f4f4f5',
+        }
     }
 };
 
@@ -440,8 +538,98 @@ export const terminalThemes: Record<string, TerminalTheme> = {
             black: '#0a192f', red: '#f74c4c', green: '#64ffda', yellow: '#ccd6f6', blue: '#1d2d50', magenta: '#b388ff', cyan: '#00bcd4', white: '#ffffff',
             brightBlack: '#1d2d50', brightRed: '#f74c4c', brightGreen: '#a5ffd6', brightYellow: '#ccd6f6', brightBlue: '#1d2d50', brightMagenta: '#b388ff', brightCyan: '#00bcd4', brightWhite: '#ffffff',
         }
+    },
+    nightOwl: {
+        id: 'nightOwl',
+        name: 'Night Owl',
+        colors: {
+            background: '#011627', foreground: '#d6deeb', cursor: '#7e57c2', selectionBackground: '#1d3b53',
+            black: '#011627', red: '#ef5350', green: '#22da6e', yellow: '#addb67', blue: '#82aaff', magenta: '#c792ea', cyan: '#21c7a8', white: '#ffffff',
+            brightBlack: '#575656', brightRed: '#ef5350', brightGreen: '#22da6e', brightYellow: '#ffeb95', brightBlue: '#82aaff', brightMagenta: '#c792ea', brightCyan: '#7fdbca', brightWhite: '#ffffff',
+        }
+    },
+    cobalt2: {
+        id: 'cobalt2',
+        name: 'Cobalt2',
+        colors: {
+            background: '#193549', foreground: '#ffffff', cursor: '#ffc600', selectionBackground: '#0050a4',
+            black: '#000000', red: '#ff0000', green: '#3ad900', yellow: '#ffc600', blue: '#0088ff', magenta: '#ff2c70', cyan: '#00c5c7', white: '#c5c5c5',
+            brightBlack: '#686868', brightRed: '#f43e5c', brightGreen: '#3ad900', brightYellow: '#ffc600', brightBlue: '#0088ff', brightMagenta: '#ff2c70', brightCyan: '#00c5c7', brightWhite: '#ffffff',
+        }
+    },
+    catppuccinMocha: {
+        id: 'catppuccinMocha',
+        name: 'Catppuccin Mocha',
+        colors: {
+            background: '#1e1e2e', foreground: '#cdd6f4', cursor: '#f5e0dc', selectionBackground: '#585b70',
+            black: '#45475a', red: '#f38ba8', green: '#a6e3a1', yellow: '#f9e2af', blue: '#89b4fa', magenta: '#f5c2e7', cyan: '#94e2d5', white: '#bac2de',
+            brightBlack: '#585b70', brightRed: '#f38ba8', brightGreen: '#a6e3a1', brightYellow: '#f9e2af', brightBlue: '#89b4fa', brightMagenta: '#f5c2e7', brightCyan: '#94e2d5', brightWhite: '#a6adc8',
+        }
+    },
+    rosePine: {
+        id: 'rosePine',
+        name: 'Rose Pine',
+        colors: {
+            background: '#191724', foreground: '#e0def4', cursor: '#524f67', selectionBackground: '#403d52',
+            black: '#26233a', red: '#eb6f92', green: '#31748f', yellow: '#f6c177', blue: '#9ccfd8', magenta: '#c4a7e7', cyan: '#ebbcba', white: '#e0def4',
+            brightBlack: '#6e6a86', brightRed: '#eb6f92', brightGreen: '#31748f', brightYellow: '#f6c177', brightBlue: '#9ccfd8', brightMagenta: '#c4a7e7', brightCyan: '#ebbcba', brightWhite: '#e0def4',
+        }
+    },
+    oceanicNext: {
+        id: 'oceanicNext',
+        name: 'Oceanic Next',
+        colors: {
+            background: '#1b2b34', foreground: '#d8dee9', cursor: '#ffffff', selectionBackground: '#4f5b66',
+            black: '#1b2b34', red: '#ec5f67', green: '#99c794', yellow: '#fac863', blue: '#6699cc', magenta: '#c594c5', cyan: '#5fb3b3', white: '#d8dee9',
+            brightBlack: '#65737e', brightRed: '#ec5f67', brightGreen: '#99c794', brightYellow: '#fac863', brightBlue: '#6699cc', brightMagenta: '#c594c5', brightCyan: '#5fb3b3', brightWhite: '#ffffff',
+        }
+    },
+    shadesOfPurple: {
+        id: 'shadesOfPurple',
+        name: 'Shades of Purple',
+        colors: {
+            background: '#2d2b55', foreground: '#a599e9', cursor: '#fad000', selectionBackground: '#b362ff40',
+            black: '#000000', red: '#d4002d', green: '#4dff00', yellow: '#ffb454', blue: '#399ee6', magenta: '#b362ff', cyan: '#00d4a7', white: '#ffffff',
+            brightBlack: '#686868', brightRed: '#d4002d', brightGreen: '#4dff00', brightYellow: '#ffb454', brightBlue: '#399ee6', brightMagenta: '#b362ff', brightCyan: '#00d4a7', brightWhite: '#ffffff',
+        }
+    },
+    palenight: {
+        id: 'palenight',
+        name: 'Material Palenight',
+        colors: {
+            background: '#292d3e', foreground: '#a6accd', cursor: '#ffcc00', selectionBackground: '#717cb450',
+            black: '#292d3e', red: '#f07178', green: '#c3e88d', yellow: '#ffcb6b', blue: '#82aaff', magenta: '#c792ea', cyan: '#89ddff', white: '#ffffff',
+            brightBlack: '#676e95', brightRed: '#f07178', brightGreen: '#c3e88d', brightYellow: '#ffcb6b', brightBlue: '#82aaff', brightMagenta: '#c792ea', brightCyan: '#89ddff', brightWhite: '#ffffff',
+        }
+    },
+    cyberpunkScarlet: {
+        id: 'cyberpunkScarlet',
+        name: 'Cyberpunk Scarlet',
+        colors: {
+            background: '#0a0404', foreground: '#ff0000', cursor: '#ff0000', selectionBackground: '#ff000030',
+            black: '#0a0404', red: '#ff0000', green: '#ff4d4d', yellow: '#ff8080', blue: '#ff0000', magenta: '#ff3333', cyan: '#ff6666', white: '#ffffff',
+            brightBlack: '#1a0a0a', brightRed: '#ff0000', brightGreen: '#ff4d4d', brightYellow: '#ff8080', brightBlue: '#ff0000', brightMagenta: '#ff3333', brightCyan: '#ff6666', brightWhite: '#ffffff',
+        }
+    },
+    hackerVoid: {
+        id: 'hackerVoid',
+        name: 'Hacker Void',
+        colors: {
+            background: '#000000', foreground: '#00ff00', cursor: '#00ff00', selectionBackground: '#00ff0030',
+            black: '#000000', red: '#008000', green: '#00ff00', yellow: '#55ff55', blue: '#00ff00', magenta: '#00ff00', cyan: '#00ff00', white: '#00ff00',
+            brightBlack: '#003300', brightRed: '#00ff00', brightGreen: '#00ff00', brightYellow: '#00ff00', brightBlue: '#00ff00', brightMagenta: '#00ff00', brightCyan: '#00ff00', brightWhite: '#00ff00',
+        }
+    },
+    tailwindSemi: {
+        id: 'tailwindSemi',
+        name: 'Tailwind Semi',
+        colors: {
+            background: '#0f172a', foreground: '#94a3b8', cursor: '#38bdf8', selectionBackground: '#1e293b',
+            black: '#0f172a', red: '#f43f5e', green: '#10b981', yellow: '#f59e0b', blue: '#3b82f6', magenta: '#8b5cf6', cyan: '#06b6d4', white: '#f8fafc',
+            brightBlack: '#475569', brightRed: '#f43f5e', brightGreen: '#10b981', brightYellow: '#f59e0b', brightBlue: '#3b82f6', brightMagenta: '#8b5cf6', brightCyan: '#06b6d4', brightWhite: '#ffffff',
+        }
     }
-};
+];
 
 export interface TerminalFont {
     fontFamily: string;

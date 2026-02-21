@@ -23,7 +23,7 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - **Split Terminal** — split any tab horizontally (`Ctrl+Shift+H`) to run multiple SSH sessions to the same host side-by-side
 - **Draggable Dividers** — interactively resize terminal panes within a tab
 - **Multi-Tab** — run multiple independent SSH sessions
-- **Terminal Themes** — 17+ built-in themes including Tokyo Night, One Dark, Nord, Solarized, Monokai, Synthwave, and Matrix
+- **Terminal Themes** — 27+ built-in themes including Night Owl, Cobalt2, Catppuccin, Rose Pine, Tokyo Night, One Dark, and many more
 - **Cursor Customization** — Choose between Block, Underline, or Bar cursor styles with optional blinking
 - **Dynamic ANSI Colors** — "Match App Theme" automatically switches between Light and Dark optimized ANSI palettes for maximum readability
 - **Font Settings** — choose font family, size, and line height with a live preview
@@ -49,7 +49,7 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - Add/delete snippets with a clean sidebar panel
 
 ### Theming & Appearance
-- **App Themes** — 20+ high-quality themes: Synthwave Neon, Matrix, Deep Sea, Nordic Night, Midnight Purple, Autumn Leaves, Rose Gold, and many more
+- **App Themes** — 23+ high-quality themes: Cyberpunk Red, Hacker Void, Coffee Shop, Forest Moss, Amethyst, and many more
 - **Sidebar-Driven Settings** — Completely redesigned, premium settings interface for easier customization
 - **Terminal Palette Preview** — Visualize font colors (ANSI) directly in the Settings menu
 - **Collapsible panels** — Sidebar, SFTP Browser, and Snippet Manager can each be collapsed to an icon rail for maximum terminal space; sidebar state is persisted across restarts

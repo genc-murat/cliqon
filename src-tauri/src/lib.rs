@@ -10,6 +10,7 @@ use commands::terminal::*;
 use commands::sftp::*;
 use commands::monitor::*;
 use commands::net_tools::*;
+use commands::docker::*;
 use tauri::Manager;
 
 #[tauri::command]
@@ -50,7 +51,11 @@ pub fn run() {
             close_sftp,
             start_monitor,
             stop_monitor,
-            run_net_tool
+            run_net_tool,
+            get_docker_containers,
+            start_docker_container,
+            stop_docker_container,
+            restart_docker_container
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

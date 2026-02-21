@@ -26,6 +26,7 @@ interface ServerMonitorProps {
     profile: SshProfile;
     sessionId: string;
     onClose: () => void;
+    isEmbedded?: boolean;
 }
 
 const MAX_HISTORY = 30;
@@ -34,7 +35,7 @@ const MAX_HISTORY = 30;
 const Sparkline: React.FC<{ data: number[]; color: string; height?: number }> = ({ data, color, height = 32 }) => {
     if (data.length < 2) return null;
     const max = Math.max(...data, 1);
-    const w = 120;
+    const w = 200; // Reference width for viewBox
     const h = height;
     const points = data.map((v, i) => {
         const x = (i / (MAX_HISTORY - 1)) * w;
@@ -46,7 +47,12 @@ const Sparkline: React.FC<{ data: number[]; color: string; height?: number }> = 
     const areaPoints = `0,${h} ${points} ${w},${h}`;
 
     return (
-        <svg width={w} height={h} className="overflow-visible">
+        <svg
+            viewBox={`0 0 ${w} ${h}`}
+            preserveAspectRatio="none"
+            className="overflow-visible absolute inset-0 w-full h-full"
+            style={{ maxHeight: '100%', minHeight: '32px' }}
+        >
             <polyline
                 fill="none"
                 stroke={color}
@@ -98,7 +104,7 @@ const Gauge: React.FC<{ percent: number; color: string; size?: number }> = ({ pe
     );
 };
 
-export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId, onClose }) => {
+export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId, onClose, isEmbedded }) => {
     const { height, startResizing, isResizing } = useResizable(
         280, // default height
         180, // min height
@@ -159,54 +165,57 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
 
     return (
         <div
-            className="border-t border-[var(--border-color)] bg-[var(--bg-sidebar)] shrink-0 overflow-hidden relative flex flex-col"
-            style={{ height }}
+            className={`bg-[var(--bg-sidebar)] shrink-0 overflow-hidden relative flex flex-col ${isEmbedded ? 'flex-1 h-full' : 'border-t border-[var(--border-color)]'}`}
+            style={isEmbedded ? {} : { height }}
         >
             {/* Resize Handle */}
-            <div
-                onMouseDown={startResizing}
-                className={`
-                    absolute top-0 left-0 right-0 h-1.5 cursor-row-resize z-50 
-                    transition-colors duration-200 group
-                    ${isResizing ? 'bg-[var(--accent-color)]' : 'hover:bg-[var(--accent-color)]/30'}
-                `}
-            >
-                <div className={`
-                    absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                    w-12 h-1 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-color)]/50
-                    transition-colors
-                    ${isResizing ? 'bg-[var(--accent-color)]' : ''}
-                `} />
-            </div>
+            {!isEmbedded && (
+                <div
+                    onMouseDown={startResizing}
+                    className={`
+                        absolute top-0 left-0 right-0 h-1.5 cursor-row-resize z-50 
+                        transition-colors duration-200 group
+                        ${isResizing ? 'bg-[var(--accent-color)]' : 'hover:bg-[var(--accent-color)]/30'}
+                    `}
+                >
+                    <div className={`
+                        absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
+                        w-12 h-1 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-color)]/50
+                        transition-colors
+                        ${isResizing ? 'bg-[var(--accent-color)]' : ''}
+                    `} />
+                </div>
+            )}
 
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-2 border-b border-[var(--border-color)] bg-[var(--bg-primary)] shrink-0 select-none">
-                {/* ... header content ... */}
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                        <Activity size={16} className="text-[var(--accent-color)]" />
-                        <span className="text-sm font-bold text-[var(--text-main)]">Server Monitor</span>
-                    </div>
-                    {metrics && (
-                        <div className="flex items-center gap-3 text-[10px] text-[var(--text-muted)] font-mono">
-                            <span className="flex items-center gap-1"><Server size={10} /> {metrics.hostname}</span>
-                            <span>•</span>
-                            <span>{metrics.os_info}</span>
-                            <span>•</span>
-                            <span>{metrics.uptime}</span>
+            {!isEmbedded && (
+                <div className="flex items-center justify-between px-5 py-2 border-b border-[var(--border-color)] bg-[var(--bg-primary)] shrink-0 select-none">
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <Activity size={16} className="text-[var(--accent-color)]" />
+                            <span className="text-sm font-bold text-[var(--text-main)]">Server Monitor</span>
                         </div>
-                    )}
+                        {metrics && (
+                            <div className="flex items-center gap-3 text-[10px] text-[var(--text-muted)] font-mono">
+                                <span className="flex items-center gap-1"><Server size={10} /> {metrics.hostname}</span>
+                                <span>•</span>
+                                <span>{metrics.os_info}</span>
+                                <span>•</span>
+                                <span>{metrics.uptime}</span>
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded-lg transition-colors"
+                    >
+                        <X size={14} />
+                    </button>
                 </div>
-                <button
-                    onClick={onClose}
-                    className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded-lg transition-colors"
-                >
-                    <X size={14} />
-                </button>
-            </div>
+            )}
 
             {/* Content */}
-            <div className="p-4">
+            <div className="p-4 flex-1 overflow-y-auto">
                 {error ? (
                     <div className="text-red-400 text-xs text-center py-4">{error}</div>
                 ) : !metrics ? (
@@ -215,10 +224,10 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
                         <span className="text-sm">Collecting metrics...</span>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 h-full min-h-[160px]">
                         {/* CPU */}
-                        <div className="relative p-4 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all">
-                            <div className="flex items-center justify-between mb-3">
+                        <div className="relative p-4 flex flex-col bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all h-full">
+                            <div className="flex items-center justify-between mb-3 shrink-0">
                                 <div className="flex items-center gap-2">
                                     <Cpu size={14} className="text-[var(--text-muted)]" />
                                     <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">CPU</span>
@@ -230,8 +239,10 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
                                     </span>
                                 </div>
                             </div>
-                            <Sparkline data={cpuHistory} color={getColor(metrics.cpu_percent)} />
-                            <div className="mt-2 flex justify-between text-[10px] text-[var(--text-muted)]">
+                            <div className="flex-1 w-full min-h-[32px] mt-2 mb-2 relative">
+                                <Sparkline data={cpuHistory} color={getColor(metrics.cpu_percent)} />
+                            </div>
+                            <div className="mt-auto flex justify-between text-[10px] text-[var(--text-muted)] shrink-0 pt-2 border-t border-[var(--border-color)]/30">
                                 <span>Load: {metrics.load_1.toFixed(2)}</span>
                                 <span>{metrics.load_5.toFixed(2)}</span>
                                 <span>{metrics.load_15.toFixed(2)}</span>
@@ -239,8 +250,8 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
                         </div>
 
                         {/* RAM */}
-                        <div className="relative p-4 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all">
-                            <div className="flex items-center justify-between mb-3">
+                        <div className="relative p-4 flex flex-col bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all h-full">
+                            <div className="flex items-center justify-between mb-3 shrink-0">
                                 <div className="flex items-center gap-2">
                                     <MemoryStick size={14} className="text-[var(--text-muted)]" />
                                     <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Memory</span>
@@ -252,16 +263,18 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
                                     </span>
                                 </div>
                             </div>
-                            <Sparkline data={ramHistory} color={getColor(metrics.ram_percent)} />
-                            <div className="mt-2 flex justify-between text-[10px] text-[var(--text-muted)]">
+                            <div className="flex-1 w-full min-h-[32px] mt-2 mb-2 relative">
+                                <Sparkline data={ramHistory} color={getColor(metrics.ram_percent)} />
+                            </div>
+                            <div className="mt-auto flex justify-between text-[10px] text-[var(--text-muted)] shrink-0 pt-2 border-t border-[var(--border-color)]/30">
                                 <span>{formatBytes(metrics.ram_used)}</span>
                                 <span>/ {formatBytes(metrics.ram_total)}</span>
                             </div>
                         </div>
 
                         {/* Disk */}
-                        <div className="relative p-4 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all">
-                            <div className="flex items-center justify-between mb-3">
+                        <div className="relative p-4 flex flex-col bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all h-full">
+                            <div className="flex items-center justify-between mb-3 shrink-0">
                                 <div className="flex items-center gap-2">
                                     <HardDrive size={14} className="text-[var(--text-muted)]" />
                                     <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Disk</span>
@@ -273,20 +286,22 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
                                     </span>
                                 </div>
                             </div>
-                            <Sparkline data={diskHistory} color={getColor(metrics.disk_percent)} />
-                            <div className="mt-2 flex justify-between text-[10px] text-[var(--text-muted)]">
+                            <div className="flex-1 w-full min-h-[32px] mt-2 mb-2 relative">
+                                <Sparkline data={diskHistory} color={getColor(metrics.disk_percent)} />
+                            </div>
+                            <div className="mt-auto flex justify-between text-[10px] text-[var(--text-muted)] shrink-0 pt-2 border-t border-[var(--border-color)]/30">
                                 <span>{formatBytes(metrics.disk_used)}</span>
                                 <span>/ {formatBytes(metrics.disk_total)}</span>
                             </div>
                         </div>
 
                         {/* Load Average */}
-                        <div className="relative p-4 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all">
-                            <div className="flex items-center gap-2 mb-3">
+                        <div className="relative p-4 flex flex-col bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl overflow-hidden group hover:border-[var(--accent-color)]/30 transition-all h-full">
+                            <div className="flex items-center gap-2 mb-3 shrink-0">
                                 <Activity size={14} className="text-[var(--text-muted)]" />
                                 <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Load Avg</span>
                             </div>
-                            <div className="flex items-end gap-3 mb-3">
+                            <div className="flex items-end gap-3 mb-3 shrink-0">
                                 <div className="text-center">
                                     <div className="text-lg font-black text-[var(--text-main)]">{metrics.load_1.toFixed(2)}</div>
                                     <div className="text-[9px] text-[var(--text-muted)]">1m</div>
@@ -300,7 +315,9 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
                                     <div className="text-[9px] text-[var(--text-muted)]">15m</div>
                                 </div>
                             </div>
-                            <Sparkline data={loadHistory} color="#6366f1" />
+                            <div className="flex-1 w-full min-h-[32px] mt-2 mb-2 relative">
+                                <Sparkline data={loadHistory} color="#6366f1" />
+                            </div>
                         </div>
                     </div>
                 )}

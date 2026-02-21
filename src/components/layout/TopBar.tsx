@@ -15,9 +15,11 @@ interface TopBarProps {
     isMonitorOpen?: boolean;
     onToggleNetworkTools?: (id: string) => void;
     isNetworkToolsOpen?: boolean;
+    onToggleDockerManager?: (id: string) => void;
+    isDockerManagerOpen?: boolean;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ tabs, activeTab, onTabClose, onTabSelect, onSplit, onToggleMonitor, isMonitorOpen, onToggleNetworkTools, isNetworkToolsOpen }) => {
+export const TopBar: React.FC<TopBarProps> = ({ tabs, activeTab, onTabClose, onTabSelect, onSplit, onToggleMonitor, isMonitorOpen, onToggleNetworkTools, isNetworkToolsOpen, onToggleDockerManager, isDockerManagerOpen }) => {
     return (
         <div className="h-[52px] w-full bg-[var(--bg-primary)] border-b border-[var(--border-color)] flex items-end px-2 gap-1 overflow-x-auto shrink-0 hide-scrollbar pt-2">
             {tabs.map((tab) => (
@@ -61,6 +63,15 @@ export const TopBar: React.FC<TopBarProps> = ({ tabs, activeTab, onTabClose, onT
                             title="Network Tools"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
+                        </button>
+                    )}
+                    {activeTab === tab.id && onToggleDockerManager && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onToggleDockerManager(tab.id); }}
+                            className={`rounded-md p-0.5 transition-opacity hover:bg-[var(--hover-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] ${isDockerManagerOpen ? 'opacity-100 text-[#2496ED]' : 'opacity-0 group-hover:opacity-100'}`}
+                            title="Docker Containers"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.2 8.4A2.08 2.08 0 0 0 19.4 7a2.12 2.12 0 0 0-.2-1l-1.3-3.1A2.1 2.1 0 0 0 16.9 2H7.1A2.1 2.1 0 0 0 6.1 2.9L4.8 6a2.12 2.12 0 0 0-.2 1 2.08 2.08 0 0 0-1.8 1.4L1.2 13v6A2 2 0 0 0 3.2 21h17.6A2 2 0 0 0 22.8 19v-6z" /><path d="M7 11h10" /><path d="M7 15h10" /></svg>
                         </button>
                     )}
                     <button

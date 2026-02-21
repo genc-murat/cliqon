@@ -8,6 +8,7 @@ interface NetworkToolsProps {
     profile: SshProfile;
     sessionId: string;
     onClose: () => void;
+    isEmbedded?: boolean;
 }
 
 type ToolTab = 'ping' | 'traceroute' | 'dns' | 'portscan' | 'connections' | 'interfaces' | 'public_ip' | 'routes' | 'neighbors' | 'listening' | 'http_check' | 'ssl_check' | 'stats_summary' | 'bandwidth_stats' | 'firewall_status';
@@ -265,22 +266,6 @@ interface HttpHeader {
     value: string;
 }
 
-function parseHttpHeaders(raw: string): HttpHeader[] {
-    const headers: HttpHeader[] = [];
-    for (const line of raw.split('\n')) {
-        const colonIdx = line.indexOf(':');
-        if (colonIdx !== -1) {
-            headers.push({
-                key: line.slice(0, colonIdx).trim(),
-                value: line.slice(colonIdx + 1).trim(),
-            });
-        } else if (line.startsWith('HTTP/')) {
-            headers.push({ key: 'Status', value: line.trim() });
-        }
-    }
-    return headers;
-}
-
 // ─── Socket Stats Parser ───────────────────────────────────────────────────────
 interface SocketStat {
     type: string;
@@ -354,7 +339,7 @@ const isSelfTool = (tab: ToolTab) =>
     ['connections', 'interfaces', 'public_ip', 'routes', 'neighbors', 'listening', 'stats_summary', 'bandwidth_stats', 'firewall_status'].includes(tab);
 
 // ─── Main Component ────────────────────────────────────────────────────────────
-export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, onClose }) => {
+export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, onClose, isEmbedded }) => {
     const { height, startResizing, isResizing } = useResizable(320, 200, 600, 'top', 'cliqon-nettools-height');
     const [activeTab, setActiveTab] = useState<ToolTab>('ping');
     const [target, setTarget] = useState('');
@@ -374,6 +359,22 @@ export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, 
     const [socketStats, setSocketStats] = useState<SocketStat[]>([]);
     const [bandwidth, setBandwidth] = useState<BandwidthStat[]>([]);
     const [publicIp, setPublicIp] = useState<string>('');
+
+    const parseHttpHeadersLocal = (raw: string): HttpHeader[] => {
+        const headers: HttpHeader[] = [];
+        for (const line of raw.split('\n')) {
+            const colonIdx = line.indexOf(':');
+            if (colonIdx !== -1) {
+                headers.push({
+                    key: line.slice(0, colonIdx).trim(),
+                    value: line.slice(colonIdx + 1).trim(),
+                });
+            } else if (line.startsWith('HTTP/')) {
+                headers.push({ key: 'Status', value: line.trim() });
+            }
+        }
+        return headers;
+    };
 
     const runTool = useCallback(async () => {
         const self = isSelfTool(activeTab);
@@ -410,7 +411,7 @@ export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, 
             else if (activeTab === 'routes') setRouteResult(parseRoutes(result));
             else if (activeTab === 'neighbors') setNeighborResult(parseNeighbors(result));
             else if (activeTab === 'listening') setListeningResult(parseListening(result));
-            else if (activeTab === 'http_check') setHttpResult(parseHttpHeaders(result));
+            else if (activeTab === 'http_check') setHttpResult(parseHttpHeadersLocal(result));
             else if (activeTab === 'stats_summary') setSocketStats(parseSocketStats(result));
             else if (activeTab === 'bandwidth_stats') setBandwidth(parseBandwidth(result));
         } catch (err: any) {
@@ -451,62 +452,101 @@ export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, 
 
     return (
         <div
-            className="border-t border-[var(--border-color)] bg-[var(--bg-sidebar)] shrink-0 overflow-hidden relative flex flex-col"
-            style={{ height }}
+            className={`bg-[var(--bg-sidebar)] shrink-0 overflow-hidden relative flex flex-col ${isEmbedded ? 'flex-1 h-full' : 'border-t border-[var(--border-color)]'}`}
+            style={isEmbedded ? {} : { height }}
         >
             {/* Resize Handle */}
-            <div
-                onMouseDown={startResizing}
-                className={`absolute top-0 left-0 right-0 h-1.5 cursor-row-resize z-50 transition-colors duration-200 group
-                    ${isResizing ? 'bg-[var(--accent-color)]' : 'hover:bg-[var(--accent-color)]/30'}`}
-            >
-                <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-1 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-color)]/50 transition-colors ${isResizing ? 'bg-[var(--accent-color)]' : ''}`} />
-            </div>
+            {!isEmbedded && (
+                <div
+                    onMouseDown={startResizing}
+                    className={`absolute top-0 left-0 right-0 h-1.5 cursor-row-resize z-50 transition-colors duration-200 group
+                        ${isResizing ? 'bg-[var(--accent-color)]' : 'hover:bg-[var(--accent-color)]/30'}`}
+                >
+                    <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-1 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-color)]/50 transition-colors ${isResizing ? 'bg-[var(--accent-color)]' : ''}`} />
+                </div>
+            )}
 
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border-color)] bg-[var(--bg-primary)] shrink-0 select-none">
-                <div className="flex items-center gap-3">
-                    <Globe size={16} className="text-[var(--accent-color)]" />
-                    <span className="text-sm font-bold text-[var(--text-main)]">Network Tools</span>
+            {!isEmbedded && (
+                <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border-color)] bg-[var(--bg-primary)] shrink-0 select-none">
+                    <div className="flex items-center gap-3">
+                        <Globe size={16} className="text-[var(--accent-color)]" />
+                        <span className="text-sm font-bold text-[var(--text-main)]">Network Tools</span>
 
-                    {/* Tool Tabs */}
-                    <div className="flex gap-1 ml-2">
-                        {tabs.map(t => (
-                            <button
-                                key={t.id}
-                                onClick={() => {
-                                    setActiveTab(t.id);
-                                    setRawOutput('');
-                                    setPingResult(null);
-                                    setTraceResult([]);
-                                    setDnsResult([]);
-                                    setPortScanResult([]);
-                                    setConnResult([]);
-                                    setIfaceResult([]);
-                                    setRouteResult([]);
-                                    setNeighborResult([]);
-                                    setListeningResult([]);
-                                    setHttpResult([]);
-                                    setSocketStats([]);
-                                    setBandwidth([]);
-                                    setPublicIp('');
-                                    setError(null);
-                                }}
-                                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-lg transition-all ${activeTab === t.id
-                                    ? 'bg-[var(--accent-color)] text-white shadow-sm'
-                                    : 'text-[var(--text-muted)] hover:bg-[var(--hover-color)] hover:text-[var(--text-main)]'
-                                    }`}
-                            >
-                                {t.icon}
-                                {t.label}
-                            </button>
-                        ))}
+                        {/* Tool Tabs */}
+                        <div className="flex gap-1 ml-2">
+                            {tabs.map(t => (
+                                <button
+                                    key={t.id}
+                                    onClick={() => {
+                                        setActiveTab(t.id);
+                                        setRawOutput('');
+                                        setPingResult(null);
+                                        setTraceResult([]);
+                                        setDnsResult([]);
+                                        setPortScanResult([]);
+                                        setConnResult([]);
+                                        setIfaceResult([]);
+                                        setRouteResult([]);
+                                        setNeighborResult([]);
+                                        setListeningResult([]);
+                                        setHttpResult([]);
+                                        setSocketStats([]);
+                                        setBandwidth([]);
+                                        setPublicIp('');
+                                        setError(null);
+                                    }}
+                                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-lg transition-all ${activeTab === t.id
+                                        ? 'bg-[var(--accent-color)] text-white shadow-sm'
+                                        : 'text-[var(--text-muted)] hover:bg-[var(--hover-color)] hover:text-[var(--text-main)]'
+                                        }`}
+                                >
+                                    {t.icon}
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
+                    <button onClick={onClose} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded-lg transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                    </button>
                 </div>
-                <button onClick={onClose} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded-lg transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-                </button>
-            </div>
+            )}
+
+            {isEmbedded && (
+                <div className="flex items-center gap-1 px-4 py-1.5 border-b border-[var(--border-color)] bg-[var(--bg-primary)]/30 shrink-0 overflow-x-auto hide-scrollbar">
+                    {tabs.map(t => (
+                        <button
+                            key={t.id}
+                            onClick={() => {
+                                setActiveTab(t.id);
+                                setRawOutput('');
+                                setPingResult(null);
+                                setTraceResult([]);
+                                setDnsResult([]);
+                                setPortScanResult([]);
+                                setConnResult([]);
+                                setIfaceResult([]);
+                                setRouteResult([]);
+                                setNeighborResult([]);
+                                setListeningResult([]);
+                                setHttpResult([]);
+                                setSocketStats([]);
+                                setBandwidth([]);
+                                setPublicIp('');
+                                setError(null);
+                            }}
+                            className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === t.id
+                                ? 'bg-[var(--accent-color)] text-white'
+                                : 'text-[var(--text-muted)] hover:bg-[var(--hover-color)]'
+                                }`}
+                        >
+                            {t.icon}
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* Input Bar */}
             <div className="flex items-center gap-2 px-4 py-2 border-b border-[var(--border-color)] bg-[var(--bg-primary)]/50 shrink-0">

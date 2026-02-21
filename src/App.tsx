@@ -3,18 +3,18 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar, TabData } from "./components/layout/TopBar";
 import { TitleBar } from "./components/layout/TitleBar";
 import { SplitView, Pane } from './components/terminal/SplitView';
-import { ServerMonitor } from './components/terminal/ServerMonitor';
-import { NetworkTools } from './components/terminal/NetworkTools';
+import { ManagementPanel, ManagementTab } from './components/terminal/ManagementPanel';
 import { Logo } from './components/layout/Logo';
 import { useTheme } from "./hooks/useTheme";
 import { SshProfile } from "./types/connection";
+import { api } from "./services/api";
 
 interface SessionTab extends TabData {
   profile: SshProfile;
   panes: Pane[];
   activePane: string | null;
-  monitorOpen: boolean;
-  networkToolsOpen: boolean;
+  managementPanelOpen: boolean;
+  activeManagementTab: ManagementTab;
 }
 
 function App() {
@@ -35,8 +35,8 @@ function App() {
       profile,
       panes: [pane],
       activePane: pane.id,
-      monitorOpen: autoOpenMonitor,
-      networkToolsOpen: false,
+      managementPanelOpen: autoOpenMonitor,
+      activeManagementTab: 'monitor',
     };
     setTabs(prev => [...prev, newTab]);
     setActiveTab(sessionId);
@@ -85,16 +85,32 @@ function App() {
     });
   };
 
-  const handleToggleMonitor = (tabId: string) => {
-    setTabs(prev => prev.map(tab =>
-      tab.id === tabId ? { ...tab, monitorOpen: !tab.monitorOpen } : tab
-    ));
+  const handleToggleManagementPanel = (tabId: string, type: ManagementTab) => {
+    setTabs(prev => prev.map(tab => {
+      if (tab.id !== tabId) return tab;
+
+      const isOpen = tab.managementPanelOpen;
+      const currentTab = tab.activeManagementTab;
+
+      if (isOpen && currentTab === type) {
+        // Toggling the same icon closes the panel
+        return { ...tab, managementPanelOpen: false };
+      } else {
+        // Toggling a different icon or opening from closed state
+        return { ...tab, managementPanelOpen: true, activeManagementTab: type };
+      }
+    }));
   };
 
-  const handleToggleNetworkTools = (tabId: string) => {
-    setTabs(prev => prev.map(tab =>
-      tab.id === tabId ? { ...tab, networkToolsOpen: !tab.networkToolsOpen } : tab
-    ));
+  const handleViewDockerLogs = (tabId: string, containerId: string) => {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab || !tab.activePane) return;
+
+    // Clear the terminal and then run docker logs
+    // Sending \x0L or 'clear' command. Most modern terminals respond to 'clear\n'
+    const command = `clear\ndocker logs -f --tail 100 ${containerId}\n`;
+    const encoder = new TextEncoder();
+    api.writeToPty(tab.activePane, Array.from(encoder.encode(command))).catch(console.error);
   };
 
   // ─── Global Keyboard Shortcuts ──────────────────────────────────────────────
@@ -169,10 +185,12 @@ function App() {
             onTabClose={handleTabClose}
             onTabSelect={(id) => setActiveTab(id)}
             onSplit={handleSplitPane}
-            onToggleMonitor={handleToggleMonitor}
-            isMonitorOpen={tabs.find(t => t.id === activeTab)?.monitorOpen}
-            onToggleNetworkTools={handleToggleNetworkTools}
-            isNetworkToolsOpen={tabs.find(t => t.id === activeTab)?.networkToolsOpen}
+            onToggleMonitor={(id) => handleToggleManagementPanel(id, 'monitor')}
+            isMonitorOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'monitor'}
+            onToggleNetworkTools={(id) => handleToggleManagementPanel(id, 'network')}
+            isNetworkToolsOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'network'}
+            onToggleDockerManager={(id) => handleToggleManagementPanel(id, 'docker')}
+            isDockerManagerOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'docker'}
           />
 
           {/* Main Terminal Area */}
@@ -194,18 +212,14 @@ function App() {
                       onPaneActivate={(paneId) => handlePaneActivate(tab.id, paneId)}
                     />
                   </div>
-                  {tab.monitorOpen && activeTab === tab.id && (
-                    <ServerMonitor
+                  {tab.managementPanelOpen && activeTab === tab.id && (
+                    <ManagementPanel
                       profile={tab.profile}
                       sessionId={tab.id}
-                      onClose={() => handleToggleMonitor(tab.id)}
-                    />
-                  )}
-                  {tab.networkToolsOpen && activeTab === tab.id && (
-                    <NetworkTools
-                      profile={tab.profile}
-                      sessionId={tab.id}
-                      onClose={() => handleToggleNetworkTools(tab.id)}
+                      activeTab={tab.activeManagementTab}
+                      onTabChange={(type) => handleToggleManagementPanel(tab.id, type)}
+                      onClose={() => handleToggleManagementPanel(tab.id, tab.activeManagementTab)}
+                      onViewDockerLogs={(containerId) => handleViewDockerLogs(tab.id, containerId)}
                     />
                   )}
                 </div>

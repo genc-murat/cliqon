@@ -93,6 +93,14 @@ A comprehensive suite of **15 on-demand diagnostic tools** executed directly fro
   - **Structured Output** — Raw shell data is parsed into clean, interactive tables and cards.
   - **Copy Raw** — One-click clipboard copy of raw command output.
 
+### 🐳 Docker Container Manager
+Manage your Docker infrastructure directly through the SSH connection:
+- **Container List** — Real-time view of all containers (Running, Stopped, Exited).
+- **One-Click Controls** — Start, stop, and restart containers with a single click.
+- **Terminal Log Stream** — Instant `docker logs -f` integration that streams logs directly into your active terminal tab.
+- **Stats & Info** — View container ID, image, assigned ports, and uptime status.
+- **↕ Vertically Resizable** — Flexible panel height that persists across sessions.
+
 ### ↕ Resizable Panels & Layout
 - **Intelligent Resizing** — Interactively drag to resize the Sidebar, SFTP Browser, Snippet Manager, and Server Monitor
 - **Layout Persistence** — All panel widths and the monitor height are saved to local storage

@@ -88,5 +88,21 @@ export const api = {
 
     runNetTool: async (profile: SshProfile, sessionId: string, toolType: string, target: string): Promise<string> => {
         return await invoke<string>('run_net_tool', { profile, sessionId, toolType, target });
+    },
+
+    getDockerContainers: async (profile: SshProfile): Promise<string> => {
+        return await invoke<string>('get_docker_containers', { profile });
+    },
+
+    startDockerContainer: async (profile: SshProfile, containerId: string): Promise<string> => {
+        return await invoke<string>('start_docker_container', { profile, containerId });
+    },
+
+    stopDockerContainer: async (profile: SshProfile, containerId: string): Promise<string> => {
+        return await invoke<string>('stop_docker_container', { profile, containerId });
+    },
+
+    restartDockerContainer: async (profile: SshProfile, containerId: string): Promise<string> => {
+        return await invoke<string>('restart_docker_container', { profile, containerId });
     }
 };

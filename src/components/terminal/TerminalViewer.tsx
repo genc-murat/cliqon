@@ -28,7 +28,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
     const [connected, setConnected] = useState(false);
     const connectedRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
-    const { theme, terminalTheme, terminalFont } = useTheme();
+    const { theme, terminalTheme, terminalFont, terminalCursorStyle } = useTheme();
 
     const getXtermTheme = useCallback(() => {
         if (terminalTheme.id === 'appTheme') {
@@ -62,6 +62,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         // Initialize xterm.js
         const term = new Terminal({
             cursorBlink: true,
+            cursorStyle: terminalCursorStyle,
             fontFamily: terminalFont.fontFamily,
             fontSize: terminalFont.fontSize,
             lineHeight: terminalFont.lineHeight,
@@ -112,6 +113,13 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
             fitAddonRef.current?.fit();
         }
     }, [terminalFont]);
+
+    // Handle cursor style changes
+    useEffect(() => {
+        if (xtermRef.current) {
+            xtermRef.current.options.cursorStyle = terminalCursorStyle;
+        }
+    }, [terminalCursorStyle]);
 
     // Handle connection and events
     useEffect(() => {

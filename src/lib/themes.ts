@@ -139,6 +139,104 @@ export const themes: Record<string, Theme> = {
             border: '#eee8d5',
             hover: '#93a1a1',
         }
+    },
+    synthwave: {
+        id: 'synthwave',
+        name: 'Synthwave',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#2b213a',
+            bgSidebar: '#241b30',
+            textMain: '#ffffff',
+            textMuted: '#8d7da5',
+            accent: '#f92aad',
+            border: '#44355b',
+            hover: '#3a2d4c',
+        }
+    },
+    deepSea: {
+        id: 'deepSea',
+        name: 'Deep Sea',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#0a192f',
+            bgSidebar: '#172a45',
+            textMain: '#ccd6f6',
+            textMuted: '#8892b0',
+            accent: '#64ffda',
+            border: '#233554',
+            hover: '#303c55',
+        }
+    },
+    matrix: {
+        id: 'matrix',
+        name: 'Matrix',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#000000',
+            bgSidebar: '#000800',
+            textMain: '#00ff41',
+            textMuted: '#008f11',
+            accent: '#00ff41',
+            border: '#003b00',
+            hover: '#001a00',
+        }
+    },
+    autumn: {
+        id: 'autumn',
+        name: 'Autumn Leaves',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#2b1b17',
+            bgSidebar: '#3d2b1f',
+            textMain: '#e2725b',
+            textMuted: '#b87333',
+            accent: '#ff8c00',
+            border: '#4a2c2a',
+            hover: '#5c3a21',
+        }
+    },
+    latte: {
+        id: 'latte',
+        name: 'Creamy Latte',
+        type: 'light',
+        colors: {
+            bgPrimary: '#f5f5f0',
+            bgSidebar: '#edeae0',
+            textMain: '#4a3728',
+            textMuted: '#8b7355',
+            accent: '#c0a080',
+            border: '#dcd9cd',
+            hover: '#e5e2d6',
+        }
+    },
+    roseGold: {
+        id: 'roseGold',
+        name: 'Rose Gold',
+        type: 'light',
+        colors: {
+            bgPrimary: '#fffafa',
+            bgSidebar: '#fff0f5',
+            textMain: '#3d2b2b',
+            textMuted: '#a0522d',
+            accent: '#e0115f',
+            border: '#ffe4e1',
+            hover: '#fdf5e6',
+        }
+    },
+    oceanBreeze: {
+        id: 'oceanBreeze',
+        name: 'Ocean Breeze',
+        type: 'light',
+        colors: {
+            bgPrimary: '#f0f8ff',
+            bgSidebar: '#e6f3ff',
+            textMain: '#003366',
+            textMuted: '#4682b4',
+            accent: '#00bfff',
+            border: '#b0c4de',
+            hover: '#add8e6',
+        }
     }
 };
 
@@ -305,6 +403,42 @@ export const terminalThemes: Record<string, TerminalTheme> = {
             selectionBackground: '#00fff540',
             black: '#000000', red: '#ff003c', green: '#00ff00', yellow: '#e2f700', blue: '#0055ff', magenta: '#ff00ff', cyan: '#00fff5', white: '#ffffff',
             brightBlack: '#555555', brightRed: '#ff4444', brightGreen: '#55ff55', brightYellow: '#ffff55', brightBlue: '#5555ff', brightMagenta: '#ff55ff', brightCyan: '#55ffff', brightWhite: '#ffffff',
+        }
+    },
+    synthwave: {
+        id: 'synthwave',
+        name: 'Synthwave Neon',
+        colors: {
+            background: '#2b213a',
+            foreground: '#ffffff',
+            cursor: '#f92aad',
+            selectionBackground: '#ffffff20',
+            black: '#1b1b1b', red: '#fe4450', green: '#72f1b8', yellow: '#fede5d', blue: '#03edf9', magenta: '#f92aad', cyan: '#03edf9', white: '#ffffff',
+            brightBlack: '#666666', brightRed: '#fe4450', brightGreen: '#72f1b8', brightYellow: '#fede5d', brightBlue: '#03edf9', brightMagenta: '#f92aad', brightCyan: '#03edf9', brightWhite: '#ffffff',
+        }
+    },
+    matrix: {
+        id: 'matrix',
+        name: 'The Matrix',
+        colors: {
+            background: '#000000',
+            foreground: '#00ff41',
+            cursor: '#00ff41',
+            selectionBackground: '#00ff4130',
+            black: '#000000', red: '#003b00', green: '#00ff41', yellow: '#008f11', blue: '#003b00', magenta: '#00ff41', cyan: '#008f11', white: '#00ff41',
+            brightBlack: '#003b00', brightRed: '#00ff41', brightGreen: '#00ff41', brightYellow: '#00ff41', brightBlue: '#003b00', brightMagenta: '#00ff41', brightCyan: '#00ff41', brightWhite: '#ffffff',
+        }
+    },
+    deepSea: {
+        id: 'deepSea',
+        name: 'Deep Sea',
+        colors: {
+            background: '#0a192f',
+            foreground: '#8892b0',
+            cursor: '#64ffda',
+            selectionBackground: '#233554',
+            black: '#0a192f', red: '#f74c4c', green: '#64ffda', yellow: '#ccd6f6', blue: '#1d2d50', magenta: '#b388ff', cyan: '#00bcd4', white: '#ffffff',
+            brightBlack: '#1d2d50', brightRed: '#f74c4c', brightGreen: '#a5ffd6', brightYellow: '#ccd6f6', brightBlue: '#1d2d50', brightMagenta: '#b388ff', brightCyan: '#00bcd4', brightWhite: '#ffffff',
         }
     }
 };

@@ -8,6 +8,8 @@ interface ThemeContextType {
     setTerminalTheme: (themeId: string) => void;
     terminalFont: TerminalFont;
     setTerminalFont: (font: Partial<TerminalFont>) => void;
+    terminalCursorStyle: 'block' | 'underline' | 'bar';
+    setTerminalCursorStyle: (style: 'block' | 'underline' | 'bar') => void;
     availableThemes: Theme[];
     availableTerminalThemes: TerminalTheme[];
 }
@@ -39,6 +41,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return defaultTerminalFont;
     });
 
+    const [terminalCursorStyle, setTerminalCursorStyleState] = useState<'block' | 'underline' | 'bar'>(() => {
+        const saved = localStorage.getItem('cliqon-terminal-cursor');
+        return (saved as any) || 'block';
+    });
+
     const setTheme = (themeId: string) => {
         if (themes[themeId]) {
             setThemeState(themes[themeId]);
@@ -59,6 +66,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             localStorage.setItem('cliqon-terminal-font', JSON.stringify(next));
             return next;
         });
+    };
+
+    const setTerminalCursorStyle = (style: 'block' | 'underline' | 'bar') => {
+        setTerminalCursorStyleState(style);
+        localStorage.setItem('cliqon-terminal-cursor', style);
     };
 
     useEffect(() => {
@@ -88,6 +100,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             setTerminalTheme,
             terminalFont,
             setTerminalFont,
+            terminalCursorStyle,
+            setTerminalCursorStyle,
             availableThemes: Object.values(themes),
             availableTerminalThemes: Object.values(terminalThemes)
         }}>

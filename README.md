@@ -23,7 +23,8 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - **Split Terminal** — split any tab horizontally (`Ctrl+Shift+H`) to run multiple SSH sessions to the same host side-by-side
 - **Draggable Dividers** — interactively resize terminal panes within a tab
 - **Multi-Tab** — run multiple independent SSH sessions
-- **Terminal Themes** — 14+ built-in themes including Tokyo Night, One Dark, Nord, Solarized, Monokai, and Gruvbox
+- **Terminal Themes** — 17+ built-in themes including Tokyo Night, One Dark, Nord, Solarized, Monokai, Synthwave, and Matrix
+- **Cursor Customization** — Choose between Block, Underline, or Bar cursor styles with optional blinking
 - **Dynamic ANSI Colors** — "Match App Theme" automatically switches between Light and Dark optimized ANSI palettes for maximum readability
 - **Font Settings** — choose font family, size, and line height with a live preview
 
@@ -38,6 +39,7 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
   - **Copy Path** — Fast path copying to clipboard
   - **Edit file** — Built-in text editor for remote files with syntax support and Ctrl+S to save
   - **cd to Terminal** — Instant navigation in the active terminal
+- **SFTP Bookmarks** — Save frequent paths per connection for instant access; one-click navigation from the bookmarks dropdown
 - **Properties & Permissions** — View detailed file info and interactively edit permissions (chmod)
 - Refresh button and file size display on hover
 
@@ -47,7 +49,8 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - Add/delete snippets with a clean sidebar panel
 
 ### Theming & Appearance
-- **App Themes** — 9+ high-quality themes: Nordic Night, Midnight Purple, Emerald Forest, Cyber Rose, Solarized, Glass Dark, and more
+- **App Themes** — 16+ high-quality themes: Synthwave Neon, Matrix, Deep Sea, Nordic Night, Midnight Purple, Autumn Leaves, Rose Gold, and many more
+- **Sidebar-Driven Settings** — Completely redesigned, premium settings interface for easier customization
 - **Terminal Palette Preview** — Visualize font colors (ANSI) directly in the Settings menu
 - **Collapsible panels** — Sidebar, SFTP Browser, and Snippet Manager can each be collapsed to an icon rail for maximum terminal space; sidebar state is persisted across restarts
 

@@ -67,13 +67,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 {item.label}
                             </button>
                         ))}
-
-                        <div className="mt-auto p-4 flex flex-col items-center gap-2">
-                            <div className="w-12 h-12 bg-gradient-to-br from-[var(--accent-color)] to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                                <Monitor size={24} className="text-white" />
-                            </div>
-                            <span className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Cliqon v0.1.0</span>
-                        </div>
                     </div>
 
                     {/* Content Area */}

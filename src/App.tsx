@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar, TabData } from "./components/layout/TopBar";
 import { TerminalViewer } from "./components/terminal/TerminalViewer";
+import { Logo } from './components/layout/Logo';
 import { SshProfile } from "./types/connection";
 
 interface SessionTab extends TabData {
@@ -118,9 +119,9 @@ function App() {
         {/* Main Terminal Area */}
         <div className="flex-1 p-0 overflow-hidden relative">
           {tabs.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center text-[var(--text-muted)] opacity-50 flex-col gap-4 select-none">
-              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5" /><line x1="12" x2="20" y1="19" y2="19" /></svg>
-              <p>Select a connection from the left to start</p>
+            <div className="absolute inset-0 flex items-center justify-center text-[var(--text-muted)] opacity-50 flex-col gap-6 select-none animate-in fade-in duration-1000">
+              <Logo size={96} className="grayscale brightness-125 transition-all duration-700" style={{ filter: 'grayscale(1) opacity(0.2)' }} />
+              <p className="text-sm font-medium tracking-wide uppercase">Cliqon terminal</p>
             </div>
           ) : (
             tabs.map((tab) => (

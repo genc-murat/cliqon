@@ -5,6 +5,7 @@ import { ProfileModal } from '../ui/ProfileModal';
 import { SettingsModal } from '../ui/SettingsModal';
 import { SshProfile } from '../../types/connection';
 import { useResizable } from '../../hooks/useResizable';
+import { Logo } from './Logo';
 
 interface SidebarProps {
     onConnect?: (profile: SshProfile) => void;
@@ -103,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                 {isCollapsed ? (
                     /* Collapsed: icon-only rail */
                     <div className="flex flex-col items-center pt-4 gap-3 overflow-hidden">
-                        <TerminalSquare size={22} className="text-[var(--accent-color)] shrink-0" />
+                        <Logo size={24} />
                         <div className="w-full border-t border-[var(--border-color)]" />
                         <button
                             onClick={handleAdd}
@@ -129,8 +130,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                 ) : (
                     /* Expanded */
                     <div className="flex-1 overflow-hidden flex flex-col p-4">
-                        <div className="flex items-center gap-2 mb-8 text-[var(--accent-color)] shrink-0">
-                            <TerminalSquare size={28} />
+                        <div className="flex items-center gap-2 mb-8 shrink-0">
+                            <Logo size={32} />
                             <h1 className="text-xl font-bold tracking-tight text-[var(--text-main)]">Cliqon</h1>
                         </div>
 

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="src/assets/logo.png" width="128" alt="Cliqon Logo">
+</p>
+
 # Cliqon — Modern SSH & SFTP Client
 
 Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the desktop. Built with **Tauri 2** (Rust backend) and a **React + TypeScript** frontend.

@@ -10,9 +10,10 @@ interface TopBarProps {
     activeTab: string | null;
     onTabClose: (id: string) => void;
     onTabSelect: (id: string) => void;
+    onSplit?: (id: string) => void;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ tabs, activeTab, onTabClose, onTabSelect }) => {
+export const TopBar: React.FC<TopBarProps> = ({ tabs, activeTab, onTabClose, onTabSelect, onSplit }) => {
     return (
         <div className="h-[52px] w-full bg-[var(--bg-primary)] border-b border-[var(--border-color)] flex items-end px-2 gap-1 overflow-x-auto shrink-0 hide-scrollbar pt-2">
             {tabs.map((tab) => (
@@ -31,6 +32,15 @@ export const TopBar: React.FC<TopBarProps> = ({ tabs, activeTab, onTabClose, onT
                     style={{ marginBottom: activeTab === tab.id ? '-1px' : '0' }}
                 >
                     <span className="truncate flex-1 select-none">{tab.title}</span>
+                    {activeTab === tab.id && onSplit && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onSplit(tab.id); }}
+                            className="rounded-md p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--hover-color)] text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                            title="Split pane (Ctrl+Shift+H)"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="12" y1="3" x2="12" y2="21" /></svg>
+                        </button>
+                    )}
                     <button
                         onClick={(e) => { e.stopPropagation(); onTabClose(tab.id); }}
                         className={`

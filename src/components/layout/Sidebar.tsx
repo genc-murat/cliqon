@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings, Shield, TerminalSquare, Plus, MoreVertical, Edit2, Trash2, Star, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { Settings, Shield, TerminalSquare, Plus, MoreVertical, Edit2, Trash2, Star, ChevronLeft, ChevronRight, ChevronDown, Search, X, Folder } from 'lucide-react';
 import { useConnections } from '../../hooks/useConnections';
 import { ProfileModal } from '../ui/ProfileModal';
 import { SettingsModal } from '../ui/SettingsModal';
@@ -25,7 +25,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
     const [editingProfile, setEditingProfile] = useState<SshProfile | null>(null);
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
+        try { return JSON.parse(localStorage.getItem('sidebar-groups-collapsed') ?? '{}'); } catch { return {}; }
+    });
     const searchRef = useRef<HTMLInputElement>(null);
+
+    // Derive unique group names for autocomplete
+    const existingGroups = Array.from(
+        new Set(profiles.map(p => p.category).filter(Boolean) as string[])
+    ).sort();
+
+    // Toggle a group's collapsed state
+    const toggleGroup = (group: string) => {
+        setCollapsedGroups(prev => {
+            const next = { ...prev, [group]: !prev[group] };
+            localStorage.setItem('sidebar-groups-collapsed', JSON.stringify(next));
+            return next;
+        });
+    };
 
     // Expose handleAdd and search focus to parent for keyboard shortcuts
     useEffect(() => {
@@ -49,9 +66,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
         setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
     };
 
-    // Filter then sort: favorites first, then alphabetically
+    // Filter then sort: favorites first, then alphabetically (when searching, ignore groups)
     const q = searchQuery.toLowerCase().trim();
-    const sortedProfiles = [...profiles]
+    const filteredProfiles = [...profiles]
         .filter(p =>
             !q ||
             p.name.toLowerCase().includes(q) ||
@@ -64,6 +81,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
             if (bFav !== aFav) return bFav - aFav;
             return a.name.localeCompare(b.name);
         });
+
+    // Group profiles by category (only when not searching)
+    const groupedView = !q;
+    const groups: { label: string; items: SshProfile[] }[] = [];
+    if (groupedView) {
+        const byGroup: Record<string, SshProfile[]> = {};
+        for (const p of filteredProfiles) {
+            const key = p.category?.trim() || '';
+            if (!byGroup[key]) byGroup[key] = [];
+            byGroup[key].push(p);
+        }
+        // Named groups first (sorted), then ungrouped
+        const named = Object.keys(byGroup).filter(k => k).sort();
+        for (const name of named) groups.push({ label: name, items: byGroup[name] });
+        if (byGroup['']) groups.push({ label: '', items: byGroup[''] });
+    }
+    const sortedProfiles = filteredProfiles; // alias used in collapsed rail
 
     const handleAdd = () => {
         setEditingProfile(null);
@@ -171,73 +205,112 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                                     </div>
                                 )}
 
-                                {isLoading ? (
-                                    <div className="text-xs text-[var(--text-muted)] py-2 text-center">Loading profiles...</div>
-                                ) : profiles.length === 0 ? (
-                                    <div className="text-xs text-[var(--text-muted)] py-4 text-center border border-dashed border-[var(--border-color)] rounded-md">
-                                        No connections.<br />Click + to add one.
-                                    </div>
-                                ) : sortedProfiles.length === 0 ? (
-                                    <div className="text-xs text-[var(--text-muted)] py-4 text-center border border-dashed border-[var(--border-color)] rounded-md">
-                                        No results for &quot;{searchQuery}&quot;
-                                    </div>
-                                ) : (
-                                    <ul className="space-y-1">
-                                        {sortedProfiles.map((profile) => (
-                                            <li
-                                                key={profile.id}
-                                                onDoubleClick={() => onConnect && onConnect(profile)}
-                                                className="group relative flex items-center justify-between gap-2 px-3 py-2 rounded-md hover:bg-[var(--hover-color)] cursor-pointer text-sm text-[var(--text-main)] transition-colors"
-                                                style={profile.color ? {
-                                                    borderLeft: `3px solid ${profile.color}`,
-                                                    paddingLeft: '10px',
-                                                    backgroundColor: `${profile.color}18`
-                                                } : {}}
-                                            >
-                                                <div className="flex items-center gap-2 overflow-hidden">
-                                                    {profile.is_favorite
-                                                        ? <Star size={16} className="shrink-0 fill-[var(--accent-color)] text-[var(--accent-color)]" />
-                                                        : <Shield size={16} className="text-[var(--accent-color)] shrink-0" />
-                                                    }
-                                                    <span className="truncate">{profile.name}</span>
+                                {
+                                    isLoading ? (
+                                        <div className="text-xs text-[var(--text-muted)] py-2 text-center">Loading profiles...</div>
+                                    ) : profiles.length === 0 ? (
+                                        <div className="text-xs text-[var(--text-muted)] py-4 text-center border border-dashed border-[var(--border-color)] rounded-md">
+                                            No connections.<br />Click + to add one.
+                                        </div>
+                                    ) : filteredProfiles.length === 0 ? (
+                                        <div className="text-xs text-[var(--text-muted)] py-4 text-center border border-dashed border-[var(--border-color)] rounded-md">
+                                            No results for &quot;{searchQuery}&quot;
+                                        </div>
+                                    ) : groupedView ? (
+                                        // ── Grouped view ─────────────────────────────
+                                        <div className="space-y-2">
+                                            {groups.map(({ label, items }) => (
+                                                <div key={label || '__ungrouped__'}>
+                                                    {label && (
+                                                        <button
+                                                            onClick={() => toggleGroup(label)}
+                                                            className="w-full flex items-center gap-1.5 px-1 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                                                        >
+                                                            <Folder size={11} className="shrink-0" />
+                                                            <span className="flex-1 text-left truncate">{label}</span>
+                                                            <ChevronDown size={11} className={`transition-transform ${collapsedGroups[label] ? '-rotate-90' : ''}`} />
+                                                        </button>
+                                                    )}
+                                                    {!collapsedGroups[label] && (
+                                                        <ul className="space-y-0.5">
+                                                            {items.map((profile) => (
+                                                                <li
+                                                                    key={profile.id}
+                                                                    onDoubleClick={() => onConnect && onConnect(profile)}
+                                                                    className="group relative flex items-center justify-between gap-2 px-3 py-2 rounded-md hover:bg-[var(--hover-color)] cursor-pointer text-sm text-[var(--text-main)] transition-colors"
+                                                                    style={profile.color ? {
+                                                                        borderLeft: `3px solid ${profile.color}`,
+                                                                        paddingLeft: '10px',
+                                                                        backgroundColor: `${profile.color}18`
+                                                                    } : {}}
+                                                                >
+                                                                    <div className="flex items-center gap-2 overflow-hidden">
+                                                                        {profile.is_favorite
+                                                                            ? <Star size={16} className="shrink-0 fill-[var(--accent-color)] text-[var(--accent-color)]" />
+                                                                            : <Shield size={16} className="text-[var(--accent-color)] shrink-0" />
+                                                                        }
+                                                                        <span className="truncate">{profile.name}</span>
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === profile.id ? null : profile.id); }}
+                                                                        className="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-main)] p-1 rounded-md transition-all"
+                                                                    >
+                                                                        <MoreVertical size={14} />
+                                                                    </button>
+                                                                    {activeMenuId === profile.id && (
+                                                                        <div className="absolute right-2 top-8 z-20 w-32 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-md shadow-lg py-1">
+                                                                            <button onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); onConnect && onConnect(profile); }} className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] flex items-center gap-2"><TerminalSquare size={12} /> Connect</button>
+                                                                            <button onClick={(e) => handleEdit(profile, e)} className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] flex items-center gap-2"><Edit2 size={12} /> Edit</button>
+                                                                            <button onClick={(e) => handleDelete(profile.id, e)} className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10 flex items-center gap-2"><Trash2 size={12} /> Delete</button>
+                                                                        </div>
+                                                                    )}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
                                                 </div>
-
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setActiveMenuId(activeMenuId === profile.id ? null : profile.id);
-                                                    }}
-                                                    className="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-main)] p-1 rounded-md transition-all"
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        // ── Flat search results ───────────────────────
+                                        <ul className="space-y-1">
+                                            {filteredProfiles.map((profile) => (
+                                                <li
+                                                    key={profile.id}
+                                                    onDoubleClick={() => onConnect && onConnect(profile)}
+                                                    className="group relative flex items-center justify-between gap-2 px-3 py-2 rounded-md hover:bg-[var(--hover-color)] cursor-pointer text-sm text-[var(--text-main)] transition-colors"
+                                                    style={profile.color ? {
+                                                        borderLeft: `3px solid ${profile.color}`,
+                                                        paddingLeft: '10px',
+                                                        backgroundColor: `${profile.color}18`
+                                                    } : {}}
                                                 >
-                                                    <MoreVertical size={14} />
-                                                </button>
-
-                                                {activeMenuId === profile.id && (
-                                                    <div className="absolute right-2 top-8 z-20 w-32 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-md shadow-lg py-1">
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); onConnect && onConnect(profile); }}
-                                                            className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] flex items-center gap-2"
-                                                        >
-                                                            <TerminalSquare size={12} /> Connect
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => handleEdit(profile, e)}
-                                                            className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] flex items-center gap-2"
-                                                        >
-                                                            <Edit2 size={12} /> Edit
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => handleDelete(profile.id, e)}
-                                                            className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10 flex items-center gap-2"
-                                                        >
-                                                            <Trash2 size={12} /> Delete
-                                                        </button>
+                                                    <div className="flex items-center gap-2 overflow-hidden">
+                                                        {profile.is_favorite
+                                                            ? <Star size={16} className="shrink-0 fill-[var(--accent-color)] text-[var(--accent-color)]" />
+                                                            : <Shield size={16} className="text-[var(--accent-color)] shrink-0" />
+                                                        }
+                                                        <span className="truncate">{profile.name}</span>
+                                                        {profile.category && <span className="text-[9px] bg-[var(--hover-color)] text-[var(--text-muted)] px-1 rounded shrink-0">{profile.category}</span>}
                                                     </div>
-                                                )}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === profile.id ? null : profile.id); }}
+                                                        className="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-main)] p-1 rounded-md transition-all"
+                                                    >
+                                                        <MoreVertical size={14} />
+                                                    </button>
+                                                    {activeMenuId === profile.id && (
+                                                        <div className="absolute right-2 top-8 z-20 w-32 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-md shadow-lg py-1">
+                                                            <button onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); onConnect && onConnect(profile); }} className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] flex items-center gap-2"><TerminalSquare size={12} /> Connect</button>
+                                                            <button onClick={(e) => handleEdit(profile, e)} className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] flex items-center gap-2"><Edit2 size={12} /> Edit</button>
+                                                            <button onClick={(e) => handleDelete(profile.id, e)} className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10 flex items-center gap-2"><Trash2 size={12} /> Delete</button>
+                                                        </div>
+                                                    )}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )
+                                }
                             </div>
                         </div>
                     </div>
@@ -261,6 +334,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 existingProfile={editingProfile}
+                existingGroups={existingGroups}
                 onSave={saveProfile}
             />
 

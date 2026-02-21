@@ -2,13 +2,14 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import {
     Folder, File as FileIcon, ArrowUpCircle, RefreshCw, ChevronLeft, ChevronRight,
-    Download, Trash2, Edit2, Copy, Settings, TerminalSquare, FileText
+    Download, Trash2, Edit2, Copy, Settings, TerminalSquare, FileText, Star, Bookmark, X as XIcon
 } from 'lucide-react';
 import { SshProfile, FileNode } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
 import { FilePropertiesModal } from './FilePropertiesModal';
 import { TextEditorModal } from './TextEditorModal';
+import { useSftpBookmarks } from '../../hooks/useSftpBookmarks';
 
 interface FileBrowserProps {
     profile: SshProfile;
@@ -35,8 +36,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     const [propsModal, setPropsModal] = useState<string | null>(null); // path
     const [editorFile, setEditorFile] = useState<FileNode | null>(null);
     const [statusMsg, setStatusMsg] = useState('');
+    const [bookmarksOpen, setBookmarksOpen] = useState(false);
     const renameInputRef = useRef<HTMLInputElement>(null);
     const { width, startResizing, isResizing } = useResizable(256, 160, 600);
+    const { bookmarks, addBookmark, removeBookmark, isBookmarked } = useSftpBookmarks(profile.host);
 
     const toggleCollapse = () => {
         setIsCollapsed(prev => !prev);
@@ -247,11 +250,12 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                     <>
                         {/* Header */}
                         <div className="p-3 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-primary)]">
-                            <div className="flex items-center gap-2 overflow-hidden">
+                            <div className="flex items-center gap-1 overflow-hidden">
                                 <button
                                     onClick={handleUpDirectory}
                                     disabled={currentPath === '.' || currentPath === '/'}
                                     className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded disabled:opacity-50"
+                                    title="Go up"
                                 >
                                     <ArrowUpCircle size={16} />
                                 </button>
@@ -259,13 +263,59 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                                     {currentPath}
                                 </span>
                             </div>
-                            <button
-                                onClick={() => fetchDirectory(currentPath)}
-                                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded"
-                            >
-                                <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-                            </button>
+                            <div className="flex items-center gap-1 shrink-0">
+                                {/* Star bookmark button */}
+                                <button
+                                    onClick={() => isBookmarked(currentPath) ? removeBookmark(currentPath) : addBookmark(currentPath)}
+                                    className={`p-1 rounded transition-colors ${isBookmarked(currentPath) ? 'text-amber-400 hover:text-amber-300' : 'text-[var(--text-muted)] hover:text-amber-400'}`}
+                                    title={isBookmarked(currentPath) ? 'Remove bookmark' : 'Bookmark this path'}
+                                >
+                                    <Star size={14} fill={isBookmarked(currentPath) ? 'currentColor' : 'none'} />
+                                </button>
+                                {/* Bookmarks dropdown toggle */}
+                                <button
+                                    onClick={() => setBookmarksOpen(p => !p)}
+                                    className={`p-1 rounded transition-colors ${bookmarksOpen ? 'text-[var(--accent-color)] bg-[var(--hover-color)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)]'}`}
+                                    title="Bookmarks"
+                                    disabled={bookmarks.length === 0}
+                                >
+                                    <Bookmark size={14} fill={bookmarksOpen ? 'currentColor' : 'none'} />
+                                </button>
+                                <button
+                                    onClick={() => fetchDirectory(currentPath)}
+                                    className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded"
+                                    title="Refresh"
+                                >
+                                    <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+                                </button>
+                            </div>
                         </div>
+
+                        {/* Bookmarks dropdown panel */}
+                        {bookmarksOpen && bookmarks.length > 0 && (
+                            <div className="border-b border-[var(--border-color)] bg-[var(--bg-sidebar)] px-2 py-1.5 space-y-0.5 max-h-40 overflow-y-auto">
+                                <div className="text-[9px] uppercase font-semibold tracking-wider text-[var(--text-muted)] px-1 pb-1">Bookmarks</div>
+                                {bookmarks.map((bm) => (
+                                    <div key={bm.path} className="flex items-center gap-1 group/bm">
+                                        <button
+                                            onClick={() => { fetchDirectory(bm.path); setCurrentPath(bm.path); setBookmarksOpen(false); }}
+                                            className="flex-1 text-left flex items-center gap-1.5 px-1.5 py-1 rounded text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] truncate"
+                                            title={bm.path}
+                                        >
+                                            <Bookmark size={11} className="text-amber-400 shrink-0" fill="currentColor" />
+                                            <span className="truncate font-mono">{bm.path}</span>
+                                        </button>
+                                        <button
+                                            onClick={() => removeBookmark(bm.path)}
+                                            className="opacity-0 group-hover/bm:opacity-100 p-1 text-[var(--text-muted)] hover:text-red-400 rounded transition-all"
+                                            title="Remove bookmark"
+                                        >
+                                            <XIcon size={10} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
                         {/* Status bar */}
                         {statusMsg && (

@@ -10,6 +10,7 @@ interface ProfileModalProps {
     onClose: () => void;
     onSave: (profile: SshProfile, secret: string | null) => Promise<void>;
     existingProfile?: SshProfile | null;
+    existingGroups?: string[];
 }
 
 const defaultProfile: SshProfile = {
@@ -25,7 +26,7 @@ const defaultProfile: SshProfile = {
     color: ''
 };
 
-export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onSave, existingProfile }) => {
+export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onSave, existingProfile, existingGroups = [] }) => {
     const [profile, setProfile] = useState<SshProfile>(defaultProfile);
     const [secret, setSecret] = useState<string>('');
     const [loading, setLoading] = useState(false);
@@ -97,6 +98,22 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
                                 className="w-full bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-[var(--text-main)] rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)]"
                                 placeholder="My Server"
                             />
+                        </div>
+
+                        <div className="col-span-2">
+                            <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Group <span className="text-[var(--text-muted)] font-normal">(optional)</span></label>
+                            <input
+                                list="group-suggestions"
+                                value={profile.category ?? ''}
+                                onChange={e => setProfile({ ...profile, category: e.target.value || null })}
+                                className="w-full bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-[var(--text-main)] rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--accent-color)]"
+                                placeholder="e.g. Production, Staging, Dev…"
+                            />
+                            {existingGroups.length > 0 && (
+                                <datalist id="group-suggestions">
+                                    {existingGroups.map(g => <option key={g} value={g} />)}
+                                </datalist>
+                            )}
                         </div>
 
                         <div className="col-span-1">

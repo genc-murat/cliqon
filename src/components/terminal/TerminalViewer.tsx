@@ -15,9 +15,11 @@ interface TerminalViewerProps {
     profile: SshProfile;
     sessionId: string;
     isActive: boolean;
+    /** When true, only render the terminal — no FileBrowser or SnippetManager */
+    paneMode?: boolean;
 }
 
-export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, sessionId, isActive }) => {
+export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, sessionId, isActive, paneMode = false }) => {
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<Terminal | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
@@ -206,9 +208,8 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
     return (
         <div
             className="w-full h-full flex flex-row"
-            style={{ display: isActive ? 'flex' : 'none' }}
         >
-            <FileBrowser profile={profile} sessionId={sessionId} isActive={isActive} />
+            {!paneMode && <FileBrowser profile={profile} sessionId={sessionId} isActive={isActive} />}
 
             <div className="flex-1 relative h-full">
                 <div
@@ -225,7 +226,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                 )}
             </div>
 
-            <SnippetManager profile={profile} sessionId={sessionId} isActive={isActive} />
+            {!paneMode && <SnippetManager profile={profile} sessionId={sessionId} isActive={isActive} />}
         </div>
     );
 };

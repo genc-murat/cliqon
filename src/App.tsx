@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar, TabData } from "./components/layout/TopBar";
-import { TerminalViewer } from "./components/terminal/TerminalViewer";
+import { SplitView, Pane } from './components/terminal/SplitView';
 import { Logo } from './components/layout/Logo';
 import { SshProfile } from "./types/connection";
 
 interface SessionTab extends TabData {
   profile: SshProfile;
+  panes: Pane[];
+  activePane: string | null;
 }
 
 function App() {
@@ -18,16 +20,39 @@ function App() {
   const focusSearchRef = useRef<(() => void) | null>(null);
 
   const handleConnect = (profile: SshProfile) => {
-    // Generate a unique session ID for this tab
     const sessionId = crypto.randomUUID();
+    const pane: Pane = { id: sessionId, profile };
     const newTab: SessionTab = {
       id: sessionId,
       title: profile.name,
-      profile
+      profile,
+      panes: [pane],
+      activePane: pane.id,
     };
-
     setTabs(prev => [...prev, newTab]);
     setActiveTab(sessionId);
+  };
+
+  const handleSplitPane = (tabId: string) => {
+    setTabs(prev => prev.map(tab => {
+      if (tab.id !== tabId) return tab;
+      const newPane: Pane = { id: crypto.randomUUID(), profile: tab.profile };
+      return { ...tab, panes: [...tab.panes, newPane], activePane: newPane.id };
+    }));
+  };
+
+  const handlePaneClose = (tabId: string, paneId: string) => {
+    setTabs(prev => prev.map(tab => {
+      if (tab.id !== tabId) return tab;
+      const remaining = tab.panes.filter(p => p.id !== paneId);
+      if (remaining.length === 0) return tab; // Don't close last pane via this path
+      const newActive = tab.activePane === paneId ? remaining[remaining.length - 1].id : tab.activePane;
+      return { ...tab, panes: remaining, activePane: newActive };
+    }));
+  };
+
+  const handlePaneActivate = (tabId: string, paneId: string) => {
+    setTabs(prev => prev.map(tab => tab.id === tabId ? { ...tab, activePane: paneId } : tab));
   };
 
   const handleTabClose = (id: string) => {
@@ -78,7 +103,7 @@ function App() {
         return;
       }
 
-      // Ctrl+B → Toggle SFTP browser panel (broadcast to active TerminalViewer)
+      // Ctrl+B → Toggle SFTP browser panel
       if (e.key === 'b' || e.key === 'B') {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('cliqon:toggle-sftp'));
@@ -87,11 +112,17 @@ function App() {
 
       // Ctrl+F → Focus sidebar search
       if (e.key === 'f' || e.key === 'F') {
-        // Only intercept when no other input is focused
         const tag = (document.activeElement as HTMLElement)?.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA') return;
         e.preventDefault();
         focusSearchRef.current?.();
+        return;
+      }
+
+      // Ctrl+Shift+H → Split terminal horizontally (side-by-side)
+      if ((e.key === 'h' || e.key === 'H') && e.shiftKey && activeTab) {
+        e.preventDefault();
+        handleSplitPane(activeTab);
         return;
       }
     };
@@ -114,6 +145,7 @@ function App() {
           activeTab={activeTab}
           onTabClose={handleTabClose}
           onTabSelect={(id) => setActiveTab(id)}
+          onSplit={handleSplitPane}
         />
 
         {/* Main Terminal Area */}
@@ -125,11 +157,13 @@ function App() {
             </div>
           ) : (
             tabs.map((tab) => (
-              <TerminalViewer
+              <SplitView
                 key={tab.id}
-                profile={tab.profile}
-                sessionId={tab.id}
-                isActive={activeTab === tab.id}
+                panes={tab.panes}
+                activePane={tab.activePane}
+                isTabActive={activeTab === tab.id}
+                onPaneClose={(paneId) => handlePaneClose(tab.id, paneId)}
+                onPaneActivate={(paneId) => handlePaneActivate(tab.id, paneId)}
               />
             ))
           )}

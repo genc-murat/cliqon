@@ -15,6 +15,7 @@ interface ManagementPanelProps {
     onTabChange: (tab: ManagementTab) => void;
     onClose: () => void;
     onViewDockerLogs: (containerId: string) => void;
+    onDockerExec: (containerId: string) => void;
 }
 
 export const ManagementPanel: React.FC<ManagementPanelProps> = ({
@@ -23,7 +24,8 @@ export const ManagementPanel: React.FC<ManagementPanelProps> = ({
     activeTab,
     onTabChange,
     onClose,
-    onViewDockerLogs
+    onViewDockerLogs,
+    onDockerExec
 }) => {
     const { height, startResizing, isResizing } = useResizable(
         320, // default height
@@ -112,6 +114,7 @@ export const ManagementPanel: React.FC<ManagementPanelProps> = ({
                         sessionId={sessionId}
                         onClose={onClose}
                         onViewLogs={onViewDockerLogs}
+                        onExec={onDockerExec}
                         isEmbedded={true}
                     />
                 )}

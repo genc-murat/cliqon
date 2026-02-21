@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Play, Square, RotateCw, Terminal, Box, RefreshCw, X } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Play, Square, RotateCw, Terminal, Box, RefreshCw, X, Trash2, ChevronRight } from 'lucide-react';
 import { SshProfile } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
@@ -13,15 +13,28 @@ interface DockerContainer {
     Ports: string;
 }
 
+interface DockerStat {
+    BlockIO: string;
+    CPUPerc: string;
+    Container: string;
+    ID: string;
+    MemPerc: string;
+    MemUsage: string;
+    Name: string;
+    NetIO: string;
+    PIDs: string;
+}
+
 interface DockerManagerProps {
     profile: SshProfile;
     sessionId: string;
     onClose: () => void;
     onViewLogs: (containerId: string) => void;
+    onExec: (containerId: string) => void;
     isEmbedded?: boolean;
 }
 
-export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, onViewLogs, isEmbedded }) => {
+export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, onViewLogs, onExec, isEmbedded }) => {
     const { height, startResizing, isResizing } = useResizable(
         280, // default height
         180, // min height
@@ -31,9 +44,12 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
     );
 
     const [containers, setContainers] = useState<DockerContainer[]>([]);
+    const [stats, setStats] = useState<Record<string, DockerStat>>({});
     const [loading, setLoading] = useState<boolean>(true);
+    const [statsLoading, setStatsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null); // containerId that is busy
+    const isPruning = useRef<boolean>(false);
 
     const fetchContainers = useCallback(async () => {
         try {
@@ -50,15 +66,35 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
         }
     }, [profile]);
 
+    const fetchStats = useCallback(async () => {
+        try {
+            setStatsLoading(true);
+            const rawOutput = await api.getDockerStats(profile);
+            const lines = rawOutput.split('\n').filter(Boolean);
+            const parsed = lines.map(line => JSON.parse(line)) as DockerStat[];
+            const statsMap: Record<string, DockerStat> = {};
+            parsed.forEach(stat => {
+                statsMap[stat.ID] = stat;
+            });
+            setStats(statsMap);
+        } catch (err) {
+            console.error("Failed to fetch docker stats", err);
+        } finally {
+            setStatsLoading(false);
+        }
+    }, [profile]);
+
     useEffect(() => {
         fetchContainers();
+        fetchStats();
 
         const intervalId = setInterval(() => {
             fetchContainers();
-        }, 30000); // Polling every 30s
+            fetchStats();
+        }, 15000); // Polling every 15s
 
         return () => clearInterval(intervalId);
-    }, [fetchContainers]);
+    }, [fetchContainers, fetchStats]);
 
     const handleAction = async (action: 'start' | 'stop' | 'restart', containerId: string) => {
         try {
@@ -71,10 +107,27 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                 await api.restartDockerContainer(profile, containerId);
             }
             await fetchContainers(); // refresh immediately
+            await fetchStats();
         } catch (err: any) {
             console.error(`Error performing ${action} on ${containerId}:`, err);
             // Optionally set error state or show a toast
         } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handlePrune = async () => {
+        if (!confirm("Are you sure you want to prune the Docker system? This will remove all unused containers, networks, images, and optionally, volumes.")) return;
+        try {
+            isPruning.current = true;
+            setActionLoading('pruning');
+            await api.dockerSystemPrune(profile);
+            await fetchContainers();
+            await fetchStats();
+        } catch (err: any) {
+            console.error("Failed to prune system", err);
+        } finally {
+            isPruning.current = false;
             setActionLoading(null);
         }
     };
@@ -110,11 +163,21 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                         <Box size={16} className="text-[#2496ED]" />
                         <span className="text-sm font-bold text-[var(--text-main)]">Docker Containers</span>
                         <button
-                            onClick={fetchContainers}
-                            disabled={loading}
-                            className={`ml-2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded-lg transition-colors ${loading ? 'animate-spin' : ''}`}
+                            onClick={() => { fetchContainers(); fetchStats(); }}
+                            disabled={loading || statsLoading}
+                            className={`ml-2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded-lg transition-colors ${(loading || statsLoading) ? 'animate-spin' : ''}`}
                         >
                             <RefreshCw size={12} />
+                        </button>
+                        <div className="w-px h-4 bg-[var(--border-color)] mx-1" />
+                        <button
+                            onClick={handlePrune}
+                            disabled={isPruning.current || actionLoading === 'pruning'}
+                            className={`flex items-center gap-1.5 px-2 py-1 text-xs font-bold rounded-lg transition-colors text-red-400 hover:bg-red-500/10 hover:text-red-300 ${actionLoading === 'pruning' ? 'opacity-50' : ''}`}
+                            title="System Prune"
+                        >
+                            <Trash2 size={12} />
+                            {actionLoading === 'pruning' ? 'Pruning...' : 'Prune'}
                         </button>
                     </div>
                     <button
@@ -149,6 +212,7 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                                     <th className="px-4 py-3 font-medium uppercase tracking-wider text-[var(--text-muted)]">Image</th>
                                     <th className="px-4 py-3 font-medium uppercase tracking-wider text-[var(--text-muted)] text-center">State</th>
                                     <th className="px-4 py-3 font-medium uppercase tracking-wider text-[var(--text-muted)]">Status</th>
+                                    <th className="px-4 py-3 font-medium uppercase tracking-wider text-[var(--text-muted)]">CPU / RAM</th>
                                     <th className="px-4 py-3 font-medium uppercase tracking-wider text-[var(--text-muted)]">Ports</th>
                                     <th className="px-4 py-3 font-medium uppercase tracking-wider text-[var(--text-muted)] text-right">Actions</th>
                                 </tr>
@@ -174,6 +238,22 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                                             </td>
                                             <td className="px-4 py-3 text-[11px] text-[var(--text-muted)] whitespace-nowrap">
                                                 {c.Status}
+                                            </td>
+                                            <td className="px-4 py-3 text-[11px] font-mono">
+                                                {isRunning && stats[c.ID] ? (
+                                                    <div className="flex flex-col gap-1 min-w-[100px]">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <span className="text-[var(--accent-color)]">{stats[c.ID].CPUPerc}</span>
+                                                            <span className="text-[10px] text-[var(--text-muted)]">CPU</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <span className="text-[#10B981]">{stats[c.ID].MemPerc}</span>
+                                                            <span className="text-[10px] text-[var(--text-muted)]">{stats[c.ID].MemUsage.split(' / ')[0]}</span>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[var(--text-muted)] opacity-50">-</span>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="truncate max-w-[150px] text-[10px] font-mono text-[var(--text-muted)]" title={c.Ports}>{c.Ports || '-'}</div>
@@ -217,6 +297,14 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                                                         title="View Logs in Terminal"
                                                     >
                                                         <Terminal size={14} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => onExec(c.ID)}
+                                                        disabled={!isRunning}
+                                                        className="p-1.5 hover:bg-[var(--accent-color)]/20 hover:text-[var(--accent-color)] rounded transition-colors text-[var(--text-main)] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[var(--text-main)]"
+                                                        title="Interactive Shell (Exec)"
+                                                    >
+                                                        <ChevronRight size={14} />
                                                     </button>
                                                 </div>
                                             </td>

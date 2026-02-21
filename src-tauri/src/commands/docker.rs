@@ -73,3 +73,37 @@ pub async fn restart_docker_container(
         .docker_manager
         .restart_container(&profile, secret.as_deref(), &container_id)
 }
+
+#[tauri::command]
+pub async fn docker_system_prune(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .system_prune(&profile, secret.as_deref())
+}
+
+#[tauri::command]
+pub async fn get_docker_stats(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .get_stats(&profile, secret.as_deref())
+}

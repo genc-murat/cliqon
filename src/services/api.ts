@@ -104,5 +104,13 @@ export const api = {
 
     restartDockerContainer: async (profile: SshProfile, containerId: string): Promise<string> => {
         return await invoke<string>('restart_docker_container', { profile, containerId });
+    },
+
+    getDockerStats: async (profile: SshProfile): Promise<string> => {
+        return await invoke<string>('get_docker_stats', { profile });
+    },
+
+    dockerSystemPrune: async (profile: SshProfile): Promise<string> => {
+        return await invoke<string>('docker_system_prune', { profile });
     }
 };

@@ -73,4 +73,17 @@ impl DockerManager {
         let cmd = format!("docker restart {}", container_id);
         self.exec_command(&session, &cmd)
     }
+
+    pub fn system_prune(&self, profile: &SshProfile, secret: Option<&str>) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        let cmd = "docker system prune -af";
+        self.exec_command(&session, cmd)
+    }
+
+    pub fn get_stats(&self, profile: &SshProfile, secret: Option<&str>) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        // --no-stream ensures it returns immediately, --format formats it as JSON.
+        let cmd = "docker stats --no-stream --format '{{json .}}'";
+        self.exec_command(&session, cmd)
+    }
 }

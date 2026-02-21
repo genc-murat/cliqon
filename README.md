@@ -96,10 +96,12 @@ A comprehensive suite of **15 on-demand diagnostic tools** executed directly fro
 ### 🐳 Docker Container Manager
 Manage your Docker infrastructure directly through the SSH connection:
 - **Container List** — Real-time view of all containers (Running, Stopped, Exited).
-- **One-Click Controls** — Start, stop, and restart containers with a single click.
-- **Terminal Log Stream** — Instant `docker logs -f` integration that streams logs directly into your active terminal tab.
+- **Live Performance Stats** — Monitor real-time CPU and Memory (RAM) usage directly in the container list.
+- **Interactive Shell (Exec)** — Drop into a running container's shell (`bash` or `sh`) with a single click, right inside your active terminal.
+- **System Prune** — One-click cleanup of unused containers, networks, and images to free up server disk space.
+- **One-Click Controls** — Start, stop, and restart containers instantly.
+- **Terminal Log Stream** — Stream `docker logs -f` directly into your active terminal tab.
 - **Stats & Info** — View container ID, image, assigned ports, and uptime status.
-- **↕ Vertically Resizable** — Flexible panel height that persists across sessions.
 
 ### ↕ Resizable Panels & Layout
 - **Intelligent Resizing** — Interactively drag to resize the Sidebar, SFTP Browser, Snippet Manager, and Server Monitor

@@ -113,6 +113,16 @@ function App() {
     api.writeToPty(tab.activePane, Array.from(encoder.encode(command))).catch(console.error);
   };
 
+  const handleDockerExec = (tabId: string, containerId: string) => {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab || !tab.activePane) return;
+
+    // Clear the terminal and connect interactively via bash or sh
+    const command = `clear\ndocker exec -it ${containerId} /bin/sh -c "(bash || sh) 2>/dev/null"\n`;
+    const encoder = new TextEncoder();
+    api.writeToPty(tab.activePane, Array.from(encoder.encode(command))).catch(console.error);
+  };
+
   // ─── Global Keyboard Shortcuts ──────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -220,6 +230,7 @@ function App() {
                       onTabChange={(type) => handleToggleManagementPanel(tab.id, type)}
                       onClose={() => handleToggleManagementPanel(tab.id, tab.activeManagementTab)}
                       onViewDockerLogs={(containerId) => handleViewDockerLogs(tab.id, containerId)}
+                      onDockerExec={(containerId) => handleDockerExec(tab.id, containerId)}
                     />
                   )}
                 </div>

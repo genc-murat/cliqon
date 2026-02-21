@@ -28,6 +28,7 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - **Cursor Customization** — Choose between Block, Underline, or Bar cursor styles with optional blinking
 - **Dynamic ANSI Colors** — "Match App Theme" automatically switches between Light and Dark optimized ANSI palettes for maximum readability
 - **Font Settings** — choose font family, size, and line height with a live preview
+- **ML-Powered Autocomplete** — Fish-shell style inline suggestions that learn from your history using a Markov Chain model; accepts with `Tab` or `→`
 
 ### SFTP File Browser
 - Integrated split-view SFTP panel per terminal tab
@@ -109,6 +110,15 @@ Manage your Docker infrastructure directly through the SSH connection:
 - **Port Manager** — Clean, extracted view of active port mappings with one-click clickable links to launch services in the browser.
 - **Terminal Log Stream** — Stream `docker logs -f` directly into your active terminal tab.
 - **One-Click Controls** — Start, stop, and restart containers instantly.
+ 
+### 🧠 ML-Powered Terminal Autocomplete
+Experience a smarter terminal that learns how you work. Cliqon includes a built-in, privacy-first machine learning engine that provides intelligent command suggestions:
+- **Predictive Suggestions** — As you type, a light ghost-text suggestion appears ahead of your cursor.
+- **Context-Aware Learning** — Uses a **Markov Chain + N-gram** model to learn your common command sequences (e.g., it learns that `git add .` is often followed by `git commit`).
+- **Frecency Algorithm** — Suggestions are ranked based on frequency and recency, ensuring your most relevant commands are always at your fingertips.
+- **Tab to Accept** — Press `Tab` or `→` to instantly complete the suggestion; press `Esc` to dismiss.
+- **Interactive Detection** — Automatically pauses suggestions when you're in full-screen programs like `vim`, `nano`, or `htop`.
+- **Local & Private** — All learning and prediction happens entirely on your machine; no command history is ever sent to the cloud.
 
 ### ↕ Resizable Panels & Layout
 - **Intelligent Resizing** — Interactively drag to resize the Sidebar, SFTP Browser, Snippet Manager, and Server Monitor

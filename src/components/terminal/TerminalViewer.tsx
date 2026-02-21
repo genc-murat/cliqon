@@ -6,6 +6,7 @@ import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { SshProfile } from '../../types/connection';
 import { api } from '../../services/api';
 import { useTheme } from '../../hooks/useTheme';
+import { useTerminalHistory } from '../../hooks/useTerminalHistory';
 import { FileBrowser } from './FileBrowser';
 import { SnippetManager } from './SnippetManager';
 // Make sure to import xterm styles
@@ -29,6 +30,12 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
     const connectedRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
     const { theme, terminalTheme, terminalFont, terminalCursorStyle } = useTheme();
+
+    // ML-powered autocomplete
+    const { processKeystroke, processOutput, getSuggestionRemainder } = useTerminalHistory(profile.id);
+    const [ghostText, setGhostText] = useState<string | null>(null);
+    const ghostRef = useRef<HTMLDivElement>(null);
+    const activeSuggestionRef = useRef<string | null>(null);
 
     const getXtermTheme = useCallback(() => {
         if (terminalTheme.id === 'appTheme') {
@@ -135,7 +142,11 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                 // Start listening to events before connecting
                 unlistenRxRef.current = await listen<number[]>(`ssh_data_rx_${sessionId}`, (event) => {
                     if (xtermRef.current) {
-                        xtermRef.current.write(new Uint8Array(event.payload));
+                        const data = new Uint8Array(event.payload);
+                        xtermRef.current.write(data);
+                        // Feed output to ML engine for interactive program detection
+                        const decoded = new TextDecoder().decode(data);
+                        processOutput(decoded);
                     }
                 });
 
@@ -171,14 +182,54 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
 
         setupConnection();
 
-        // Handle user input
+        // Handle user input with ML autocomplete
         const onDataDisposable = xtermRef.current?.onData((data) => {
-            if (connectedRef.current) {
-                // Convert string to byte array
-                const encoder = new TextEncoder();
-                const bytes = Array.from(encoder.encode(data));
-                api.writeToPty(sessionId, bytes).catch(console.error);
+            if (!connectedRef.current) return;
+
+            const encoder = new TextEncoder();
+
+            // Tab or Right Arrow: accept suggestion if one is active
+            if ((data === '\t' || data === '\x1b[C') && activeSuggestionRef.current) {
+                const remainder = activeSuggestionRef.current;
+                if (remainder) {
+                    const bytes = Array.from(encoder.encode(remainder));
+                    api.writeToPty(sessionId, bytes).catch(console.error);
+                    activeSuggestionRef.current = null;
+                    setGhostText(null);
+                    return; // Consume the keystroke
+                }
             }
+
+            // Escape: dismiss suggestion
+            if (data === '\x1b' && activeSuggestionRef.current) {
+                activeSuggestionRef.current = null;
+                setGhostText(null);
+                // Still send Escape to terminal
+            }
+
+            // Process keystroke through ML engine
+            const { suggestion } = processKeystroke(data);
+
+            if (suggestion) {
+                const currentInput = data === '\r' ? '' : undefined;
+                if (currentInput !== '') {
+                    const remainder = getSuggestionRemainder(suggestion);
+                    if (remainder) {
+                        activeSuggestionRef.current = remainder;
+                        setGhostText(remainder);
+                    } else {
+                        activeSuggestionRef.current = null;
+                        setGhostText(null);
+                    }
+                }
+            } else {
+                activeSuggestionRef.current = null;
+                setGhostText(null);
+            }
+
+            // Send the original keystroke to the PTY
+            const bytes = Array.from(encoder.encode(data));
+            api.writeToPty(sessionId, bytes).catch(console.error);
         });
 
         // Handle terminal resize
@@ -213,6 +264,29 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         return () => window.removeEventListener('resize', handleResize);
     }, [isActive]);
 
+    // Position the ghost text overlay near the cursor
+    useEffect(() => {
+        if (!ghostText || !xtermRef.current || !ghostRef.current || !terminalRef.current) {
+            return;
+        }
+        const term = xtermRef.current;
+        const cursorX = term.buffer.active.cursorX;
+        const cursorY = term.buffer.active.cursorY;
+
+        // Calculate pixel position using cell dimensions
+        const cellWidth = term.element?.querySelector('.xterm-char-measure-element')?.getBoundingClientRect().width || 9;
+        const cellHeight = (term.element?.querySelector('.xterm-rows')?.getBoundingClientRect().height || 0) / term.rows || 18;
+
+        const left = cursorX * cellWidth + 10; // +10 for padding
+        const top = cursorY * cellHeight + 4;
+
+        ghostRef.current.style.left = `${left}px`;
+        ghostRef.current.style.top = `${top}px`;
+        ghostRef.current.style.fontSize = `${terminalFont.fontSize}px`;
+        ghostRef.current.style.fontFamily = terminalFont.fontFamily;
+        ghostRef.current.style.lineHeight = `${cellHeight}px`;
+    }, [ghostText, terminalFont]);
+
     return (
         <div
             className="w-full h-full flex flex-row"
@@ -225,6 +299,28 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                     className="absolute inset-0 p-2 overflow-hidden"
                     style={{ backgroundColor: terminalTheme.id === 'appTheme' ? theme.colors.bgPrimary : terminalTheme.colors.background }}
                 />
+
+                {/* ML Autocomplete Ghost Text Overlay */}
+                {ghostText && connected && (
+                    <div
+                        ref={ghostRef}
+                        className="absolute pointer-events-none z-20 select-none whitespace-pre"
+                        style={{
+                            color: 'var(--text-muted)',
+                            opacity: 0.45,
+                            textShadow: '0 0 1px rgba(var(--accent-rgb, 99, 102, 241), 0.3)',
+                        }}
+                    >
+                        {ghostText}
+                        <span
+                            className="ml-2 text-[10px] opacity-60 border border-current rounded px-1 py-0 align-middle"
+                            style={{ fontSize: '9px' }}
+                        >
+                            Tab ⏎
+                        </span>
+                    </div>
+                )}
+
                 {!connected && !error && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none z-10">
                         <div className="bg-[var(--bg-sidebar)] px-4 py-2 rounded-md border border-[var(--border-color)] shadow-lg animate-pulse text-sm">

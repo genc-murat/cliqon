@@ -13,6 +13,7 @@ use commands::net_tools::*;
 use commands::docker::*;
 use commands::system::*;
 use commands::logging::*;
+use commands::sharing::*;
 use tauri::Manager;
 use crate::services::system::SystemService;
 use crate::services::logging::LogManager;
@@ -73,8 +74,18 @@ pub fn run() {
             get_system_services,
             manage_service,
             start_log_tail,
-            stop_log_tail
+            stop_log_tail,
+            start_sharing,
+            stop_sharing,
+            get_sharing_status,
+            set_sharing_display_name,
+            get_discovered_peers,
+            share_profiles_with_peer,
+            get_pending_shares,
+            accept_share,
+            reject_share
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+

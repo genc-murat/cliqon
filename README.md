@@ -8,6 +8,104 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 
 ---
 
+## Architecture
+
+```mermaid
+graph TB
+    subgraph Frontend ["Frontend — React + TypeScript"]
+        UI["UI Components<br/>(Sidebar, TopBar, TitleBar)"]
+        Terminal["Terminal Viewer<br/>(xterm.js + WebGL)"]
+        SFTP["SFTP File Browser"]
+        Docker["Docker Manager"]
+        Sharing["Sharing Panel"]
+        NetTools["Network Tools"]
+        Monitor["Server Monitor"]
+        ML["ML Autocomplete<br/>(Markov Chain)"]
+        Settings["Settings & Themes"]
+    end
+
+    subgraph IPC ["Tauri IPC Bridge"]
+        Commands["Tauri Commands<br/>(invoke handlers)"]
+    end
+
+    subgraph Backend ["Backend — Rust"]
+        ProfileStore["Profile Store<br/>(profiles.json + Keyring)"]
+        SSHMgr["SSH Manager<br/>(ssh2 PTY sessions)"]
+        SFTPMgr["SFTP Manager<br/>(file ops)"]
+        DockerSvc["Docker Service<br/>(container mgmt)"]
+        SharingSvc["Sharing Service<br/>(UDP Discovery + HTTP)"]
+        MonitorSvc["Monitor Service<br/>(system metrics)"]
+        NetToolSvc["Net Tool Service<br/>(diagnostics)"]
+        LogMgr["Log Manager<br/>(tail streaming)"]
+        ImportSvc["Import Service<br/>(MobaXterm, Termius)"]
+        AuthSvc["Auth Service<br/>(keyring, obfuscation)"]
+    end
+
+    subgraph OS ["OS & Network Layer"]
+        Keyring["OS Keyring<br/>(Keychain / libsecret / WCM)"]
+        FS["Filesystem<br/>(app data dir)"]
+        LAN["Local Network<br/>(UDP :19875 + HTTP)"]
+        SSH["SSH Servers<br/>(remote hosts)"]
+    end
+
+    UI --> Commands
+    Terminal --> Commands
+    SFTP --> Commands
+    Docker --> Commands
+    Sharing --> Commands
+    NetTools --> Commands
+    Monitor --> Commands
+
+    Commands --> ProfileStore
+    Commands --> SSHMgr
+    Commands --> SFTPMgr
+    Commands --> DockerSvc
+    Commands --> SharingSvc
+    Commands --> MonitorSvc
+    Commands --> NetToolSvc
+    Commands --> LogMgr
+    Commands --> ImportSvc
+
+    ProfileStore --> Keyring
+    ProfileStore --> FS
+    AuthSvc --> Keyring
+    SharingSvc --> LAN
+    SSHMgr --> SSH
+    SFTPMgr --> SSH
+    DockerSvc --> SSH
+    MonitorSvc --> SSH
+    NetToolSvc --> SSH
+    LogMgr --> SSH
+
+    style Frontend fill:#1a1a2e,stroke:#6c63ff,color:#e0e0e0
+    style Backend fill:#16213e,stroke:#0f3460,color:#e0e0e0
+    style IPC fill:#0f3460,stroke:#533483,color:#e0e0e0
+    style OS fill:#1a1a2e,stroke:#533483,color:#e0e0e0
+```
+
+### Network Sharing Flow
+
+```mermaid
+sequenceDiagram
+    participant A as Cliqon — User A
+    participant LAN as LAN (UDP Broadcast :19875)
+    participant B as Cliqon — User B
+
+    A->>LAN: Beacon (name, ip, http_port)
+    LAN->>B: Discover User A
+    B->>LAN: Beacon (name, ip, http_port)
+    LAN->>A: Discover User B
+
+    Note over A,B: User B selects profiles to share
+
+    B->>A: HTTP POST /share (profiles + secrets)
+    A->>A: Show incoming share notification
+    A->>A: Accept → Import profiles
+    A-->>B: HTTP 200 OK
+```
+
+---
+
 ## Features
 
 ### Connection Management
@@ -18,6 +116,17 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - **Color Accents** — assign a custom color per connection (left-border highlight + subtle background tint in the sidebar)
 - **Search & Filter** — real-time search by profile name, hostname, or username; groups are intelligently displayed in search results
 - Supports **Password**, **Private Key**, and **SSH Agent** authentication
+
+### 🔗 Network Sharing
+Share SSH connection profiles (including passwords) with teammates on the same local network — no server required:
+- **Auto-Discovery** — Cliqon instances on the same LAN automatically discover each other via UDP broadcast (port `19875`)
+- **Profile Sharing** — Select one or more profiles and send them directly to a discovered peer; passwords and keys are included
+- **Incoming Share Notifications** — Received shares appear as interactive cards with profile details; one-click **Accept** imports directly into your connection list
+- **Display Name** — Set a custom display name (defaults to hostname) so teammates know who's sharing
+- **Zero Configuration** — No central server, no cloud, no accounts; works entirely peer-to-peer on your LAN
+- **Privacy-First** — All data stays on your network; sharing is opt-in and each share request can be individually accepted or rejected
+- **Cross-Platform** — Seamlessly share between **Windows, macOS, and Linux**. Works across different operating systems on the same network.
+- **Firewall Friendly** — Uses standard ports. (Note: Ensure your system firewall allows traffic on UDP port `19875` for discovery).
 
 ### Terminal
 - **xterm.js** rendering with **WebGL** acceleration for smooth, low-latency output
@@ -71,7 +180,7 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - **System Insights** — Fast parsing of Hostname, OS Distribution, and Uptime via background SSH exec commands
 - **System Services Manager** — Manage `systemctl` units directly; list, search, start, stop, and restart services without typing commands; integrated as a tab within the Monitor panel.
 
-### 🌐 Network Tools
+### Network Tools
 A comprehensive suite of **15 on-demand diagnostic tools** executed directly from the connected server via SSH:
 - **Core Connectivity**:
   - **Ping** — Remote ICMP ping with latency sparklines and Min/Avg/Max summary.
@@ -98,7 +207,7 @@ A comprehensive suite of **15 on-demand diagnostic tools** executed directly fro
   - **Structured Output** — Raw shell data is parsed into clean, interactive tables and cards.
   - **Copy Raw** — One-click clipboard copy of raw command output.
 
-### 🐳 Docker Architecture & Container Manager
+### Docker Architecture & Container Manager
 Manage your Docker infrastructure directly through the SSH connection:
 - **Container List** — Real-time view of all containers (Running, Stopped, Exited).
 - **Live Performance Stats** — Monitor real-time CPU and Memory (RAM) usage directly in the container list.
@@ -111,7 +220,7 @@ Manage your Docker infrastructure directly through the SSH connection:
 - **Terminal Log Stream** — Stream `docker logs -f` directly into your active terminal tab.
 - **One-Click Controls** — Start, stop, and restart containers instantly.
  
-### 🧠 ML-Powered Terminal Autocomplete
+### ML-Powered Terminal Autocomplete
 Experience a smarter terminal that learns how you work. Cliqon includes a built-in, privacy-first machine learning engine that provides intelligent command suggestions:
 - **Predictive Suggestions** — As you type, a light ghost-text suggestion appears ahead of your cursor.
 - **Context-Aware Learning** — Uses a **Markov Chain + N-gram** model to learn your common command sequences (e.g., it learns that `git add .` is often followed by `git commit`).
@@ -147,9 +256,10 @@ Experience a smarter terminal that learns how you work. Cliqon includes a built-
 | Layer | Technology |
 |---|---|
 | Desktop runtime | Tauri v2 |
-| Backend | Rust (`ssh2`, `keyring`, `serde`) |
-| Frontend | React 18 + Vite + TypeScript |
+| Backend | Rust (`ssh2`, `keyring`, `serde`, `tiny_http`) |
+| Frontend | React 19 + Vite + TypeScript |
 | Terminal | xterm.js + WebGL addon |
+| Network Sharing | UDP Broadcast + HTTP (peer-to-peer) |
 | Icons | Lucide React |
 | Styles | Tailwind CSS + CSS variables |
 

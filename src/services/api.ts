@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { SshProfile } from '../types/connection';
+import { SharingStatus, PeerInfo, PendingShare } from '../types/sharing';
 
 export const api = {
     getProfiles: async (): Promise<SshProfile[]> => {
@@ -152,5 +153,44 @@ export const api = {
 
     importProfiles: async (source: string, content: string): Promise<number> => {
         return await invoke<number>('import_profiles', { source, content });
-    }
+    },
+
+    // ─── Sharing API ────────────────────────────────────────
+
+    startSharing: async (): Promise<SharingStatus> => {
+        return await invoke<SharingStatus>('start_sharing');
+    },
+
+    stopSharing: async (): Promise<SharingStatus> => {
+        return await invoke<SharingStatus>('stop_sharing');
+    },
+
+    getSharingStatus: async (): Promise<SharingStatus> => {
+        return await invoke<SharingStatus>('get_sharing_status');
+    },
+
+    setDisplayName: async (name: string): Promise<void> => {
+        return await invoke('set_sharing_display_name', { name });
+    },
+
+    getDiscoveredPeers: async (): Promise<PeerInfo[]> => {
+        return await invoke<PeerInfo[]>('get_discovered_peers');
+    },
+
+    shareProfiles: async (peerId: string, profileIds: string[]): Promise<string> => {
+        return await invoke<string>('share_profiles_with_peer', { peerId, profileIds });
+    },
+
+    getPendingShares: async (): Promise<PendingShare[]> => {
+        return await invoke<PendingShare[]>('get_pending_shares');
+    },
+
+    acceptShare: async (shareId: string): Promise<number> => {
+        return await invoke<number>('accept_share', { shareId });
+    },
+
+    rejectShare: async (shareId: string): Promise<void> => {
+        return await invoke('reject_share', { shareId });
+    },
 };
+

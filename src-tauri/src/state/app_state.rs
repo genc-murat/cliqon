@@ -5,6 +5,7 @@ use crate::services::sftp::SftpManager;
 use crate::services::monitor::MonitorManager;
 use crate::services::net_tools::NetToolManager;
 use crate::services::docker::DockerManager;
+use crate::services::sharing::SharingService;
 use tauri::AppHandle;
 
 pub struct AppState {
@@ -14,6 +15,7 @@ pub struct AppState {
     pub monitor_manager: MonitorManager,
     pub net_tool_manager: NetToolManager,
     pub docker_manager: DockerManager,
+    pub sharing_service: Mutex<SharingService>,
 }
 
 impl AppState {
@@ -25,6 +27,8 @@ impl AppState {
             monitor_manager: MonitorManager::new(),
             net_tool_manager: NetToolManager::new(),
             docker_manager: DockerManager::new(),
+            sharing_service: Mutex::new(SharingService::new()),
         }
     }
 }
+

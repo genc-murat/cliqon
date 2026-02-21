@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Theme, themes, TerminalTheme, terminalThemes } from '../lib/themes';
+import { Theme, themes, TerminalTheme, terminalThemes, TerminalFont, defaultTerminalFont } from '../lib/themes';
 
 export function useTheme() {
     const [theme, setThemeState] = useState<Theme>(() => {
@@ -34,6 +34,22 @@ export function useTheme() {
         }
     };
 
+    const [terminalFont, setTerminalFontState] = useState<TerminalFont>(() => {
+        try {
+            const saved = localStorage.getItem('cliqon-terminal-font');
+            if (saved) return { ...defaultTerminalFont, ...JSON.parse(saved) };
+        } catch { }
+        return defaultTerminalFont;
+    });
+
+    const setTerminalFont = (font: Partial<TerminalFont>) => {
+        setTerminalFontState(prev => {
+            const next = { ...prev, ...font };
+            localStorage.setItem('cliqon-terminal-font', JSON.stringify(next));
+            return next;
+        });
+    };
+
     useEffect(() => {
         // Apply CSS variables to root element
         const root = document.documentElement;
@@ -61,6 +77,8 @@ export function useTheme() {
         setTheme,
         terminalTheme,
         setTerminalTheme,
+        terminalFont,
+        setTerminalFont,
         availableThemes: Object.values(themes),
         availableTerminalThemes: Object.values(terminalThemes)
     };

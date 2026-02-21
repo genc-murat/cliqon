@@ -144,3 +144,26 @@ export const terminalThemes: Record<string, TerminalTheme> = {
         }
     }
 };
+
+export interface TerminalFont {
+    fontFamily: string;
+    fontSize: number;
+    lineHeight: number;
+}
+
+export const defaultTerminalFont: TerminalFont = {
+    fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+    fontSize: 14,
+    lineHeight: 1.2,
+};
+
+export const terminalFontFamilies: { id: string; name: string; value: string }[] = [
+    { id: 'jetbrains', name: 'JetBrains Mono', value: "'JetBrains Mono', monospace" },
+    { id: 'fira', name: 'Fira Code', value: "'Fira Code', monospace" },
+    { id: 'cascadia', name: 'Cascadia Code', value: "'Cascadia Code', monospace" },
+    { id: 'consolas', name: 'Consolas', value: 'Consolas, monospace' },
+    { id: 'courier', name: 'Courier New', value: "'Courier New', monospace" },
+    { id: 'ubuntu', name: 'Ubuntu Mono', value: "'Ubuntu Mono', monospace" },
+    { id: 'monaco', name: 'Monaco', value: 'Monaco, monospace' },
+    { id: 'sourcecodepro', name: 'Source Code Pro', value: "'Source Code Pro', monospace" },
+];

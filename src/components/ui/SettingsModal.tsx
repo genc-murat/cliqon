@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, Palette, Terminal as TerminalIcon } from 'lucide-react';
+import { X, Palette, Terminal as TerminalIcon, Type } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
+import { terminalFontFamilies } from '../../lib/themes';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -8,7 +9,7 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-    const { availableThemes, setTheme, theme, availableTerminalThemes, terminalTheme, setTerminalTheme } = useTheme();
+    const { availableThemes, setTheme, theme, availableTerminalThemes, terminalTheme, setTerminalTheme, terminalFont, setTerminalFont } = useTheme();
 
     if (!isOpen) return null;
 
@@ -97,6 +98,82 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                         )}
                                     </button>
                                 ))}
+                            </div>
+                        </section>
+
+                        {/* Terminal Font Settings */}
+                        <section className="mt-6 border-t border-[var(--border-color)] pt-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Type size={18} className="text-[var(--accent-color)]" />
+                                <h3 className="text-sm font-semibold text-[var(--text-main)] uppercase tracking-wider">Terminal Font</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                {/* Font Family */}
+                                <div>
+                                    <label className="block text-xs font-medium text-[var(--text-muted)] mb-2">Font Family</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {terminalFontFamilies.map((f) => (
+                                            <button
+                                                key={f.id}
+                                                onClick={() => setTerminalFont({ fontFamily: f.value })}
+                                                className={`p-2.5 rounded-lg border text-left text-sm transition-all truncate ${terminalFont.fontFamily === f.value
+                                                        ? 'border-[var(--accent-color)] bg-[var(--accent-color)]/10 ring-1 ring-[var(--accent-color)]'
+                                                        : 'border-[var(--border-color)] bg-[var(--bg-sidebar)] hover:border-[var(--text-muted)]'
+                                                    }`}
+                                                style={{ fontFamily: f.value }}
+                                            >
+                                                {f.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Font Size */}
+                                <div>
+                                    <label className="flex justify-between text-xs font-medium text-[var(--text-muted)] mb-2">
+                                        <span>Font Size</span>
+                                        <span className="text-[var(--text-main)] font-mono">{terminalFont.fontSize}px</span>
+                                    </label>
+                                    <input
+                                        type="range" min={10} max={24} step={1}
+                                        value={terminalFont.fontSize}
+                                        onChange={(e) => setTerminalFont({ fontSize: Number(e.target.value) })}
+                                        className="w-full accent-[var(--accent-color)]"
+                                    />
+                                    <div className="flex justify-between text-[10px] text-[var(--text-muted)] mt-1">
+                                        <span>10px</span><span>24px</span>
+                                    </div>
+                                </div>
+
+                                {/* Line Height */}
+                                <div>
+                                    <label className="flex justify-between text-xs font-medium text-[var(--text-muted)] mb-2">
+                                        <span>Line Height</span>
+                                        <span className="text-[var(--text-main)] font-mono">{terminalFont.lineHeight.toFixed(1)}</span>
+                                    </label>
+                                    <input
+                                        type="range" min={1} max={2} step={0.1}
+                                        value={terminalFont.lineHeight}
+                                        onChange={(e) => setTerminalFont({ lineHeight: Number(e.target.value) })}
+                                        className="w-full accent-[var(--accent-color)]"
+                                    />
+                                    <div className="flex justify-between text-[10px] text-[var(--text-muted)] mt-1">
+                                        <span>1.0</span><span>2.0</span>
+                                    </div>
+                                </div>
+
+                                {/* Preview */}
+                                <div
+                                    className="mt-2 p-3 rounded-md bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-xs"
+                                    style={{ fontFamily: terminalFont.fontFamily, fontSize: `${terminalFont.fontSize}px`, lineHeight: terminalFont.lineHeight }}
+                                >
+                                    <span className="text-green-400">user@server</span>
+                                    <span className="text-[var(--text-muted)]">:</span>
+                                    <span className="text-blue-400">~</span>
+                                    <span className="text-[var(--text-muted)]">$ </span>
+                                    <span className="text-[var(--text-main)]">echo "Hello, Cliqon!"</span>
+                                </div>
                             </div>
                         </section>
 

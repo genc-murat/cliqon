@@ -93,15 +93,18 @@ A comprehensive suite of **15 on-demand diagnostic tools** executed directly fro
   - **Structured Output** — Raw shell data is parsed into clean, interactive tables and cards.
   - **Copy Raw** — One-click clipboard copy of raw command output.
 
-### 🐳 Docker Container Manager
+### 🐳 Docker Architecture & Container Manager
 Manage your Docker infrastructure directly through the SSH connection:
 - **Container List** — Real-time view of all containers (Running, Stopped, Exited).
 - **Live Performance Stats** — Monitor real-time CPU and Memory (RAM) usage directly in the container list.
 - **Interactive Shell (Exec)** — Drop into a running container's shell (`bash` or `sh`) with a single click, right inside your active terminal.
 - **System Prune** — One-click cleanup of unused containers, networks, and images to free up server disk space.
-- **One-Click Controls** — Start, stop, and restart containers instantly.
+- **Bulk Actions** — Select multiple containers at once to perform concurrent Start, Stop, Kill, and Restart operations.
+- **Compose Visualizer** — Right-click any `docker-compose.yml` file in the SFTP browser to automatically generate an interactive architecture diagram.
+- **Volume Browser** — List system volumes and browse their simulated internal filesystem without manually exec-ing into containers.
+- **Port Manager** — Clean, extracted view of active port mappings with one-click clickable links to launch services in the browser.
 - **Terminal Log Stream** — Stream `docker logs -f` directly into your active terminal tab.
-- **Stats & Info** — View container ID, image, assigned ports, and uptime status.
+- **One-Click Controls** — Start, stop, and restart containers instantly.
 
 ### ↕ Resizable Panels & Layout
 - **Intelligent Resizing** — Interactively drag to resize the Sidebar, SFTP Browser, Snippet Manager, and Server Monitor

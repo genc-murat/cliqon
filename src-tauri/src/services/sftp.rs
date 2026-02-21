@@ -22,6 +22,8 @@ pub enum SftpCommand {
     Delete(String, bool),     // (path, is_dir)
     Stat(String),             // (path)
     Chmod(String, u32),       // (path, mode)
+    ReadFile(String),         // (remote_path)
+    WriteFile(String, String), // (remote_path, content)
     Close,
 }
 
@@ -205,6 +207,36 @@ impl SftpManager {
                         }
                     }
 
+                    SftpCommand::ReadFile(path) => {
+                        let res = (|| -> Result<String> {
+                            let mut remote_f = sftp.open(Path::new(&path))?;
+                            let mut buf = Vec::new();
+                            remote_f.read_to_end(&mut buf)?;
+                            Ok(String::from_utf8_lossy(&buf).into_owned())
+                        })();
+                        match res {
+                            Ok(content) => {
+                                let _ = app.emit(&format!("sftp_readfile_rx_{}", sid), content);
+                            }
+                            Err(e) => {
+                                let _ = app.emit(&format!("sftp_readfile_error_{}", sid), e.to_string());
+                            }
+                        }
+                    }
+
+                    SftpCommand::WriteFile(path, content) => {
+                        let res = (|| -> Result<()> {
+                            let mut remote_f = sftp.create(Path::new(&path))?;
+                            remote_f.write_all(content.as_bytes())?;
+                            Ok(())
+                        })();
+                        if res.is_ok() {
+                            let _ = app.emit(&format!("sftp_writefile_done_{}", sid), &path);
+                        } else {
+                            let _ = app.emit(&format!("sftp_writefile_error_{}", sid), res.unwrap_err().to_string());
+                        }
+                    }
+
                     SftpCommand::Close => {
                         break;
                     }
@@ -241,6 +273,14 @@ impl SftpManager {
 
     pub fn chmod(&self, session_id: &str, path: String, mode: u32) -> Result<()> {
         self.send(session_id, SftpCommand::Chmod(path, mode))
+    }
+
+    pub fn read_file(&self, session_id: &str, path: String) -> Result<()> {
+        self.send(session_id, SftpCommand::ReadFile(path))
+    }
+
+    pub fn write_file(&self, session_id: &str, path: String, content: String) -> Result<()> {
+        self.send(session_id, SftpCommand::WriteFile(path, content))
     }
 
     pub fn close_session(&self, session_id: &str) {

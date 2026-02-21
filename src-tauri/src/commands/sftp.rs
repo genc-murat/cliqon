@@ -103,6 +103,27 @@ pub async fn chmod_sftp(
 }
 
 #[tauri::command]
+pub async fn read_sftp_file(
+    state: State<'_, AppState>,
+    session_id: String,
+    path: String,
+) -> Result<()> {
+    state.sftp_manager.read_file(&session_id, path)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn write_sftp_file(
+    state: State<'_, AppState>,
+    session_id: String,
+    path: String,
+    content: String,
+) -> Result<()> {
+    state.sftp_manager.write_file(&session_id, path, content)?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn close_sftp(
     state: State<'_, AppState>,
     session_id: String,

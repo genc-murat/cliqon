@@ -43,6 +43,8 @@ pub fn run() {
             delete_sftp,
             stat_sftp,
             chmod_sftp,
+            read_sftp_file,
+            write_sftp_file,
             close_sftp
         ])
         .run(tauri::generate_context!())

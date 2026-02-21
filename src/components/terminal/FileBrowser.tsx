@@ -2,12 +2,13 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import {
     Folder, File as FileIcon, ArrowUpCircle, RefreshCw, ChevronLeft, ChevronRight,
-    Download, Trash2, Edit2, Copy, Settings, TerminalSquare
+    Download, Trash2, Edit2, Copy, Settings, TerminalSquare, FileText
 } from 'lucide-react';
 import { SshProfile, FileNode } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
 import { FilePropertiesModal } from './FilePropertiesModal';
+import { TextEditorModal } from './TextEditorModal';
 
 interface FileBrowserProps {
     profile: SshProfile;
@@ -32,6 +33,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     const [renamingFile, setRenamingFile] = useState<FileNode | null>(null);
     const [renameValue, setRenameValue] = useState('');
     const [propsModal, setPropsModal] = useState<string | null>(null); // path
+    const [editorFile, setEditorFile] = useState<FileNode | null>(null);
     const [statusMsg, setStatusMsg] = useState('');
     const renameInputRef = useRef<HTMLInputElement>(null);
     const { width, startResizing, isResizing } = useResizable(256, 160, 600);
@@ -208,6 +210,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
         setPropsModal(file.path);
     };
 
+    const handleOpenEditor = (file: FileNode) => {
+        closeContextMenu();
+        setEditorFile(file);
+    };
+
     const formatSize = (bytes: number) => {
         if (bytes === 0) return '0 B';
         const k = 1024;
@@ -361,6 +368,14 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                                 <Download size={14} className="text-[var(--accent-color)]" /> Download
                             </button>
                         )}
+                        {!contextMenu.file.is_dir && (
+                            <button
+                                onClick={() => handleOpenEditor(contextMenu.file)}
+                                className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-main)] hover:bg-[var(--hover-color)]"
+                            >
+                                <FileText size={14} className="text-[var(--accent-color)]" /> Edit file
+                            </button>
+                        )}
                         <button
                             onClick={() => handleStartRename(contextMenu.file)}
                             className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-main)] hover:bg-[var(--hover-color)]"
@@ -407,6 +422,16 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                 sessionId={sessionId}
                 onChmodDone={() => fetchDirectory(currentPath)}
             />
+
+            {/* Text Editor Modal */}
+            {editorFile && (
+                <TextEditorModal
+                    sessionId={sessionId}
+                    filePath={editorFile.path}
+                    fileName={editorFile.name}
+                    onClose={() => setEditorFile(null)}
+                />
+            )}
         </>
     );
 };

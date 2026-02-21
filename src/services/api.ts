@@ -66,6 +66,14 @@ export const api = {
         return await invoke('chmod_sftp', { sessionId, path, mode });
     },
 
+    readSftpFile: async (sessionId: string, path: string): Promise<void> => {
+        return await invoke('read_sftp_file', { sessionId, path });
+    },
+
+    writeSftpFile: async (sessionId: string, path: string, content: string): Promise<void> => {
+        return await invoke('write_sftp_file', { sessionId, path, content });
+    },
+
     closeSftp: async (sessionId: string): Promise<void> => {
         return await invoke('close_sftp', { sessionId });
     }

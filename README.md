@@ -12,6 +12,7 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 
 ### Connection Management
 - Save, edit, and delete SSH connection profiles
+- **Connection Importing** — easily migrate from **MobaXterm** (`.mxtsessions`) or **Termius** (JSON) with a single click
 - **Connection Groups** — organize profiles into collapsible groups in the sidebar; state is persisted across restarts
 - **Favorites** — star any connection to pin it to the top of the list
 - **Color Accents** — assign a custom color per connection (left-border highlight + subtle background tint in the sidebar)

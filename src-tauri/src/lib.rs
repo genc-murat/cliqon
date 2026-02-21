@@ -39,6 +39,7 @@ pub fn run() {
             save_profile,
             delete_profile,
             get_profile_secret,
+            import_profiles,
             test_ssh_connection,
             connect_ssh,
             write_to_pty,

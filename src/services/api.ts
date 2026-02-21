@@ -148,5 +148,9 @@ export const api = {
 
     stopLogTail: async (sessionId: string): Promise<void> => {
         return await invoke('stop_log_tail', { sessionId });
+    },
+
+    importProfiles: async (source: string, content: string): Promise<number> => {
+        return await invoke<number>('import_profiles', { source, content });
     }
 };

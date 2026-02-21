@@ -28,4 +28,5 @@ keyring = "3.6.3"
 uuid = { version = "1.21.0", features = ["v4"] }
 thiserror = "2.0.18"
 crossbeam-channel = "0.5.15"
+rust-ini = "0.21.3"
 

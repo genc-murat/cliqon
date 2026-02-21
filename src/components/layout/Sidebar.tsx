@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings, Shield, TerminalSquare, Plus, MoreVertical, Edit2, Trash2, Star, ChevronLeft, ChevronRight, ChevronDown, Search, X, Folder } from 'lucide-react';
+import { Settings, Shield, TerminalSquare, Plus, MoreVertical, Edit2, Trash2, Star, ChevronLeft, ChevronRight, ChevronDown, Search, X, Folder, Upload } from 'lucide-react';
 import { useConnections } from '../../hooks/useConnections';
 import { ProfileModal } from '../ui/ProfileModal';
 import { SettingsModal } from '../ui/SettingsModal';
 import { SshProfile } from '../../types/connection';
 import { useResizable } from '../../hooks/useResizable';
 import { Logo } from './Logo';
+import { ImportModal } from '../ui/ImportModal';
 
 interface SidebarProps {
     onConnect?: (profile: SshProfile) => void;
@@ -21,6 +22,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
     const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [editingProfile, setEditingProfile] = useState<SshProfile | null>(null);
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -147,6 +149,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                         >
                             <Plus size={16} />
                         </button>
+                        <button
+                            onClick={() => setIsImportModalOpen(true)}
+                            className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-2 rounded-md transition-colors"
+                            title="Import Connections"
+                        >
+                            <Upload size={16} />
+                        </button>
                         {sortedProfiles.map((p) => (
                             <button
                                 key={p.id}
@@ -173,13 +182,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <h2 className="text-xs uppercase tracking-wider text-[var(--text-muted)] font-semibold">Connections</h2>
-                                    <button
-                                        onClick={handleAdd}
-                                        className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-1 rounded-md transition-colors"
-                                        title="New connection (Ctrl+N)"
-                                    >
-                                        <Plus size={14} />
-                                    </button>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => setIsImportModalOpen(true)}
+                                            className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-1 rounded-md transition-colors"
+                                            title="Import connections"
+                                        >
+                                            <Upload size={14} />
+                                        </button>
+                                        <button
+                                            onClick={handleAdd}
+                                            className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-1 rounded-md transition-colors"
+                                            title="New connection (Ctrl+N)"
+                                        >
+                                            <Plus size={14} />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Search / filter */}
@@ -336,6 +354,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                 existingProfile={editingProfile}
                 existingGroups={existingGroups}
                 onSave={saveProfile}
+            />
+
+            <ImportModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onSuccess={() => {
+                    // profiles are updated in useConnections which is triggered by store changes
+                }}
             />
 
             <SettingsModal

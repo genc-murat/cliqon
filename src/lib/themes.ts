@@ -629,7 +629,7 @@ export const terminalThemes: Record<string, TerminalTheme> = {
             brightBlack: '#475569', brightRed: '#f43f5e', brightGreen: '#10b981', brightYellow: '#f59e0b', brightBlue: '#3b82f6', brightMagenta: '#8b5cf6', brightCyan: '#06b6d4', brightWhite: '#ffffff',
         }
     }
-];
+};
 
 export interface TerminalFont {
     fontFamily: string;

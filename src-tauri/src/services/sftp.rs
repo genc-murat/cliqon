@@ -81,7 +81,7 @@ impl SftpManager {
                                 let modified_at = stat.mtime.unwrap_or(0);
                                 nodes.push(FileNode {
                                     name,
-                                    path: p.to_string_lossy().into_owned(),
+                                    path: p.to_string_lossy().into_owned().replace("\\", "/"),
                                     is_dir,
                                     size,
                                     modified_at,

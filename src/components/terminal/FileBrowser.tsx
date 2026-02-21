@@ -2,13 +2,14 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import {
     Folder, File as FileIcon, ArrowUpCircle, RefreshCw, ChevronLeft, ChevronRight,
-    Download, Trash2, Edit2, Copy, Settings, TerminalSquare, FileText, Star, Bookmark, X as XIcon
+    Download, Trash2, Edit2, Copy, Settings, TerminalSquare, FileText, Star, Bookmark, X as XIcon, Network
 } from 'lucide-react';
 import { SshProfile, FileNode } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
 import { FilePropertiesModal } from './FilePropertiesModal';
 import { TextEditorModal } from './TextEditorModal';
+import { DockerComposeVisualizer } from './DockerComposeVisualizer';
 import { useSftpBookmarks } from '../../hooks/useSftpBookmarks';
 
 interface FileBrowserProps {
@@ -35,6 +36,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     const [renameValue, setRenameValue] = useState('');
     const [propsModal, setPropsModal] = useState<string | null>(null); // path
     const [editorFile, setEditorFile] = useState<FileNode | null>(null);
+    const [visualizeComposeFile, setVisualizeComposeFile] = useState<FileNode | null>(null);
     const [statusMsg, setStatusMsg] = useState('');
     const [bookmarksOpen, setBookmarksOpen] = useState(false);
     const renameInputRef = useRef<HTMLInputElement>(null);
@@ -216,6 +218,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     const handleOpenEditor = (file: FileNode) => {
         closeContextMenu();
         setEditorFile(file);
+    };
+
+    const handleVisualizeCompose = (file: FileNode) => {
+        closeContextMenu();
+        setVisualizeComposeFile(file);
     };
 
     const formatSize = (bytes: number) => {
@@ -426,6 +433,14 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                                 <FileText size={14} className="text-[var(--accent-color)]" /> Edit file
                             </button>
                         )}
+                        {!contextMenu.file.is_dir && (contextMenu.file.name === 'docker-compose.yml' || contextMenu.file.name === 'docker-compose.yaml' || contextMenu.file.name === 'compose.yml' || contextMenu.file.name === 'compose.yaml') && (
+                            <button
+                                onClick={() => handleVisualizeCompose(contextMenu.file)}
+                                className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-main)] hover:bg-[var(--hover-color)]"
+                            >
+                                <Network size={14} className="text-[var(--accent-color)]" /> Visualize Compose
+                            </button>
+                        )}
                         <button
                             onClick={() => handleStartRename(contextMenu.file)}
                             className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-main)] hover:bg-[var(--hover-color)]"
@@ -480,6 +495,15 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                     filePath={editorFile.path}
                     fileName={editorFile.name}
                     onClose={() => setEditorFile(null)}
+                />
+            )}
+
+            {/* Compose Visualizer Modal */}
+            {visualizeComposeFile && (
+                <DockerComposeVisualizer
+                    profile={profile}
+                    initialPath={visualizeComposeFile.path}
+                    onClose={() => setVisualizeComposeFile(null)}
                 />
             )}
         </>

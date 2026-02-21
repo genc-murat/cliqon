@@ -112,5 +112,17 @@ export const api = {
 
     dockerSystemPrune: async (profile: SshProfile): Promise<string> => {
         return await invoke<string>('docker_system_prune', { profile });
+    },
+
+    readDockerCompose: async (profile: SshProfile, path: string): Promise<string> => {
+        return await invoke<string>('read_docker_compose', { profile, path });
+    },
+
+    getDockerVolumes: async (profile: SshProfile): Promise<string> => {
+        return await invoke<string>('get_docker_volumes', { profile });
+    },
+
+    getDockerVolumeFiles: async (profile: SshProfile, volumeName: string, innerPath: string): Promise<string> => {
+        return await invoke<string>('get_docker_volume_files', { profile, volumeName, innerPath });
     }
 };

@@ -107,3 +107,57 @@ pub async fn get_docker_stats(
         .docker_manager
         .get_stats(&profile, secret.as_deref())
 }
+
+#[tauri::command]
+pub async fn read_docker_compose(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    path: String,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .read_docker_compose(&profile, secret.as_deref(), &path)
+}
+
+#[tauri::command]
+pub async fn get_docker_volumes(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .get_volumes(&profile, secret.as_deref())
+}
+
+#[tauri::command]
+pub async fn get_docker_volume_files(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    volume_name: String,
+    inner_path: String,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .get_volume_files(&profile, secret.as_deref(), &volume_name, &inner_path)
+}

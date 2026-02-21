@@ -86,4 +86,46 @@ impl DockerManager {
         let cmd = "docker stats --no-stream --format '{{json .}}'";
         self.exec_command(&session, cmd)
     }
+
+    pub fn read_docker_compose(&self, profile: &SshProfile, secret: Option<&str>, path: &str) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        if path.contains(';') || path.contains('&') || path.contains('|') {
+            return Err(AppError::Custom("Invalid path".to_string()));
+        }
+        let safe_path = path.replace("\\", "/");
+        let cmd = format!("cat '{}' 2>&1", safe_path.replace("'", "'\\''"));
+        self.exec_command(&session, &cmd)
+    }
+
+    pub fn get_volumes(&self, profile: &SshProfile, secret: Option<&str>) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        let cmd = "docker volume ls --format '{{json .}}'";
+        self.exec_command(&session, cmd)
+    }
+
+    pub fn get_volume_files(&self, profile: &SshProfile, secret: Option<&str>, volume_name: &str, inner_path: &str) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        if volume_name.contains(';') || volume_name.contains('&') || volume_name.contains('|') {
+            return Err(AppError::Custom("Invalid volume name".to_string()));
+        }
+        if inner_path.contains(';') || inner_path.contains('&') || inner_path.contains('|') {
+            return Err(AppError::Custom("Invalid inner path".to_string()));
+        }
+        
+        let path_to_list = if inner_path.trim() == "" || inner_path == "/" {
+            "/data".to_string()
+        } else {
+            // Clean up the path, ensuring it doesn't try to break out of /data
+            let safe_inner = inner_path.trim_start_matches('/');
+            format!("/data/{}", safe_inner)
+        };
+
+        // Output format: /data/filename|type|size  where type is dir, file, link, etc.
+        let cmd = format!(
+            "docker run --rm -v '{}':/data alpine /bin/sh -c 'find \"{}\" -maxdepth 1 -exec stat -c \"%n|%F|%s|%Y\" {{}} +'",
+            volume_name.replace("'", "'\\''"),
+            path_to_list.replace("\"", "\\\"")
+        );
+        self.exec_command(&session, &cmd)
+    }
 }

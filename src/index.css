@@ -11,14 +11,25 @@
   --bg-primary: #ffffff;
   --bg-sidebar: #f4f4f5;
   --text-main: #18181b;
+  --text-muted: #71717a;
   --accent-color: #3b82f6;
+  --border-color: #e4e4e7;
+  --hover-color: #f4f4f5;
 }
 
 [data-theme='dark'] {
   --bg-primary: #09090b;
   --bg-sidebar: #18181b;
   --text-main: #fafafa;
+  --text-muted: #a1a1aa;
   --accent-color: #60a5fa;
+  --border-color: #27272a;
+  --hover-color: #27272a;
+}
+
+.theme-glass {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 body {

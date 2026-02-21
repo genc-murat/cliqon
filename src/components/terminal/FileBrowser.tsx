@@ -236,7 +236,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                 {/* Collapse Toggle */}
                 <button
                     onClick={(e) => { e.stopPropagation(); toggleCollapse(); }}
-                    className="absolute -right-3 top-3 z-50 w-6 h-6 rounded-full bg-[var(--bg-sidebar)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] shadow-sm transition-colors"
+                    className="absolute -right-3 top-3 z-30 w-6 h-6 rounded-full bg-[var(--bg-sidebar)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] shadow-sm transition-colors"
                     title={isCollapsed ? 'Expand SFTP browser' : 'Collapse SFTP browser'}
                 >
                     {isCollapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}

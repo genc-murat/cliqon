@@ -80,7 +80,7 @@ export const SnippetManager: React.FC<SnippetManagerProps> = ({ profile, session
             {/* Collapse Toggle on Left edge */}
             <button
                 onClick={toggleCollapse}
-                className="absolute -left-3 top-3 z-50 w-6 h-6 rounded-full bg-[var(--bg-sidebar)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] shadow-sm transition-colors"
+                className="absolute -left-3 top-3 z-30 w-6 h-6 rounded-full bg-[var(--bg-sidebar)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] shadow-sm transition-colors"
                 title={isCollapsed ? 'Expand snippets' : 'Collapse snippets'}
             >
                 {isCollapsed ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
@@ -186,7 +186,7 @@ export const SnippetManager: React.FC<SnippetManagerProps> = ({ profile, session
 
                     {/* Resize Handle */}
                     <div
-                        className="absolute left-0 top-0 bottom-0 w-1.5 -ml-1.5 cursor-col-resize hover:bg-[var(--accent-color)] z-50 transition-colors pointer-events-auto"
+                        className="absolute left-0 top-0 bottom-0 w-1.5 -ml-1.5 cursor-col-resize hover:bg-[var(--accent-color)] z-30 transition-colors pointer-events-auto"
                         onMouseDown={startResizing}
                     >
                         <div className={`w-full h-full ${isResizing ? 'bg-[var(--accent-color)]' : ''}`} />

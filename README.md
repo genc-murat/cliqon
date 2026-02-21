@@ -67,11 +67,31 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - **System Insights** — Fast parsing of Hostname, OS Distribution, and Uptime via background SSH exec commands
 
 ### 🌐 Network Tools
-- **Ping** — Run remote ICMP ping with latency sparkline chart and Min/Avg/Max summary cards
-- **Traceroute** — Visualize network hops in a clean table with Host, IP, and RTT columns
-- **DNS Lookup** — Query DNS records with color-coded type badges (A, AAAA, CNAME, MX)
-- **On-Demand** — Run diagnostics from the connected server via SSH exec; no continuous polling
-- **Copy Output** — One-click clipboard copy of raw command output
+A comprehensive suite of **15 on-demand diagnostic tools** executed directly from the connected server via SSH:
+- **Core Connectivity**:
+  - **Ping** — Remote ICMP ping with latency sparklines and Min/Avg/Max summary.
+  - **Traceroute** — Visualize network hops with Host, IP, and RTT tracking.
+  - **DNS Lookup** — Query records with color-coded type badges (A, AAAA, CNAME, MX).
+- **Security & Auditing**:
+  - **Port Scan** — Scan common service ports on any remote host.
+  - **SSL Info** — Detailed certificate info (Validity, Issuer, SANs) for secure hosts.
+  - **Firewall** — Instant status check for `ufw` or `iptables` rules.
+- **Service Monitoring**:
+  - **Listening Ports** — Audit all ports the server is currently listening on.
+  - **Connections** — Real-time list of active TCP/UDP connections.
+  - **HTTP Check** — Audit HTTP/S status and response headers for any URL.
+- **Server Infrastructure**:
+  - **Interfaces** — View local network interfaces and assigned IP addresses.
+  - **Public IP** — Quickly identify the server's external presence.
+  - **Socket Stats** — High-level summary of TCP, UDP, and Raw socket counts.
+- **Routing & Performance**:
+  - **Routes** — View the server's routing table (`ip route`).
+  - **ARP Neighbors** — Display local network neighbors (ARP cache).
+  - **Bandwidth** — Real-time RX/TX traffic counters per interface in MB.
+- **Power-User Ready**:
+  - **Context-Aware** — Input is automatically disabled for server-local diagnostics.
+  - **Structured Output** — Raw shell data is parsed into clean, interactive tables and cards.
+  - **Copy Raw** — One-click clipboard copy of raw command output.
 
 ### ↕ Resizable Panels & Layout
 - **Intelligent Resizing** — Interactively drag to resize the Sidebar, SFTP Browser, Snippet Manager, and Server Monitor

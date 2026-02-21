@@ -45,6 +45,24 @@ impl NetToolManager {
                 "dig +noall +answer {} ANY 2>&1 || nslookup {} 2>&1 || host {} 2>&1",
                 safe_target, safe_target, safe_target
             ),
+            "portscan" => format!(
+                "nc -zv -w 2 {} 21 22 80 443 3306 5432 6379 8080 8123 2>&1",
+                safe_target
+            ),
+            "connections" => "ss -tunap 2>&1 || netstat -tunap 2>&1".to_string(),
+            "interfaces" => "ip -c addr 2>&1 || ifconfig 2>&1".to_string(),
+            "public_ip" => "curl -s https://ifconfig.me 2>&1 || curl -s https://api.ipify.org 2>&1".to_string(),
+            "routes" => "ip -c route 2>&1 || route -n 2>&1".to_string(),
+            "neighbors" => "ip -c neigh 2>&1 || arp -n 2>&1".to_string(),
+            "listening" => "ss -tuln 2>&1 || netstat -tuln 2>&1".to_string(),
+            "http_check" => format!("curl -IL --max-time 10 {} 2>&1", safe_target),
+            "ssl_check" => format!(
+                "echo | openssl s_client -connect {}:443 -servername {} -showcerts 2>/dev/null | openssl x509 -text 2>&1",
+                safe_target, safe_target
+            ),
+            "stats_summary" => "ss -s 2>&1 || netstat -s 2>&1".to_string(),
+            "bandwidth_stats" => "cat /proc/net/dev 2>&1".to_string(),
+            "firewall_status" => "sudo ufw status 2>&1 || sudo iptables -L -n 2>&1".to_string(),
             _ => return Err(AppError::Custom(format!("Unknown tool type: {}", tool_type))),
         };
 

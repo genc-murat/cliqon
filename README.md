@@ -22,6 +22,13 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 - Integrated split-view SFTP panel per terminal tab
 - Directory navigation (double-click to open, Up button to go back)
 - **Drag-and-drop** file upload from your desktop into the remote directory
+- **Context Menu** — Right-click files or folders for:
+  - ⬇️ **Download** — Save remote files to your local machine
+  - ✏️ **Rename** — Inline file and directory renaming
+  - 🗑️ **Delete** — Securely remove remote items
+  - 📋 **Copy Path** — Fast path copying to clipboard
+  - 💻 **cd to Terminal** — Instant navigation in the active terminal
+- **Properties & Permissions** — View detailed file info and interactively edit permissions (chmod)
 - Refresh button and file size display on hover
 
 ### ⚡ Connection Snippets

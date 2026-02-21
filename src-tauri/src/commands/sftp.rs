@@ -60,6 +60,49 @@ pub async fn download_sftp(
 }
 
 #[tauri::command]
+pub async fn rename_sftp(
+    state: State<'_, AppState>,
+    session_id: String,
+    old_path: String,
+    new_path: String,
+) -> Result<()> {
+    state.sftp_manager.rename(&session_id, old_path, new_path)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_sftp(
+    state: State<'_, AppState>,
+    session_id: String,
+    path: String,
+    is_dir: bool,
+) -> Result<()> {
+    state.sftp_manager.delete(&session_id, path, is_dir)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn stat_sftp(
+    state: State<'_, AppState>,
+    session_id: String,
+    path: String,
+) -> Result<()> {
+    state.sftp_manager.stat(&session_id, path)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn chmod_sftp(
+    state: State<'_, AppState>,
+    session_id: String,
+    path: String,
+    mode: u32,
+) -> Result<()> {
+    state.sftp_manager.chmod(&session_id, path, mode)?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn close_sftp(
     state: State<'_, AppState>,
     session_id: String,

@@ -39,6 +39,10 @@ pub fn run() {
             list_sftp_dir,
             upload_sftp,
             download_sftp,
+            rename_sftp,
+            delete_sftp,
+            stat_sftp,
+            chmod_sftp,
             close_sftp
         ])
         .run(tauri::generate_context!())

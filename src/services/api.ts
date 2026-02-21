@@ -50,6 +50,22 @@ export const api = {
         return await invoke('download_sftp', { sessionId, remotePath, localPath });
     },
 
+    renameSftp: async (sessionId: string, oldPath: string, newPath: string): Promise<void> => {
+        return await invoke('rename_sftp', { sessionId, oldPath, newPath });
+    },
+
+    deleteSftp: async (sessionId: string, path: string, isDir: boolean): Promise<void> => {
+        return await invoke('delete_sftp', { sessionId, path, isDir });
+    },
+
+    statSftp: async (sessionId: string, path: string): Promise<void> => {
+        return await invoke('stat_sftp', { sessionId, path });
+    },
+
+    chmodSftp: async (sessionId: string, path: string, mode: number): Promise<void> => {
+        return await invoke('chmod_sftp', { sessionId, path, mode });
+    },
+
     closeSftp: async (sessionId: string): Promise<void> => {
         return await invoke('close_sftp', { sessionId });
     }

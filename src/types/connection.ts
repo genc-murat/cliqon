@@ -27,3 +27,15 @@ export interface FileNode {
     size: number;
     modified_at: number;
 }
+
+export interface FileProperties {
+    name: string;
+    path: string;
+    is_dir: boolean;
+    size: number;
+    modified_at: number;
+    permissions: number;
+    permissions_display: string;
+    uid: number;
+    gid: number;
+}

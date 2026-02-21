@@ -33,6 +33,7 @@ function App() {
       id: sessionId,
       title: profile.name,
       profile,
+      color: profile.color,
       panes: [pane],
       activePane: pane.id,
       managementPanelOpen: autoOpenMonitor,

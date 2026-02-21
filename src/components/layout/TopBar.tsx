@@ -3,6 +3,7 @@ import React from 'react';
 export interface TabData {
     id: string; // usually session ID
     title: string;
+    color?: string;
 }
 
 interface TopBarProps {
@@ -35,7 +36,11 @@ export const TopBar: React.FC<TopBarProps> = ({ tabs, activeTab, onTabClose, onT
                             : 'bg-[var(--bg-sidebar)] border-transparent text-[var(--text-muted)] hover:bg-[var(--hover-color)]'
                         }
                     `}
-                    style={{ marginBottom: activeTab === tab.id ? '-1px' : '0' }}
+                    style={{
+                        marginBottom: activeTab === tab.id ? '-1px' : '0',
+                        borderTop: tab.color ? `2px solid ${tab.color}` : undefined,
+                        backgroundColor: activeTab === tab.id && tab.color ? `${tab.color}15` : undefined
+                    }}
                 >
                     <span className="truncate flex-1 select-none">{tab.title}</span>
                     {activeTab === tab.id && onSplit && (

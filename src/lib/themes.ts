@@ -335,6 +335,118 @@ export const themes: Record<string, Theme> = {
             border: '#000000',
             hover: '#f4f4f5',
         }
+    },
+    neonTokyo: {
+        id: 'neonTokyo',
+        name: 'Neon Tokyo',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#0d0d1a',
+            bgSidebar: '#12122a',
+            textMain: '#e0e0ff',
+            textMuted: '#8888aa',
+            accent: '#00f0ff',
+            border: '#2a2a4a',
+            hover: '#1a1a3a',
+        }
+    },
+    vaporwave: {
+        id: 'vaporwave',
+        name: 'Vaporwave',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#1a0a2e',
+            bgSidebar: '#2d1b4e',
+            textMain: '#f8f0ff',
+            textMuted: '#b8a0d8',
+            accent: '#ff71ce',
+            border: '#4a2875',
+            hover: '#3d2060',
+        }
+    },
+    auroraBorealis: {
+        id: 'auroraBorealis',
+        name: 'Aurora Borealis',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#020810',
+            bgSidebar: '#061018',
+            textMain: '#e0f0ff',
+            textMuted: '#7090b0',
+            accent: '#00ff88',
+            border: '#0a2030',
+            hover: '#0c2838',
+        }
+    },
+    cherryBlossom: {
+        id: 'cherryBlossom',
+        name: 'Cherry Blossom',
+        type: 'light',
+        colors: {
+            bgPrimary: '#fff8f8',
+            bgSidebar: '#fff0f2',
+            textMain: '#3a2830',
+            textMuted: '#907078',
+            accent: '#e05070',
+            border: '#f8d0d8',
+            hover: '#f8e0e4',
+        }
+    },
+    lavenderMist: {
+        id: 'lavenderMist',
+        name: 'Lavender Mist',
+        type: 'light',
+        colors: {
+            bgPrimary: '#faf8ff',
+            bgSidebar: '#f4f0ff',
+            textMain: '#2a2040',
+            textMuted: '#706090',
+            accent: '#9060c0',
+            border: '#e0d8f0',
+            hover: '#ece4f8',
+        }
+    },
+    peachCream: {
+        id: 'peachCream',
+        name: 'Peach Cream',
+        type: 'light',
+        colors: {
+            bgPrimary: '#fff8f0',
+            bgSidebar: '#fff0e4',
+            textMain: '#3a2820',
+            textMuted: '#907060',
+            accent: '#e07040',
+            border: '#f8e0d0',
+            hover: '#f8ece0',
+        }
+    },
+    crtAmber: {
+        id: 'crtAmber',
+        name: 'CRT Amber',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#0a0800',
+            bgSidebar: '#141008',
+            textMain: '#ffb000',
+            textMuted: '#806000',
+            accent: '#ffcc00',
+            border: '#302800',
+            hover: '#201800',
+        }
+    },
+    paperInk: {
+        id: 'paperInk',
+        name: 'Paper & Ink',
+        type: 'light',
+        colors: {
+            bgPrimary: '#f8f4e8',
+            bgSidebar: '#f0ece0',
+            textMain: '#1a1410',
+            textMuted: '#504840',
+            accent: '#2a2010',
+            border: '#d8d0c0',
+            hover: '#e8e4d8',
+        }
     }
 };
 
@@ -627,6 +739,78 @@ export const terminalThemes: Record<string, TerminalTheme> = {
             background: '#0f172a', foreground: '#94a3b8', cursor: '#38bdf8', selectionBackground: '#1e293b',
             black: '#0f172a', red: '#f43f5e', green: '#10b981', yellow: '#f59e0b', blue: '#3b82f6', magenta: '#8b5cf6', cyan: '#06b6d4', white: '#f8fafc',
             brightBlack: '#475569', brightRed: '#f43f5e', brightGreen: '#10b981', brightYellow: '#f59e0b', brightBlue: '#3b82f6', brightMagenta: '#8b5cf6', brightCyan: '#06b6d4', brightWhite: '#ffffff',
+        }
+    },
+    neonTokyo: {
+        id: 'neonTokyo',
+        name: 'Neon Tokyo',
+        colors: {
+            background: '#0d0d1a', foreground: '#e0e0ff', cursor: '#00f0ff', selectionBackground: '#2a2a5a',
+            black: '#0a0a18', red: '#ff0080', green: '#00ff9f', yellow: '#ffcc00', blue: '#00c8ff', magenta: '#cc00ff', cyan: '#00f0ff', white: '#d0d0f0',
+            brightBlack: '#404060', brightRed: '#ff40a0', brightGreen: '#40ffc0', brightYellow: '#ffe040', brightBlue: '#40d0ff', brightMagenta: '#e040ff', brightCyan: '#40ffff', brightWhite: '#ffffff',
+        }
+    },
+    vaporwave: {
+        id: 'vaporwave',
+        name: 'Vaporwave',
+        colors: {
+            background: '#1a0a2e', foreground: '#f8f0ff', cursor: '#ff71ce', selectionBackground: '#4a2875',
+            black: '#120520', red: '#ff5555', green: '#50fa7b', yellow: '#f1fa8c', blue: '#bd93f9', magenta: '#ff79c6', cyan: '#8be9fd', white: '#f8f0ff',
+            brightBlack: '#6272a4', brightRed: '#ff6e6e', brightGreen: '#69ff94', brightYellow: '#ffffa5', brightBlue: '#d6acff', brightMagenta: '#ff92df', brightCyan: '#a4ffff', brightWhite: '#ffffff',
+        }
+    },
+    auroraBorealis: {
+        id: 'auroraBorealis',
+        name: 'Aurora Borealis',
+        colors: {
+            background: '#020810', foreground: '#c0d8f0', cursor: '#00ff88', selectionBackground: '#0a2838',
+            black: '#040810', red: '#ff4060', green: '#00ff88', yellow: '#40ffa0', blue: '#0088ff', magenta: '#a040ff', cyan: '#00d8d8', white: '#c0d8f0',
+            brightBlack: '#304050', brightRed: '#ff6080', brightGreen: '#40ffb0', brightYellow: '#80ffc0', brightBlue: '#40a0ff', brightMagenta: '#c060ff', brightCyan: '#40f0f0', brightWhite: '#ffffff',
+        }
+    },
+    cherryBlossom: {
+        id: 'cherryBlossom',
+        name: 'Cherry Blossom',
+        colors: {
+            background: '#fff8f8', foreground: '#3a2830', cursor: '#e05070', selectionBackground: '#f8d0d8',
+            black: '#3a2830', red: '#c03050', green: '#408060', yellow: '#a08040', blue: '#5060a0', magenta: '#a04080', cyan: '#408080', white: '#f8f0f0',
+            brightBlack: '#706068', brightRed: '#e05070', brightGreen: '#60a080', brightYellow: '#c0a060', brightBlue: '#7080c0', brightMagenta: '#c060a0', brightCyan: '#60a0a0', brightWhite: '#ffffff',
+        }
+    },
+    lavenderMist: {
+        id: 'lavenderMist',
+        name: 'Lavender Mist',
+        colors: {
+            background: '#faf8ff', foreground: '#2a2040', cursor: '#9060c0', selectionBackground: '#e0d8f0',
+            black: '#2a2040', red: '#b04060', green: '#408060', yellow: '#a08040', blue: '#5060a0', magenta: '#8040a0', cyan: '#408080', white: '#f0e8f8',
+            brightBlack: '#605070', brightRed: '#d06080', brightGreen: '#60a080', brightYellow: '#c0a060', brightBlue: '#7080c0', brightMagenta: '#a060c0', brightCyan: '#60a0a0', brightWhite: '#ffffff',
+        }
+    },
+    peachCream: {
+        id: 'peachCream',
+        name: 'Peach Cream',
+        colors: {
+            background: '#fff8f0', foreground: '#3a2820', cursor: '#e07040', selectionBackground: '#f8e0d0',
+            black: '#3a2820', red: '#b04030', green: '#408050', yellow: '#a08040', blue: '#5060a0', magenta: '#a04080', cyan: '#408070', white: '#f8f0e8',
+            brightBlack: '#705848', brightRed: '#d06050', brightGreen: '#60a070', brightYellow: '#c0a060', brightBlue: '#7080c0', brightMagenta: '#c060a0', brightCyan: '#60a090', brightWhite: '#ffffff',
+        }
+    },
+    crtAmber: {
+        id: 'crtAmber',
+        name: 'CRT Amber',
+        colors: {
+            background: '#0a0800', foreground: '#ffb000', cursor: '#ffb000', selectionBackground: '#302800',
+            black: '#0a0800', red: '#ff6000', green: '#ffb000', yellow: '#ffd000', blue: '#cc9000', magenta: '#ff9000', cyan: '#ffc000', white: '#ffd800',
+            brightBlack: '#403000', brightRed: '#ff8000', brightGreen: '#ffc000', brightYellow: '#ffe000', brightBlue: '#e0a000', brightMagenta: '#ffa000', brightCyan: '#ffd000', brightWhite: '#ffff80',
+        }
+    },
+    paperInk: {
+        id: 'paperInk',
+        name: 'Paper & Ink',
+        colors: {
+            background: '#f8f4e8', foreground: '#1a1410', cursor: '#1a1410', selectionBackground: '#d8d0c0',
+            black: '#1a1410', red: '#802020', green: '#204020', yellow: '#605020', blue: '#203060', magenta: '#502050', cyan: '#204040', white: '#f0ece0',
+            brightBlack: '#504840', brightRed: '#a03030', brightGreen: '#306030', brightYellow: '#807030', brightBlue: '#305080', brightMagenta: '#703070', brightCyan: '#306060', brightWhite: '#ffffff',
         }
     }
 };

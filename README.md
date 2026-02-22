@@ -20,7 +20,7 @@ While there are many SSH clients, Cliqon is built for the **modern developer wor
 - **Seamless Collaboration:** Zero-config, P2P network sharing to securely send profiles to teammates.
 - **Intelligence:** ML-powered autocomplete that learns your habits locally and privately.
 - **Integrated Toolbox:** Docker management, server health monitoring, and 15+ network diagnostic tools built-in.
-- **Deep Customization:** 20+ premium themes and fine-grained UI control.
+- **Deep Customization:** 30+ premium themes and fine-grained UI control.
 
 ---
 
@@ -149,7 +149,7 @@ Share SSH connection profiles (including passwords) with teammates on the same l
 - **Split Terminal** — split any tab horizontally (`Ctrl+Shift+H`) to run multiple SSH sessions to the same host side-by-side
 - **Draggable Dividers** — interactively resize terminal panes within a tab
 - **Multi-Tab** — run multiple independent SSH sessions
-- **Terminal Themes** — 27+ built-in themes including Night Owl, Cobalt2, Catppuccin, Rose Pine, Tokyo Night, One Dark, and many more
+- **Terminal Themes** — 35+ built-in themes including Night Owl, Cobalt2, Catppuccin, Rose Pine, Tokyo Night, One Dark, Neon Tokyo, Vaporwave, Aurora Borealis, and many more
 - **Cursor Customization** — Choose between Block, Underline, or Bar cursor styles with optional blinking
 - **Dynamic ANSI Colors** — "Match App Theme" automatically switches between Light and Dark optimized ANSI palettes for maximum readability
 - **Font Settings** — choose font family, size, and line height with a live preview
@@ -182,7 +182,7 @@ Share SSH connection profiles (including passwords) with teammates on the same l
 - Add/delete snippets with a clean sidebar panel
 
 ### Theming & Appearance
-- **App Themes** — 23+ high-quality themes: Cyberpunk Red, Hacker Void, Coffee Shop, Forest Moss, Amethyst, and many more
+- **App Themes** — 31+ high-quality themes: Cyberpunk Red, Hacker Void, Neon Tokyo, Vaporwave, Aurora Borealis, Cherry Blossom, Lavender Mist, Peach Cream, CRT Amber, and many more
 - **Sidebar-Driven Settings** — Completely redesigned, premium settings interface for easier customization
 - **Terminal Palette Preview** — Visualize font colors (ANSI) directly in the Settings menu
 - **Collapsible panels** — Sidebar, SFTP Browser, and Snippet Manager can each be collapsed to an icon rail for maximum terminal space; sidebar state is persisted across restarts

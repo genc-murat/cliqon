@@ -1,5 +1,5 @@
+use crate::models::profile::{AuthMethod, SshProfile};
 use serde::{Deserialize, Serialize};
-use crate::models::profile::{SshProfile, AuthMethod};
 
 /// Information about a discovered peer on the local network
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -99,4 +99,171 @@ pub struct SharingStatus {
     pub local_ip: String,
     pub http_port: u16,
     pub peer_count: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_profile() -> SshProfile {
+        SshProfile {
+            id: "test-id-123".to_string(),
+            name: "Test Server".to_string(),
+            host: "192.168.1.100".to_string(),
+            port: 2222,
+            username: "testuser".to_string(),
+            auth_method: AuthMethod::Password,
+            category: Some("Production".to_string()),
+            private_key_path: None,
+            obfuscated_secret: None,
+            tunnels: None,
+            is_favorite: Some(true),
+            color: Some("#ff5500".to_string()),
+        }
+    }
+
+    #[test]
+    fn test_shareable_profile_from_profile() {
+        let profile = create_test_profile();
+        let secret = Some("mypassword".to_string());
+
+        let shareable = ShareableProfile::from_profile(&profile, secret.clone());
+
+        assert_ne!(shareable.id, profile.id);
+        assert_eq!(shareable.name, profile.name);
+        assert_eq!(shareable.host, profile.host);
+        assert_eq!(shareable.port, profile.port);
+        assert_eq!(shareable.secret, secret);
+    }
+
+    #[test]
+    fn test_shareable_profile_to_ssh_profile() {
+        let shareable = ShareableProfile {
+            id: "share-id-456".to_string(),
+            name: "Shared Server".to_string(),
+            host: "10.0.0.1".to_string(),
+            port: 22,
+            username: "shareduser".to_string(),
+            auth_method: AuthMethod::PrivateKey,
+            category: None,
+            private_key_path: Some("/path/to/key".to_string()),
+            secret: Some("keypassphrase".to_string()),
+            is_favorite: Some(false),
+            color: None,
+        };
+
+        let ssh_profile = shareable.to_ssh_profile();
+
+        assert_eq!(ssh_profile.id, shareable.id);
+        assert_eq!(ssh_profile.name, shareable.name);
+        assert_eq!(ssh_profile.host, shareable.host);
+        assert!(ssh_profile.obfuscated_secret.is_none());
+        assert_eq!(ssh_profile.tunnels, Some(Vec::new()));
+    }
+
+    #[test]
+    fn test_beacon_packet_serialization() {
+        let beacon = BeaconPacket {
+            id: "instance-789".to_string(),
+            display_name: "My Machine".to_string(),
+            http_port: 8080,
+        };
+
+        let json = serde_json::to_string(&beacon).unwrap();
+        let decoded: BeaconPacket = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(decoded.id, beacon.id);
+        assert_eq!(decoded.http_port, beacon.http_port);
+    }
+
+    #[test]
+    fn test_peer_info_serialization() {
+        let peer = PeerInfo {
+            id: "peer-1".to_string(),
+            display_name: "Remote Machine".to_string(),
+            ip: "192.168.1.50".to_string(),
+            port: 19876,
+            last_seen: 1700000000,
+        };
+
+        let json = serde_json::to_string(&peer).unwrap();
+        let decoded: PeerInfo = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(decoded.id, peer.id);
+        assert_eq!(decoded.ip, peer.ip);
+    }
+
+    #[test]
+    fn test_share_payload_serialization() {
+        let payload = SharePayload {
+            sender_name: "Alice".to_string(),
+            sender_ip: "192.168.1.10".to_string(),
+            profiles: vec![],
+            timestamp: 1700000000,
+        };
+
+        let json = serde_json::to_string(&payload).unwrap();
+        let decoded: SharePayload = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(decoded.sender_name, payload.sender_name);
+        assert_eq!(decoded.profiles.len(), 0);
+    }
+
+    #[test]
+    fn test_pending_share_serialization() {
+        let share = PendingShare {
+            id: "share-xyz".to_string(),
+            from_name: "Bob".to_string(),
+            from_ip: "10.0.0.5".to_string(),
+            profiles: vec![],
+            received_at: 1700000000,
+        };
+
+        let json = serde_json::to_string(&share).unwrap();
+        let decoded: PendingShare = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(decoded.id, share.id);
+        assert_eq!(decoded.from_name, share.from_name);
+    }
+
+    #[test]
+    fn test_sharing_status_serialization() {
+        let status = SharingStatus {
+            active: true,
+            display_name: "My PC".to_string(),
+            local_ip: "192.168.1.100".to_string(),
+            http_port: 8080,
+            peer_count: 3,
+        };
+
+        let json = serde_json::to_string(&status).unwrap();
+        let decoded: SharingStatus = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(decoded.active, true);
+        assert_eq!(decoded.peer_count, 3);
+    }
+
+    #[test]
+    fn test_shareable_profile_conversion_preserves_category() {
+        let profile = SshProfile {
+            id: "cat-test".to_string(),
+            name: "DB Server".to_string(),
+            host: "db.example.com".to_string(),
+            port: 5432,
+            username: "postgres".to_string(),
+            auth_method: AuthMethod::Password,
+            category: Some("Databases".to_string()),
+            private_key_path: None,
+            obfuscated_secret: None,
+            tunnels: None,
+            is_favorite: Some(false),
+            color: Some("#0000ff".to_string()),
+        };
+
+        let shareable = ShareableProfile::from_profile(&profile, None);
+        assert_eq!(shareable.category, Some("Databases".to_string()));
+
+        let converted_back = shareable.to_ssh_profile();
+        assert_eq!(converted_back.category, Some("Databases".to_string()));
+    }
 }

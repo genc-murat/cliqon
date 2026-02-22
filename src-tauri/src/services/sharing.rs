@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::net::UdpSocket;
-use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -123,8 +126,8 @@ impl SharingService {
             timestamp: now_secs(),
         };
 
-        let body = serde_json::to_string(&payload)
-            .map_err(|e| format!("Serialization error: {}", e))?;
+        let body =
+            serde_json::to_string(&payload).map_err(|e| format!("Serialization error: {}", e))?;
 
         // Use a simple blocking HTTP POST via std::net
         let url = format!("{}:{}", peer.ip, peer.port);
@@ -136,19 +139,25 @@ impl SharingService {
         );
 
         let stream = std::net::TcpStream::connect_timeout(
-            &format!("{}:{}", peer.ip, peer.port).parse().map_err(|e| format!("Invalid address: {}", e))?,
+            &format!("{}:{}", peer.ip, peer.port)
+                .parse()
+                .map_err(|e| format!("Invalid address: {}", e))?,
             std::time::Duration::from_secs(5),
-        ).map_err(|e| format!("Connection failed: {}", e))?;
+        )
+        .map_err(|e| format!("Connection failed: {}", e))?;
 
         use std::io::Write;
         let mut stream = stream;
-        stream.write_all(request.as_bytes())
+        stream
+            .write_all(request.as_bytes())
             .map_err(|e| format!("Write failed: {}", e))?;
 
         // Read response
         use std::io::Read;
         let mut response = String::new();
-        stream.set_read_timeout(Some(std::time::Duration::from_secs(5))).ok();
+        stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+            .ok();
         let _ = stream.read_to_string(&mut response);
 
         if response.contains("200 OK") {
@@ -160,9 +169,12 @@ impl SharingService {
 
     pub fn ping_peer(&self, ip: &str, port: u16) -> Result<PeerInfo, String> {
         let stream = std::net::TcpStream::connect_timeout(
-            &format!("{}:{}", ip, port).parse().map_err(|e| format!("Invalid address: {}", e))?,
+            &format!("{}:{}", ip, port)
+                .parse()
+                .map_err(|e| format!("Invalid address: {}", e))?,
             std::time::Duration::from_secs(3),
-        ).map_err(|e| format!("Connection failed: {}", e))?;
+        )
+        .map_err(|e| format!("Connection failed: {}", e))?;
 
         let request = format!(
             "GET /ping HTTP/1.1\r\nHost: {}:{}\r\nConnection: close\r\n\r\n",
@@ -171,12 +183,15 @@ impl SharingService {
 
         use std::io::Write;
         let mut stream = stream;
-        stream.write_all(request.as_bytes())
+        stream
+            .write_all(request.as_bytes())
             .map_err(|e| format!("Write failed: {}", e))?;
 
         use std::io::Read;
         let mut response = String::new();
-        stream.set_read_timeout(Some(std::time::Duration::from_secs(3))).ok();
+        stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(3)))
+            .ok();
         let _ = stream.read_to_string(&mut response);
 
         if response.contains("200 OK") {
@@ -248,7 +263,10 @@ impl SharingService {
                             if ip.is_ipv4() && !ip.is_loopback() {
                                 let ip_str = ip.to_string();
                                 if let Some(broadcast) = subnet_broadcast(&ip_str) {
-                                    let _ = socket.send_to(&data, format!("{}:{}", broadcast, DISCOVERY_PORT));
+                                    let _ = socket.send_to(
+                                        &data,
+                                        format!("{}:{}", broadcast, DISCOVERY_PORT),
+                                    );
                                 }
                             }
                         }
@@ -343,12 +361,14 @@ impl SharingService {
                                 tiny_http::Header::from_bytes(
                                     &b"Content-Type"[..],
                                     &b"application/json"[..],
-                                ).unwrap()
+                                )
+                                .unwrap(),
                             );
                         let _ = request.respond(response);
                     } else {
-                        let response = tiny_http::Response::from_string("{\"error\":\"invalid payload\"}")
-                            .with_status_code(400);
+                        let response =
+                            tiny_http::Response::from_string("{\"error\":\"invalid payload\"}")
+                                .with_status_code(400);
                         let _ = request.respond(response);
                     }
                 } else if url == "/ping" {
@@ -356,8 +376,8 @@ impl SharingService {
                         .with_status_code(200);
                     let _ = request.respond(response);
                 } else {
-                    let response = tiny_http::Response::from_string("not found")
-                        .with_status_code(404);
+                    let response =
+                        tiny_http::Response::from_string("not found").with_status_code(404);
                     let _ = request.respond(response);
                 }
             }
@@ -381,5 +401,144 @@ fn subnet_broadcast(ip: &str) -> Option<String> {
         Some(format!("{}.{}.{}.255", parts[0], parts[1], parts[2]))
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_subnet_broadcast_valid_ipv4() {
+        assert_eq!(
+            subnet_broadcast("192.168.1.100"),
+            Some("192.168.1.255".to_string())
+        );
+        assert_eq!(
+            subnet_broadcast("10.0.0.50"),
+            Some("10.0.0.255".to_string())
+        );
+        assert_eq!(
+            subnet_broadcast("172.16.5.10"),
+            Some("172.16.5.255".to_string())
+        );
+    }
+
+    #[test]
+    fn test_subnet_broadcast_invalid_ip() {
+        assert_eq!(subnet_broadcast("invalid"), None);
+        assert_eq!(subnet_broadcast("192.168.1"), None);
+        assert_eq!(subnet_broadcast("192.168.1.100.200"), None);
+        assert_eq!(subnet_broadcast(""), None);
+    }
+
+    #[test]
+    fn test_now_secs_returns_reasonable_value() {
+        let now = now_secs();
+        assert!(now > 1_577_836_800, "Timestamp should be after 2020");
+        assert!(now < 4_733_644_800, "Timestamp should be before 2120");
+    }
+
+    #[test]
+    fn test_sharing_service_new() {
+        let service = SharingService::new();
+        assert!(!service.is_active());
+    }
+
+    #[test]
+    fn test_sharing_service_initial_status() {
+        let service = SharingService::new();
+        let status = service.get_status();
+
+        assert_eq!(status.active, false);
+        assert_eq!(status.peer_count, 0);
+        assert_eq!(status.http_port, 0);
+    }
+
+    #[test]
+    fn test_sharing_service_set_display_name() {
+        let service = SharingService::new();
+        service.set_display_name("Test Machine".to_string());
+
+        let status = service.get_status();
+        assert_eq!(status.display_name, "Test Machine");
+    }
+
+    #[test]
+    fn test_sharing_service_get_peers_initially_empty() {
+        let service = SharingService::new();
+        let peers = service.get_peers();
+        assert!(peers.is_empty());
+    }
+
+    #[test]
+    fn test_sharing_service_get_pending_shares_initially_empty() {
+        let service = SharingService::new();
+        let shares = service.get_pending_shares();
+        assert!(shares.is_empty());
+    }
+
+    #[test]
+    fn test_sharing_service_add_manual_peer() {
+        let service = SharingService::new();
+        let peer = PeerInfo {
+            id: "manual-peer-1".to_string(),
+            display_name: "Manual Peer".to_string(),
+            ip: "10.0.0.100".to_string(),
+            port: 19876,
+            last_seen: now_secs(),
+        };
+
+        service.add_manual_peer(peer);
+        let peers = service.get_peers();
+
+        assert_eq!(peers.len(), 1);
+        assert_eq!(peers[0].id, "manual-peer-1");
+    }
+
+    #[test]
+    fn test_sharing_service_reject_share() {
+        let service = SharingService::new();
+        let share = PendingShare {
+            id: "share-to-reject".to_string(),
+            from_name: "Sender".to_string(),
+            from_ip: "192.168.1.5".to_string(),
+            profiles: vec![],
+            received_at: now_secs(),
+        };
+
+        service.pending_shares.lock().unwrap().push(share);
+        service.reject_share("share-to-reject");
+
+        let shares = service.get_pending_shares();
+        assert!(shares.is_empty());
+    }
+
+    #[test]
+    fn test_sharing_service_accept_share() {
+        let service = SharingService::new();
+        let share = PendingShare {
+            id: "share-to-accept".to_string(),
+            from_name: "Sender".to_string(),
+            from_ip: "192.168.1.5".to_string(),
+            profiles: vec![],
+            received_at: now_secs(),
+        };
+
+        service.pending_shares.lock().unwrap().push(share.clone());
+        let accepted = service.accept_share("share-to-accept");
+
+        assert!(accepted.is_some());
+        assert_eq!(accepted.unwrap().id, "share-to-accept");
+
+        let shares = service.get_pending_shares();
+        assert!(shares.is_empty());
+    }
+
+    #[test]
+    fn test_sharing_service_accept_nonexistent_share() {
+        let service = SharingService::new();
+        let result = service.accept_share("nonexistent-id");
+        assert!(result.is_none());
     }
 }

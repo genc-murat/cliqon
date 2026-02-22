@@ -1,6 +1,6 @@
+use keyring::Entry;
 use std::fs;
 use std::path::PathBuf;
-use keyring::Entry;
 use tauri::{AppHandle, Manager};
 
 use crate::error::Result;
@@ -75,7 +75,7 @@ impl ProfileStore {
 
     pub fn delete_profile(&self, id: &str) -> Result<()> {
         let mut profiles = self.get_all_profiles()?;
-        
+
         if let Some(pos) = profiles.iter().position(|p| p.id == id) {
             profiles.remove(pos);
             self.save_profiles(&profiles)?;
@@ -114,9 +114,72 @@ fn obfuscate(s: &str) -> String {
 }
 
 fn deobfuscate(s: &str) -> Option<String> {
-    if s.is_empty() { return None; }
-    let bytes: std::result::Result<Vec<u8>, _> = (0..s.len()).step_by(2)
-        .map(|i| u8::from_str_radix(&s[i..i+2], 16).map(|b| b ^ 0x6A))
+    if s.is_empty() {
+        return None;
+    }
+    if s.len() % 2 != 0 {
+        return None;
+    }
+    let bytes: std::result::Result<Vec<u8>, _> = (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16).map(|b| b ^ 0x6A))
         .collect();
     bytes.ok().and_then(|b| String::from_utf8(b).ok())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_obfuscate_deobfuscate_roundtrip() {
+        let cases = vec![
+            "password123",
+            "my_secret!",
+            "unicode_ğüışöç",
+            "spaces and tabs\t\n",
+            "a",
+        ];
+
+        for original in cases {
+            let obfuscated = obfuscate(original);
+            let deobfuscated = deobfuscate(&obfuscated);
+            assert_eq!(
+                Some(original.to_string()),
+                deobfuscated,
+                "Failed for input: {:?}",
+                original
+            );
+        }
+    }
+
+    #[test]
+    fn test_obfuscate_produces_hex() {
+        let result = obfuscate("AB");
+        assert!(
+            result.chars().all(|c| c.is_ascii_hexdigit()),
+            "Result should be hex string, got: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_obfuscate_empty_string() {
+        assert_eq!(obfuscate(""), "");
+    }
+
+    #[test]
+    fn test_deobfuscate_invalid_hex() {
+        assert!(deobfuscate("ZZZZ").is_none());
+    }
+
+    #[test]
+    fn test_deobfuscate_odd_length() {
+        assert!(deobfuscate("abc").is_none());
+    }
+
+    #[test]
+    fn test_deobfuscate_empty() {
+        assert!(deobfuscate("").is_none());
+    }
 }

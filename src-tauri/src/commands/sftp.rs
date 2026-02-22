@@ -60,6 +60,17 @@ pub async fn download_sftp(
 }
 
 #[tauri::command]
+pub async fn download_multi_zip_sftp(
+    state: State<'_, AppState>,
+    session_id: String,
+    remote_paths: Vec<String>,
+    local_zip: String,
+) -> Result<()> {
+    state.sftp_manager.download_multi_zip(&session_id, remote_paths, local_zip)?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn rename_sftp(
     state: State<'_, AppState>,
     session_id: String,
@@ -129,6 +140,25 @@ pub async fn close_sftp(
     session_id: String,
 ) -> Result<()> {
     state.sftp_manager.close_session(&session_id);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn start_sftp_watch(
+    state: State<'_, AppState>,
+    session_id: String,
+    path: String,
+) -> Result<()> {
+    state.sftp_manager.start_watch(&session_id, path)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn stop_sftp_watch(
+    state: State<'_, AppState>,
+    session_id: String,
+) -> Result<()> {
+    state.sftp_manager.stop_watch(&session_id)?;
     Ok(())
 }
 

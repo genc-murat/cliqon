@@ -51,6 +51,10 @@ export const api = {
         return await invoke('download_sftp', { sessionId, remotePath, localPath });
     },
 
+    downloadMultiZipSftp: async (sessionId: string, remotePaths: string[], localZip: string): Promise<void> => {
+        return await invoke('download_multi_zip_sftp', { sessionId, remotePaths, localZip });
+    },
+
     renameSftp: async (sessionId: string, oldPath: string, newPath: string): Promise<void> => {
         return await invoke('rename_sftp', { sessionId, oldPath, newPath });
     },
@@ -85,6 +89,14 @@ export const api = {
 
     closeSftp: async (sessionId: string): Promise<void> => {
         return await invoke('close_sftp', { sessionId });
+    },
+
+    startSftpWatch: async (sessionId: string, path: string): Promise<void> => {
+        return await invoke('start_sftp_watch', { sessionId, path });
+    },
+
+    stopSftpWatch: async (sessionId: string): Promise<void> => {
+        return await invoke('stop_sftp_watch', { sessionId });
     },
 
     startMonitor: async (profile: SshProfile, sessionId: string): Promise<void> => {

@@ -152,30 +152,28 @@ Share SSH connection profiles (including passwords) with teammates on the same l
 - **Cursor Customization** — Choose between Block, Underline, or Bar cursor styles with optional blinking
 - **Dynamic ANSI Colors** — "Match App Theme" automatically switches between Light and Dark optimized ANSI palettes for maximum readability
 - **Font Settings** — choose font family, size, and line height with a live preview
-- **Gelişmiş Terminal Özellikleri**:
-    - **Find & Replace (`Ctrl+F`)**: Tam özellikli arama çubuğu; büyük/küçük harf duyarlılığı ve regex desteği ile terminal buffer'ında gelişmiş arama.
-    - **Komut Geçmişi Araması (`Ctrl+R`)**: İnteraktif reverse-i-search özelliği ile geçmiş komutları hızla bulup çalıştırma (Makine öğrenmesi destekli).
-    - **Tıklanabilir URL'ler**: Terminaldeki web adreslerini otomatik algılar ve tıklanınca varsayılan tarayıcıda açar.
-    - **Satır Numaraları (`Ctrl+Shift+L`)**: Scrollback buffer'daki satır numaralarını opsiyonel olarak görüntüleme.
-    - **Clipboard Entegrasyonu**: Gelişmiş kopyala/yapıştır desteği.
+- **Advanced Terminal Features**:
+    - **Find & Replace (`Ctrl+F`)**: Full-featured search bar; case-sensitive and regex support for searching within the terminal buffer.
+    - **Command History Search (`Ctrl+R`)**: Interactive reverse-i-search feature to quickly find and execute commands from your history (machine learning-powered).
+    - **Clickable URLs**: Automatically detects and opens web addresses in your default browser when clicked.
+    - **Line Numbers (`Ctrl+Shift+L`)**: Optionally display line numbers in the scrollback buffer.
+    - **Clipboard Integration**: Enhanced copy/paste functionality.
 - **ML-Powered Autocomplete** — Fish-shell style inline suggestions that learn from your history using a Markov Chain model; accepts with `Tab` or `→`
 
 ### SFTP File Browser
 - Integrated split-view SFTP panel per terminal tab
 - Directory navigation (double-click to open, Up button to go back)
+- **Multi-Selection** — Select multiple files using `Ctrl+Click` or `Shift+Click` for bulk operations.
+- **Batch ZIP Download** — Download multiple files and folders at once as a single ZIP archive.
+- **Real-Time Watching** — Toggle "Watch Mode" to automatically refresh the directory list when files change on the server.
+- **Transfer Queue** — Monitor active uploads and downloads with matching-width progress panel at the bottom.
+- **Custom Modals** — Premium, theme-aware prompt dialogs for file operations instead of native browser prompts.
 - **Drag-and-drop** file upload from your desktop into the remote directory
-- **Context Menu** — Right-click files or folders for:
-  - **Download** — Save remote files to your local machine
-  - **Rename** — Inline file and directory renaming
-  - **Delete** — Securely remove remote items
-  - **Copy Path** — Fast path copying to clipboard
-  - **Edit file** — Built-in text editor for remote files with syntax support and `Ctrl+S` to save
-  - **Sudo Edit** — Elevated file editing for system-protected files using your saved credentials
-  - **Tail Log** — Live streaming viewer for `.log`, `.err`, and `.out` files with auto-scroll and real-time filtering
-  - **cd to Terminal** — Instant navigation in the active terminal
-- **SFTP Bookmarks** — Save frequent paths per connection for instant access; one-click navigation from the bookmarks dropdown
-- **Properties & Permissions** — View detailed file info and interactively edit permissions (chmod)
-- Refresh button and file size display on hover
+- **SFTP Bookmarks** — Save frequent paths per connection for instant access.
+- **Built-in Editor** — Edit remote files with syntax support and `Sudo Edit` capability.
+- **Tail Log** — Live streaming viewer for `.log` files with real-time filtering.
+- **Properties & Permissions** — View details and edit `chmod` permissions interactively.
+- Refresh button, Copy Path, and file size display on hover.
 
 ### Connection Snippets
 - Save per-connection command snippets

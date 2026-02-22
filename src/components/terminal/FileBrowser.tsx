@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
-import { Folder, Download, RefreshCw, ChevronLeft, ChevronRight, Edit2, Trash2, Copy, FileText, Network, ShieldAlert, Activity, ArrowUpCircle, Star, Bookmark, X as XIcon, File as FileIcon, TerminalSquare, Settings } from 'lucide-react';
+import { Folder, Download, RefreshCw, ChevronLeft, ChevronRight, Edit2, Trash2, Copy, FileText, Network, ShieldAlert, Activity, ArrowUpCircle, Star, Bookmark, X as XIcon, File as FileIcon, TerminalSquare, Settings, Eye, EyeOff, Archive, Check } from 'lucide-react';
 import { SshProfile, FileNode } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
+import { TransferQueue } from './TransferQueue';
 import { FilePropertiesModal } from './FilePropertiesModal';
 import { TextEditorModal } from './TextEditorModal';
 import { DockerComposeVisualizer } from './DockerComposeVisualizer';
@@ -39,6 +40,16 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     const [tailingFile, setTailingFile] = useState<FileNode | null>(null);
     const [statusMsg, setStatusMsg] = useState('');
     const [bookmarksOpen, setBookmarksOpen] = useState(false);
+    const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+    const [isWatching, setIsWatching] = useState(false);
+    const [promptModal, setPromptModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        defaultValue: string;
+        onSubmit: (val: string) => void;
+        onCancel: () => void;
+    } | null>(null);
+
     const renameInputRef = useRef<HTMLInputElement>(null);
     const { width, startResizing, isResizing } = useResizable(256, 160, 600);
     const { bookmarks, addBookmark, removeBookmark, isBookmarked } = useSftpBookmarks(profile.host);
@@ -79,6 +90,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
         let unlistenDeleteDone: UnlistenFn | null = null;
         let unlistenDeleteErr: UnlistenFn | null = null;
         let unlistenRenameErr: UnlistenFn | null = null;
+        let unlistenWatch: UnlistenFn | null = null;
 
         const setupSftp = async () => {
             try {
@@ -101,6 +113,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                     if (isMounted) showStatus(`❌ Delete failed: ${e.payload} `);
                 });
 
+                unlistenWatch = await listen<string>(`sftp_watch_changed_${sessionId}`, (e) => {
+                    if (isMounted && e.payload === currentPath) fetchDirectory(currentPath);
+                });
+
                 await api.connectSftp(profile, sessionId);
                 if (isMounted) { setConnected(true); fetchDirectory(currentPath); }
             } catch (err: any) {
@@ -113,14 +129,18 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
         return () => {
             isMounted = false;
             [unlistenRx, unlistenTransferDone, unlistenRenameDone, unlistenRenameErr,
-                unlistenDeleteDone, unlistenDeleteErr].forEach(u => u?.());
+                unlistenDeleteDone, unlistenDeleteErr, unlistenWatch].forEach(u => u?.());
             api.closeSftp(sessionId).catch(console.error);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profile, sessionId]);
 
     const handleNavigate = (node: FileNode) => {
-        if (node.is_dir) { setCurrentPath(node.path); fetchDirectory(node.path); }
+        if (node.is_dir) {
+            setSelectedFiles(new Set());
+            setCurrentPath(node.path);
+            fetchDirectory(node.path);
+        }
     };
 
     const handleUpDirectory = () => {
@@ -128,9 +148,30 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
         const parts = currentPath.split('/').filter(Boolean);
         parts.pop();
         const newPath = parts.length === 0 ? '/' : '/' + parts.join('/');
+        setSelectedFiles(new Set());
         setCurrentPath(newPath);
         fetchDirectory(newPath);
     };
+
+    const toggleSelection = (e: React.MouseEvent, file: FileNode) => {
+        e.stopPropagation();
+        setSelectedFiles(prev => {
+            const next = new Set(prev);
+            if (next.has(file.path)) next.delete(file.path);
+            else next.add(file.path);
+            return next;
+        });
+    };
+
+    useEffect(() => {
+        if (!connected) return;
+        if (isWatching) {
+            api.startSftpWatch(sessionId, currentPath).catch(console.error);
+        } else {
+            api.stopSftpWatch(sessionId).catch(console.error);
+        }
+    }, [isWatching, currentPath, connected, sessionId]);
+
 
     // Drag-and-drop upload
     useEffect(() => {
@@ -164,13 +205,19 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     // Context menu actions
     const handleDownload = async (file: FileNode) => {
         closeContextMenu();
-        // Use a simple prompt for the local save path (no native dialog plugin required)
-        const defaultPath = file.name;
-        const savePath = window.prompt(`Save "${file.name}" to local path:`, defaultPath);
-        if (savePath) {
-            await api.downloadSftp(sessionId, file.path, savePath);
-            showStatus(`⬇️ Downloading ${file.name}...`);
-        }
+        setPromptModal({
+            isOpen: true,
+            title: `Save "${file.name}" to local path:`,
+            defaultValue: file.name,
+            onSubmit: async (savePath) => {
+                if (savePath && savePath.trim()) {
+                    await api.downloadSftp(sessionId, file.path, savePath.trim());
+                    showStatus(`⬇️ Downloading ${file.name}...`);
+                }
+                setPromptModal(null);
+            },
+            onCancel: () => setPromptModal(null)
+        });
     };
 
     const handleDelete = async (file: FileNode) => {
@@ -301,6 +348,14 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                                 >
                                     <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
                                 </button>
+                                <div className="w-px h-4 bg-[var(--border-color)] mx-0.5"></div>
+                                <button
+                                    onClick={() => setIsWatching(!isWatching)}
+                                    className={`p-1 rounded transition-colors ${isWatching ? 'text-green-400 bg-green-400/10' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)]'}`}
+                                    title={isWatching ? 'Stop watching directory' : 'Watch directory for changes'}
+                                >
+                                    {isWatching ? <Eye size={14} /> : <EyeOff size={14} />}
+                                </button>
                             </div>
                         </div>
 
@@ -337,6 +392,56 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                             </div>
                         )}
 
+                        {/* Selection Toolbar */}
+                        {selectedFiles.size > 0 && (
+                            <div className="flex items-center justify-between px-3 py-1.5 bg-[var(--hover-color)] border-b border-[var(--border-color)]">
+                                <span className="text-xs text-[var(--accent-color)]">{selectedFiles.size} selected</span>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={async () => {
+                                            const defaultName = currentPath === '/' ? 'archive.zip' : `${currentPath.split('/').pop() || 'archive'}.zip`;
+                                            setPromptModal({
+                                                isOpen: true,
+                                                title: 'Save ZIP as:',
+                                                defaultValue: defaultName,
+                                                onSubmit: async (savePath) => {
+                                                    if (savePath && savePath.trim()) {
+                                                        await api.downloadMultiZipSftp(sessionId, Array.from(selectedFiles), savePath.trim());
+                                                        setSelectedFiles(new Set());
+                                                    }
+                                                    setPromptModal(null);
+                                                },
+                                                onCancel: () => setPromptModal(null)
+                                            });
+                                        }}
+                                        className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
+                                    >
+                                        <Archive size={12} /> ZIP
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            if (window.confirm(`Delete ${selectedFiles.size} files?`)) {
+                                                for (const path of selectedFiles) {
+                                                    const isDir = files.find(f => f.path === path)?.is_dir || false;
+                                                    await api.deleteSftp(sessionId, path, isDir);
+                                                }
+                                                setSelectedFiles(new Set());
+                                            }
+                                        }}
+                                        className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                                    >
+                                        <Trash2 size={12} /> Delete
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedFiles(new Set())}
+                                        className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                                    >
+                                        <XIcon size={12} />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* File list */}
                         <div className="flex-1 overflow-y-auto w-full p-2 space-y-0.5">
                             {!connected ? (
@@ -349,10 +454,19 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                                 files.map((file, i) => (
                                     <div
                                         key={i}
+                                        onClick={(e) => {
+                                            if (e.ctrlKey || e.metaKey || e.shiftKey) toggleSelection(e, file);
+                                        }}
                                         onDoubleClick={() => handleNavigate(file)}
                                         onContextMenu={(e) => handleContextMenu(e, file)}
-                                        className="flex items-center gap-2 p-1.5 hover:bg-[var(--hover-color)] rounded cursor-pointer group select-none"
+                                        className={`flex items-center gap-2 p-1.5 rounded cursor-pointer group select-none ${selectedFiles.has(file.path) ? 'bg-[var(--hover-color)]/80 ring-1 ring-[var(--accent-color)]/30' : 'hover:bg-[var(--hover-color)]'}`}
                                     >
+                                        <div
+                                            onClick={(e) => toggleSelection(e, file)}
+                                            className={`w-3 h-3 border rounded-sm flex items-center justify-center shrink-0 transition-colors ${selectedFiles.has(file.path) ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white' : 'border-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:border-[var(--text-main)]'}`}
+                                        >
+                                            {selectedFiles.has(file.path) && <Check size={10} strokeWidth={3} />}
+                                        </div>
                                         <div className="shrink-0 text-[var(--accent-color)]">
                                             {file.is_dir
                                                 ? <Folder size={14} fill="currentColor" fillOpacity={0.2} />
@@ -402,6 +516,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                         >
                             <div className={`w-full h-full ${isResizing ? 'bg-[var(--accent-color)]' : ''}`} />
                         </div>
+
+                        <TransferQueue sessionId={sessionId} />
                     </>
                 )}
             </div>
@@ -539,6 +655,45 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                     initialPath={visualizeComposeFile.path}
                     onClose={() => setVisualizeComposeFile(null)}
                 />
+            )}
+
+            {/* Prompt Modal */}
+            {promptModal && promptModal.isOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50" onClick={promptModal.onCancel}>
+                    <div
+                        className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded shadow-xl w-96 p-4 flex flex-col"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="text-sm font-medium text-[var(--text-main)] mb-3">{promptModal.title}</div>
+                        <input
+                            type="text"
+                            autoFocus
+                            defaultValue={promptModal.defaultValue}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') promptModal.onSubmit(e.currentTarget.value);
+                                if (e.key === 'Escape') promptModal.onCancel();
+                            }}
+                            className="w-full text-sm bg-[var(--bg-sidebar)] border border-[var(--border-color)] focus:border-[var(--accent-color)] rounded px-2 py-1.5 text-[var(--text-main)] mb-4 outline-none transition-colors"
+                        />
+                        <div className="flex justify-end gap-2 text-xs">
+                            <button
+                                onClick={promptModal.onCancel}
+                                className="px-3 py-1.5 rounded bg-[var(--hover-color)] text-[var(--text-main)] hover:bg-[var(--border-color)] transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    const input = e.currentTarget.parentElement?.previousElementSibling as HTMLInputElement;
+                                    promptModal.onSubmit(input.value);
+                                }}
+                                className="px-3 py-1.5 rounded bg-[var(--accent-color)] text-white hover:opacity-90 transition-opacity"
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </>
     );

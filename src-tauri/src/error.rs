@@ -15,6 +15,9 @@ pub enum AppError {
     #[error("SSH error: {0}")]
     Ssh(#[from] ssh2::Error),
     
+    #[error("Zip error: {0}")]
+    Zip(#[from] zip::result::ZipError),
+    
     #[error("App error: {0}")]
     Custom(String),
 }

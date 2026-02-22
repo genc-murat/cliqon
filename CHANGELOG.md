@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.2] - 2026-02-22
+
+### Added
+- **SFTP Enhancements**:
+  - **Multi-File Selection**: Support for selecting multiple files using Ctrl/Shift+Click.
+  - **Batch ZIP Download**: Quickly download multiple files and folders as a single compressed ZIP archive.
+  - **Real-Time Directory Watching**: Added a "Watch" mode to automatically refresh the file list on remote directory changes.
+  - **Transfer Progress Queue**: A dedicated, theme-aware panel at the bottom of the SFTP browser to track active uploads and downloads with progress bars.
+  - **Custom Modal Dialogs**: Replaced native browser prompts with styled React modals for a consistent premium UI.
+
+### Fixed
+- Improved TransferQueue text layout to prevent overflow in narrow panels.
+- Fixed SFTP backend polling logic for better performance during file watching.
+
+---
+
 ## [0.1.1] - 2026-02-22
 
 ### Added

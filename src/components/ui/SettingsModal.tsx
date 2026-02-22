@@ -52,7 +52,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
                 <div className="flex-1 flex overflow-hidden">
                     {/* Sidebar Nav */}
-                    <div className="w-64 bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] flex flex-col p-3 gap-1 shrink-0">
+                    <div className="w-52 bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] flex flex-col p-3 gap-1 shrink-0">
                         {navItems.map((item) => (
                             <button
                                 key={item.id}
@@ -73,39 +73,75 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     {/* Content Area */}
                     <div className="flex-1 overflow-y-auto p-8 bg-[var(--bg-primary)]">
                         {activeSection === 'appearance' && (
-                            <section className="space-y-8 max-w-2xl animate-in slide-in-from-bottom-4 duration-300">
+                            <section className="space-y-8 animate-in slide-in-from-bottom-4 duration-300">
                                 <div>
                                     <h3 className="text-lg font-bold text-[var(--text-main)] mb-1">Application Theme</h3>
                                     <p className="text-sm text-[var(--text-muted)] mb-6">Personalize the look and feel of Cliqon with our curated themes.</p>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {availableThemes.map((t) => (
-                                            <button
-                                                key={t.id}
-                                                onClick={() => setTheme(t.id)}
-                                                className={`
-                                                    group relative flex flex-col p-4 rounded-2xl border-2 text-left transition-all duration-300
-                                                    ${theme.id === t.id
-                                                        ? 'border-[var(--accent-color)] bg-[var(--accent-color)]/5 ring-4 ring-[var(--accent-color)]/5'
-                                                        : 'border-[var(--border-color)] bg-[var(--bg-sidebar)] hover:border-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
-                                                    }
-                                                `}
-                                            >
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <div className="flex gap-2">
-                                                        <div className="w-6 h-6 rounded-lg shadow-sm border border-black/10" style={{ backgroundColor: t.colors.bgPrimary }} />
-                                                        <div className="w-6 h-6 rounded-lg shadow-sm border border-black/10" style={{ backgroundColor: t.colors.accent }} />
-                                                    </div>
-                                                    {theme.id === t.id && (
-                                                        <div className="w-5 h-5 rounded-full bg-[var(--accent-color)] flex items-center justify-center shadow-md">
-                                                            <Check size={12} className="text-white" />
+                                    <div className="space-y-8">
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-4 uppercase tracking-wider">Dark Themes</h4>
+                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                                {availableThemes.filter(t => t.type === 'dark').map((t) => (
+                                                    <button
+                                                        key={t.id}
+                                                        onClick={() => setTheme(t.id)}
+                                                        className={`
+                                                            group relative flex flex-col p-4 rounded-2xl border-2 text-left transition-all duration-300
+                                                            ${theme.id === t.id
+                                                                ? 'border-[var(--accent-color)] bg-[var(--accent-color)]/5 ring-4 ring-[var(--accent-color)]/5'
+                                                                : 'border-[var(--border-color)] bg-[var(--bg-sidebar)] hover:border-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
+                                                            }
+                                                        `}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <div className="flex gap-2">
+                                                                <div className="w-6 h-6 rounded-lg shadow-sm border border-black/10" style={{ backgroundColor: t.colors.bgPrimary }} />
+                                                                <div className="w-6 h-6 rounded-lg shadow-sm border border-black/10" style={{ backgroundColor: t.colors.accent }} />
+                                                            </div>
+                                                            {theme.id === t.id && (
+                                                                <div className="w-5 h-5 rounded-full bg-[var(--accent-color)] flex items-center justify-center shadow-md">
+                                                                    <Check size={12} className="text-white" />
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    )}
-                                                </div>
-                                                <span className="text-sm font-bold text-[var(--text-main)]">{t.name}</span>
-                                                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-tight mt-0.5">{t.type} Mode</span>
-                                            </button>
-                                        ))}
+                                                        <span className="text-sm font-bold text-[var(--text-main)] truncate">{t.name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-4 uppercase tracking-wider">Light Themes</h4>
+                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                                {availableThemes.filter(t => t.type === 'light').map((t) => (
+                                                    <button
+                                                        key={t.id}
+                                                        onClick={() => setTheme(t.id)}
+                                                        className={`
+                                                            group relative flex flex-col p-4 rounded-2xl border-2 text-left transition-all duration-300
+                                                            ${theme.id === t.id
+                                                                ? 'border-[var(--accent-color)] bg-[var(--accent-color)]/5 ring-4 ring-[var(--accent-color)]/5'
+                                                                : 'border-[var(--border-color)] bg-[var(--bg-sidebar)] hover:border-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
+                                                            }
+                                                        `}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <div className="flex gap-2">
+                                                                <div className="w-6 h-6 rounded-lg shadow-sm border border-black/10" style={{ backgroundColor: t.colors.bgPrimary }} />
+                                                                <div className="w-6 h-6 rounded-lg shadow-sm border border-black/10" style={{ backgroundColor: t.colors.accent }} />
+                                                            </div>
+                                                            {theme.id === t.id && (
+                                                                <div className="w-5 h-5 rounded-full bg-[var(--accent-color)] flex items-center justify-center shadow-md">
+                                                                    <Check size={12} className="text-white" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-sm font-bold text-[var(--text-main)] truncate">{t.name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </section>

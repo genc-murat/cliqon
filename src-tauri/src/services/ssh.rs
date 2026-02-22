@@ -21,6 +21,8 @@ pub struct SshPayload {
 pub struct ActiveSession {
     pub profile_id: String,
     pub session_id: String, // Unique tab/session ID
+    // Cloned ssh session for auxiliary services like tunneling
+    pub session: Session,
     // Sender to send keystrokes/data to the SSH write loop
     tx: Sender<Vec<u8>>,
     // Sender to send resize events (cols, rows)
@@ -92,6 +94,7 @@ impl SshManager {
         let active_session = ActiveSession {
             profile_id: profile.id.clone(),
             session_id: session_id.clone(),
+            session: session.clone(),
             tx,
             resize_tx,
         };
@@ -194,5 +197,10 @@ impl SshManager {
     pub fn close_session(&self, session_id: &str) {
         let mut lock = self.active_sessions.lock().unwrap();
         lock.remove(session_id);
+    }
+    
+    pub fn get_session(&self, session_id: &str) -> Option<Session> {
+        let lock = self.active_sessions.lock().unwrap();
+        lock.get(session_id).map(|s| s.session.clone())
     }
 }

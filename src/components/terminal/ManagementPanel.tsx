@@ -1,12 +1,13 @@
 import React from 'react';
-import { Activity, Globe, Box, X } from 'lucide-react';
+import { Activity, Globe, Box, Link, X } from 'lucide-react';
 import { SshProfile } from '../../types/connection';
 import { useResizable } from '../../hooks/useResizable';
 import { ServerMonitor } from './ServerMonitor';
 import { NetworkTools } from './NetworkTools';
 import { DockerManager } from './DockerManager';
+import { TunnelManager } from './TunnelManager';
 
-export type ManagementTab = 'monitor' | 'network' | 'docker';
+export type ManagementTab = 'monitor' | 'network' | 'docker' | 'tunnels';
 
 interface ManagementPanelProps {
     profile: SshProfile;
@@ -39,6 +40,7 @@ export const ManagementPanel: React.FC<ManagementPanelProps> = ({
         { id: 'monitor', label: 'Monitor', icon: <Activity size={14} />, color: 'var(--accent-color)' },
         { id: 'network', label: 'Network', icon: <Globe size={14} />, color: '#10B981' },
         { id: 'docker', label: 'Docker', icon: <Box size={14} />, color: '#2496ED' },
+        { id: 'tunnels', label: 'Tunnels', icon: <Link size={14} />, color: '#F59E0B' },
     ];
 
     return (
@@ -116,6 +118,12 @@ export const ManagementPanel: React.FC<ManagementPanelProps> = ({
                         onViewLogs={onViewDockerLogs}
                         onExec={onDockerExec}
                         isEmbedded={true}
+                    />
+                )}
+                {activeTab === 'tunnels' && (
+                    <TunnelManager
+                        profile={profile}
+                        sessionId={sessionId}
                     />
                 )}
             </div>

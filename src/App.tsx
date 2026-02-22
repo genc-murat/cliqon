@@ -206,6 +206,8 @@ function App() {
             isNetworkToolsOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'network'}
             onToggleDockerManager={(id) => handleToggleManagementPanel(id, 'docker')}
             isDockerManagerOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'docker'}
+            onToggleTunnels={(id) => handleToggleManagementPanel(id, 'tunnels')}
+            isTunnelsOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'tunnels'}
           />
 
           {/* Main Terminal Area */}

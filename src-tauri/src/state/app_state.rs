@@ -6,6 +6,7 @@ use crate::services::monitor::MonitorManager;
 use crate::services::net_tools::NetToolManager;
 use crate::services::docker::DockerManager;
 use crate::services::sharing::SharingService;
+use crate::services::tunnel::TunnelService;
 use tauri::AppHandle;
 
 pub struct AppState {
@@ -16,6 +17,7 @@ pub struct AppState {
     pub net_tool_manager: NetToolManager,
     pub docker_manager: DockerManager,
     pub sharing_service: Mutex<SharingService>,
+    pub tunnel_service: TunnelService,
 }
 
 impl AppState {
@@ -28,7 +30,7 @@ impl AppState {
             net_tool_manager: NetToolManager::new(),
             docker_manager: DockerManager::new(),
             sharing_service: Mutex::new(SharingService::new()),
+            tunnel_service: TunnelService::new(),
         }
     }
 }
-

@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
-    X, Columns2, Activity, Globe, Container,
+    X, Columns2, Activity, Globe, Container, Link
 } from 'lucide-react';
 
 export interface TabData {
@@ -21,6 +21,8 @@ interface TopBarProps {
     isNetworkToolsOpen?: boolean;
     onToggleDockerManager?: (id: string) => void;
     isDockerManagerOpen?: boolean;
+    onToggleTunnels?: (id: string) => void;
+    isTunnelsOpen?: boolean;
 }
 
 /* ── Toolbar action button ──────────────────────────────── */
@@ -63,6 +65,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     onSplit, onToggleMonitor, isMonitorOpen,
     onToggleNetworkTools, isNetworkToolsOpen,
     onToggleDockerManager, isDockerManagerOpen,
+    onToggleTunnels, isTunnelsOpen,
 }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -100,6 +103,8 @@ export const TopBar: React.FC<TopBarProps> = ({
                             isNetworkToolsOpen={isActive ? isNetworkToolsOpen : false}
                             onToggleDockerManager={isActive && onToggleDockerManager ? () => onToggleDockerManager(tab.id) : undefined}
                             isDockerManagerOpen={isActive ? isDockerManagerOpen : false}
+                            onToggleTunnels={isActive && onToggleTunnels ? () => onToggleTunnels(tab.id) : undefined}
+                            isTunnelsOpen={isActive ? isTunnelsOpen : false}
                         />
                     );
                 })}
@@ -119,13 +124,18 @@ export const TopBar: React.FC<TopBarProps> = ({
                         </ToolBtn>
                     )}
                     {onToggleNetworkTools && (
-                        <ToolBtn onClick={() => onToggleNetworkTools(activeTab)} active={isNetworkToolsOpen} title="Network Tools">
+                        <ToolBtn onClick={() => onToggleNetworkTools(activeTab)} active={isNetworkToolsOpen} activeColor="#10B981" title="Network Tools">
                             <Globe size={14} />
                         </ToolBtn>
                     )}
                     {onToggleDockerManager && (
                         <ToolBtn onClick={() => onToggleDockerManager(activeTab)} active={isDockerManagerOpen} activeColor="#2496ED" title="Docker Containers">
                             <Container size={14} />
+                        </ToolBtn>
+                    )}
+                    {onToggleTunnels && (
+                        <ToolBtn onClick={() => onToggleTunnels(activeTab)} active={isTunnelsOpen} activeColor="#F59E0B" title="SSH Tunnels">
+                            <Link size={14} />
                         </ToolBtn>
                     )}
                 </div>
@@ -148,6 +158,8 @@ interface TabProps {
     isNetworkToolsOpen?: boolean;
     onToggleDockerManager?: () => void;
     isDockerManagerOpen?: boolean;
+    onToggleTunnels?: () => void;
+    isTunnelsOpen?: boolean;
 }
 
 const Tab: React.FC<TabProps> = ({ tab, isActive, onSelect, onClose }) => {

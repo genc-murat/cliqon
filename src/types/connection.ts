@@ -16,8 +16,20 @@ export interface SshProfile {
     category: string | null;
     private_key_path?: string;
     snippets?: Snippet[];
+    tunnels?: TunnelConfig[];
     is_favorite?: boolean;
     color?: string;
+}
+
+export type TunnelType = 'Local' | 'Remote' | 'Dynamic';
+
+export interface TunnelConfig {
+    id: string;
+    name: string;
+    tunnel_type: TunnelType;
+    local_port: number;
+    remote_host: string | null;
+    remote_port: number | null;
 }
 
 export interface FileNode {

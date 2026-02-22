@@ -60,6 +60,7 @@ impl ShareableProfile {
             private_key_path: self.private_key_path.clone(),
             obfuscated_secret: None,
             snippets: self.snippets.clone(),
+            tunnels: Some(Vec::new()),
             is_favorite: self.is_favorite,
             color: self.color.clone(),
         }

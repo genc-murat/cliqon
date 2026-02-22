@@ -14,6 +14,7 @@ use commands::docker::*;
 use commands::system::*;
 use commands::logging::*;
 use commands::sharing::*;
+use commands::tunnel::*;
 use tauri::Manager;
 use crate::services::system::SystemService;
 use crate::services::logging::LogManager;
@@ -86,7 +87,10 @@ pub fn run() {
             share_profiles_with_peer,
             get_pending_shares,
             accept_share,
-            reject_share
+            reject_share,
+            start_tunnel,
+            stop_tunnel,
+            get_active_tunnels
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

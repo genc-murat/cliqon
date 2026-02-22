@@ -181,6 +181,12 @@ Share SSH connection profiles (including passwords) with teammates on the same l
 - One-click execution — snippet is sent directly to the active terminal
 - Add/delete snippets with a clean sidebar panel
 
+### SSH Tunneling (Port Forwarding)
+- **Local & Remote Forwarding** — Securely expose local services to the remote host, or access remote internal services on your local machine.
+- **Dynamic Port Forwarding (SOCKS5)** — Route your browser traffic securely through the SSH connection without complex command line flags.
+- **Dedicated Management Panel** — Add, edit, and toggle tunnels directly from a new "Tunnels" tab without opening a terminal session.
+- **Background Execution** — Tunnels run in lightweight Rust threads, ensuring high throughput and resilience.
+
 ### Theming & Appearance
 - **App Themes** — 31+ high-quality themes: Cyberpunk Red, Hacker Void, Neon Tokyo, Vaporwave, Aurora Borealis, Cherry Blossom, Lavender Mist, Peach Cream, CRT Amber, and many more
 - **Sidebar-Driven Settings** — Completely redesigned, premium settings interface for easier customization

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-02-22
+
+### Added
+- **SSH Tunneling (Port Forwarding)**:
+  - Added support for Local, Remote, and Dynamic (SOCKS5) port forwarding.
+  - New "Tunnels" tab in the Management Panel for easy configuration and monitoring.
+  - Tunnels are managed per-profile and run in lightweight background threads.
+
 ## [0.2.5] - 2026-02-22
 
 ### Added

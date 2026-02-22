@@ -55,6 +55,7 @@ impl ImportService {
             private_key_path: None,
             obfuscated_secret: None,
             snippets: Some(Vec::new()),
+            tunnels: Some(Vec::new()),
             is_favorite: Some(false),
             color: None,
         })
@@ -112,6 +113,7 @@ impl ImportService {
             private_key_path: None,
             obfuscated_secret: None,
             snippets: Some(Vec::new()),
+            tunnels: Some(Vec::new()),
             is_favorite: Some(false),
             color: None,
         })

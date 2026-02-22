@@ -14,6 +14,23 @@ pub struct Snippet {
     pub command: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum TunnelType {
+    Local,
+    Remote,
+    Dynamic,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TunnelConfig {
+    pub id: String,
+    pub name: String,
+    pub tunnel_type: TunnelType,
+    pub local_port: u16,
+    pub remote_host: Option<String>,
+    pub remote_port: Option<u16>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SshProfile {
     pub id: String,
@@ -28,6 +45,7 @@ pub struct SshProfile {
     pub private_key_path: Option<String>,
     pub obfuscated_secret: Option<String>,
     pub snippets: Option<Vec<Snippet>>,
+    pub tunnels: Option<Vec<TunnelConfig>>,
     pub is_favorite: Option<bool>,
     pub color: Option<String>,
 }
@@ -45,6 +63,7 @@ impl Default for SshProfile {
             private_key_path: None,
             obfuscated_secret: None,
             snippets: Some(Vec::new()),
+            tunnels: Some(Vec::new()),
             is_favorite: Some(false),
             color: None,
         }

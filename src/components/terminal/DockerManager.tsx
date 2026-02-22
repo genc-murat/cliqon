@@ -6,6 +6,7 @@ import { useResizable } from '../../hooks/useResizable';
 import { DockerVolumes } from './DockerVolumes';
 import { DockerVolumeBrowser } from './DockerVolumeBrowser';
 import { DockerPortForwards } from './DockerPortForwards';
+import { useConfirm } from '../../hooks/useConfirm';
 interface DockerContainer {
     ID: string;
     Names: string;
@@ -44,6 +45,7 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
         'top',
         'cliqon-docker-height'
     );
+    const confirmCustom = useConfirm();
 
     const [activeTab, setActiveTab] = useState<'containers' | 'volumes' | 'ports'>('containers');
     const [selectedContainers, setSelectedContainers] = useState<Set<string>>(new Set());
@@ -123,7 +125,13 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
     };
 
     const handlePrune = async () => {
-        if (!confirm("Are you sure you want to prune the Docker system? This will remove all unused containers, networks, images, and optionally, volumes.")) return;
+        const isConfirmed = await confirmCustom({
+            title: 'System Prune',
+            message: 'Are you sure you want to prune the Docker system? This will remove all unused containers, networks, images, and optionally, volumes.',
+            confirmLabel: 'Prune',
+            isDestructive: true
+        });
+        if (!isConfirmed) return;
         try {
             isPruning.current = true;
             setActionLoading('pruning');
@@ -143,7 +151,14 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
 
         let confirmMsg = `Are you sure you want to ${action} ${selectedContainers.size} container(s)?`;
         if (action === 'remove') confirmMsg += ' This action is irreversible.';
-        if (!confirm(confirmMsg)) return;
+
+        const isConfirmed = await confirmCustom({
+            title: 'Bulk Action',
+            message: confirmMsg,
+            confirmLabel: action.charAt(0).toUpperCase() + action.slice(1),
+            isDestructive: action === 'remove' || action === 'stop'
+        });
+        if (!isConfirmed) return;
 
         try {
             setActionLoading('bulk');

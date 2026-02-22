@@ -4,6 +4,7 @@ import { Snippet } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
 import { useSnippets } from '../../hooks/useSnippets';
+import { useConfirm } from '../../hooks/useConfirm';
 
 interface SnippetManagerProps {
     sessionId: string;
@@ -13,6 +14,7 @@ interface SnippetManagerProps {
 export const SnippetManager: React.FC<SnippetManagerProps> = ({ sessionId, isActive }) => {
     const { width, startResizing, isResizing } = useResizable(240, 180, 450, 'right');
     const { snippets, saveSnippet, deleteSnippet } = useSnippets();
+    const confirm = useConfirm();
 
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
@@ -84,7 +86,13 @@ export const SnippetManager: React.FC<SnippetManagerProps> = ({ sessionId, isAct
 
     const handleDeleteSnippet = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (confirm('Are you sure you want to delete this snippet?')) {
+        const isConfirmed = await confirm({
+            title: 'Delete Snippet',
+            message: 'Are you sure you want to delete this snippet? This action cannot be undone.',
+            confirmLabel: 'Delete',
+            isDestructive: true
+        });
+        if (isConfirmed) {
             try {
                 await deleteSnippet(id);
             } catch (err) {

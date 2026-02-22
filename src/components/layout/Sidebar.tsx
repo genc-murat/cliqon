@@ -13,6 +13,7 @@ import { useResizable } from '../../hooks/useResizable';
 import { Logo } from './Logo';
 import { ImportModal } from '../ui/ImportModal';
 import { SharingPanel } from '../ui/SharingPanel';
+import { useConfirm } from '../../hooks/useConfirm';
 
 /* ── Helpers ────────────────────────────────────────────────── */
 
@@ -224,6 +225,7 @@ const CompactRow: React.FC<CompactRowProps> = ({
 
 export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, focusSearchRef }) => {
     const { profiles, isLoading, saveProfile, deleteProfile, refresh } = useConnections();
+    const confirm = useConfirm();
     const { width, startResizing, isResizing } = useResizable(280, 160, 600, 'left', 'sidebar-width');
     const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
 
@@ -323,7 +325,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (window.confirm('Are you sure you want to delete this connection?')) {
+        const isConfirmed = await confirm({
+            title: 'Delete Connection',
+            message: 'Are you sure you want to delete this connection? This action is permanent.',
+            confirmLabel: 'Delete',
+            isDestructive: true
+        });
+        if (isConfirmed) {
             await deleteProfile(id);
         }
         setActiveMenuId(null);

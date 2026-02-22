@@ -10,6 +10,7 @@ import { TextEditorModal } from './TextEditorModal';
 import { DockerComposeVisualizer } from './DockerComposeVisualizer';
 import { LogViewerModal } from './LogViewerModal';
 import { useSftpBookmarks } from '../../hooks/useSftpBookmarks';
+import { useConfirm } from '../../hooks/useConfirm';
 
 interface FileBrowserProps {
     profile: SshProfile;
@@ -51,6 +52,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     } | null>(null);
 
     const renameInputRef = useRef<HTMLInputElement>(null);
+    const confirm = useConfirm();
     const { width, startResizing, isResizing } = useResizable(256, 160, 600);
     const { bookmarks, addBookmark, removeBookmark, isBookmarked } = useSftpBookmarks(profile.host);
 
@@ -222,7 +224,13 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
 
     const handleDelete = async (file: FileNode) => {
         closeContextMenu();
-        if (!window.confirm(`Delete "${file.name}"?`)) return;
+        const isConfirmed = await confirm({
+            title: 'Delete File',
+            message: `Are you sure you want to delete "${file.name}"? This action cannot be undone.`,
+            confirmLabel: 'Delete',
+            isDestructive: true
+        });
+        if (!isConfirmed) return;
         await api.deleteSftp(sessionId, file.path, file.is_dir);
     };
 
@@ -420,7 +428,13 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                                     </button>
                                     <button
                                         onClick={async () => {
-                                            if (window.confirm(`Delete ${selectedFiles.size} files?`)) {
+                                            const isConfirmed = await confirm({
+                                                title: 'Delete Multiple Files',
+                                                message: `Are you sure you want to delete ${selectedFiles.size} files? This action cannot be undone.`,
+                                                confirmLabel: 'Delete All',
+                                                isDestructive: true
+                                            });
+                                            if (isConfirmed) {
                                                 for (const path of selectedFiles) {
                                                     const isDir = files.find(f => f.path === path)?.is_dir || false;
                                                     await api.deleteSftp(sessionId, path, isDir);

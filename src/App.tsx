@@ -10,6 +10,7 @@ import { SshProfile } from "./types/connection";
 import { api } from "./services/api";
 import { useSessionTimeout } from './hooks/useSessionTimeout';
 import { SessionTimeoutOverlay } from './components/ui/SessionTimeoutOverlay';
+import { ConfirmProvider } from './hooks/useConfirm';
 
 interface SessionTab extends TabData {
   profile: SshProfile;
@@ -191,71 +192,73 @@ function App() {
   }, [activeTab]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-main)] transition-colors duration-200">
-      <TitleBar />
-      <div className="flex flex-1 min-h-0">
-        <Sidebar
-          onConnect={handleConnect}
-          openAddModalRef={openAddModalRef}
-          focusSearchRef={focusSearchRef}
-        />
-
-        <div className="flex-1 flex flex-col h-full bg-[var(--bg-primary)] min-w-0">
-          <TopBar
-            tabs={tabs}
-            activeTab={activeTab}
-            onTabClose={handleTabClose}
-            onTabSelect={(id) => setActiveTab(id)}
-            onSplit={handleSplitPane}
-            onToggleMonitor={(id) => handleToggleManagementPanel(id, 'monitor')}
-            isMonitorOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'monitor'}
-            onToggleNetworkTools={(id) => handleToggleManagementPanel(id, 'network')}
-            isNetworkToolsOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'network'}
-            onToggleDockerManager={(id) => handleToggleManagementPanel(id, 'docker')}
-            isDockerManagerOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'docker'}
-            onToggleTunnels={(id) => handleToggleManagementPanel(id, 'tunnels')}
-            isTunnelsOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'tunnels'}
+    <ConfirmProvider>
+      <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-main)] transition-colors duration-200">
+        <TitleBar />
+        <div className="flex flex-1 min-h-0">
+          <Sidebar
+            onConnect={handleConnect}
+            openAddModalRef={openAddModalRef}
+            focusSearchRef={focusSearchRef}
           />
 
-          {/* Main Terminal Area */}
-          <div className="flex-1 p-0 overflow-hidden relative">
-            {isTimedOut && <SessionTimeoutOverlay onReconnect={resetTimeout} onClose={handleCloseActiveTabAndUnlock} />}
+          <div className="flex-1 flex flex-col h-full bg-[var(--bg-primary)] min-w-0">
+            <TopBar
+              tabs={tabs}
+              activeTab={activeTab}
+              onTabClose={handleTabClose}
+              onTabSelect={(id) => setActiveTab(id)}
+              onSplit={handleSplitPane}
+              onToggleMonitor={(id) => handleToggleManagementPanel(id, 'monitor')}
+              isMonitorOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'monitor'}
+              onToggleNetworkTools={(id) => handleToggleManagementPanel(id, 'network')}
+              isNetworkToolsOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'network'}
+              onToggleDockerManager={(id) => handleToggleManagementPanel(id, 'docker')}
+              isDockerManagerOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'docker'}
+              onToggleTunnels={(id) => handleToggleManagementPanel(id, 'tunnels')}
+              isTunnelsOpen={tabs.find(t => t.id === activeTab)?.managementPanelOpen && tabs.find(t => t.id === activeTab)?.activeManagementTab === 'tunnels'}
+            />
 
-            {!isTimedOut && tabs.length === 0 ? (
-              <div className="absolute inset-0 flex items-center justify-center text-[var(--text-muted)] opacity-50 flex-col gap-6 select-none animate-in fade-in duration-1000">
-                <Logo size={96} className="grayscale brightness-125 transition-all duration-700" style={{ filter: 'grayscale(1) opacity(0.2)' }} />
-                <p className="text-sm font-medium tracking-wide uppercase">Cliqon terminal</p>
-              </div>
-            ) : !isTimedOut && (
-              tabs.map((tab) => (
-                <div key={tab.id} className={`absolute inset-0 flex flex-col ${activeTab === tab.id ? '' : 'hidden'}`}>
-                  <div className="flex-1 relative min-h-0">
-                    <SplitView
-                      panes={tab.panes}
-                      activePane={tab.activePane}
-                      isTabActive={activeTab === tab.id}
-                      onPaneClose={(paneId) => handlePaneClose(tab.id, paneId)}
-                      onPaneActivate={(paneId) => handlePaneActivate(tab.id, paneId)}
-                    />
-                  </div>
-                  {tab.managementPanelOpen && activeTab === tab.id && (
-                    <ManagementPanel
-                      profile={tab.profile}
-                      sessionId={tab.id}
-                      activeTab={tab.activeManagementTab}
-                      onTabChange={(type) => handleToggleManagementPanel(tab.id, type)}
-                      onClose={() => handleToggleManagementPanel(tab.id, tab.activeManagementTab)}
-                      onViewDockerLogs={(containerId) => handleViewDockerLogs(tab.id, containerId)}
-                      onDockerExec={(containerId) => handleDockerExec(tab.id, containerId)}
-                    />
-                  )}
+            {/* Main Terminal Area */}
+            <div className="flex-1 p-0 overflow-hidden relative">
+              {isTimedOut && <SessionTimeoutOverlay onReconnect={resetTimeout} onClose={handleCloseActiveTabAndUnlock} />}
+
+              {!isTimedOut && tabs.length === 0 ? (
+                <div className="absolute inset-0 flex items-center justify-center text-[var(--text-muted)] opacity-50 flex-col gap-6 select-none animate-in fade-in duration-1000">
+                  <Logo size={96} className="grayscale brightness-125 transition-all duration-700" style={{ filter: 'grayscale(1) opacity(0.2)' }} />
+                  <p className="text-sm font-medium tracking-wide uppercase">Cliqon terminal</p>
                 </div>
-              ))
-            )}
+              ) : !isTimedOut && (
+                tabs.map((tab) => (
+                  <div key={tab.id} className={`absolute inset-0 flex flex-col ${activeTab === tab.id ? '' : 'hidden'}`}>
+                    <div className="flex-1 relative min-h-0">
+                      <SplitView
+                        panes={tab.panes}
+                        activePane={tab.activePane}
+                        isTabActive={activeTab === tab.id}
+                        onPaneClose={(paneId) => handlePaneClose(tab.id, paneId)}
+                        onPaneActivate={(paneId) => handlePaneActivate(tab.id, paneId)}
+                      />
+                    </div>
+                    {tab.managementPanelOpen && activeTab === tab.id && (
+                      <ManagementPanel
+                        profile={tab.profile}
+                        sessionId={tab.id}
+                        activeTab={tab.activeManagementTab}
+                        onTabChange={(type) => handleToggleManagementPanel(tab.id, type)}
+                        onClose={() => handleToggleManagementPanel(tab.id, tab.activeManagementTab)}
+                        onViewDockerLogs={(containerId) => handleViewDockerLogs(tab.id, containerId)}
+                        onDockerExec={(containerId) => handleDockerExec(tab.id, containerId)}
+                      />
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </ConfirmProvider>
   );
 }
 

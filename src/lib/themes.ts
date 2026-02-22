@@ -447,7 +447,119 @@ export const themes: Record<string, Theme> = {
             border: '#d8d0c0',
             hover: '#e8e4d8',
         }
-    }
+    },
+    mintFrost: {
+        id: 'mintFrost',
+        name: 'Mint Frost',
+        type: 'light',
+        colors: {
+            bgPrimary: '#f0fff4',
+            bgSidebar: '#e6fffa',
+            textMain: '#22543d',
+            textMuted: '#38a169',
+            accent: '#48bb78',
+            border: '#c6f6d5',
+            hover: '#e6fffa',
+        }
+    },
+    goldenSand: {
+        id: 'goldenSand',
+        name: 'Golden Sand',
+        type: 'light',
+        colors: {
+            bgPrimary: '#fffaf0',
+            bgSidebar: '#fefcbf',
+            textMain: '#744210',
+            textMuted: '#b7791f',
+            accent: '#d69e2e',
+            border: '#fef3c7',
+            hover: '#fefcbf',
+        }
+    },
+    skyBlue: {
+        id: 'skyBlue',
+        name: 'Sky Blue',
+        type: 'light',
+        colors: {
+            bgPrimary: '#ebf8ff',
+            bgSidebar: '#bee3f8',
+            textMain: '#2a4365',
+            textMuted: '#4299e1',
+            accent: '#3182ce',
+            border: '#bee3f8',
+            hover: '#90cdf4',
+        }
+    },
+    softLilac: {
+        id: 'softLilac',
+        name: 'Soft Lilac',
+        type: 'light',
+        colors: {
+            bgPrimary: '#faf5ff',
+            bgSidebar: '#e9d8fd',
+            textMain: '#44337a',
+            textMuted: '#805ad5',
+            accent: '#9f7aea',
+            border: '#e9d8fd',
+            hover: '#d6bcfa',
+        }
+    },
+    desertWhite: {
+        id: 'desertWhite',
+        name: 'Desert White',
+        type: 'light',
+        colors: {
+            bgPrimary: '#fffaf5',
+            bgSidebar: '#ffedd5',
+            textMain: '#7c2d12',
+            textMuted: '#c2410c',
+            accent: '#ea580c',
+            border: '#fed7aa',
+            hover: '#ffedd5',
+        }
+    },
+    sageGarden: {
+        id: 'sageGarden',
+        name: 'Sage Garden',
+        type: 'light',
+        colors: {
+            bgPrimary: '#f0f4f0',
+            bgSidebar: '#d1d8d1',
+            textMain: '#1e2f1e',
+            textMuted: '#4a634a',
+            accent: '#6b8e23',
+            border: '#b8c2b8',
+            hover: '#c8d1c8',
+        }
+    },
+    sunsetGlow: {
+        id: 'sunsetGlow',
+        name: 'Sunset Glow',
+        type: 'light',
+        colors: {
+            bgPrimary: '#fff5f5',
+            bgSidebar: '#fed7d7',
+            textMain: '#742a2a',
+            textMuted: '#c53030',
+            accent: '#e53e3e',
+            border: '#feb2b2',
+            hover: '#fed7d7',
+        }
+    },
+    lemonChiffon: {
+        id: 'lemonChiffon',
+        name: 'Lemon Chiffon',
+        type: 'light',
+        colors: {
+            bgPrimary: '#fffdf0',
+            bgSidebar: '#fff9c4',
+            textMain: '#4a3a00',
+            textMuted: '#8a7a00',
+            accent: '#fbc02d',
+            border: '#fff59d',
+            hover: '#fff9c4',
+        }
+    },
 };
 
 export interface TerminalTheme {

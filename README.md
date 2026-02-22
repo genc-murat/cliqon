@@ -19,8 +19,8 @@ While there are many SSH clients, Cliqon is built for the **modern developer wor
 - **Performance First:** Native performance with a Rust backend (Tauri 2) and WebGL-accelerated terminal.
 - **Seamless Collaboration:** Zero-config, P2P network sharing to securely send profiles to teammates.
 - **Intelligence:** ML-powered autocomplete that learns your habits locally and privately.
-- **Integrated Toolbox:** Docker management, server health monitoring, and 15+ network diagnostic tools built-in.
-- **Deep Customization:** 30+ premium themes and fine-grained UI control.
+- **Integrated Toolbox:** Docker management, server health monitoring and 15+ network diagnostic tools built-in.
+- **Deep Customization:** 39+ premium themes and fine-grained UI control.
 
 ---
 
@@ -189,10 +189,10 @@ Share SSH connection profiles (including passwords) with teammates on the same l
 - **Background Execution** — Tunnels run in lightweight Rust threads, ensuring high throughput and resilience.
 
 ### Theming & Appearance
-- **App Themes** — 31+ high-quality themes: Cyberpunk Red, Hacker Void, Neon Tokyo, Vaporwave, Aurora Borealis, Cherry Blossom, Lavender Mist, Peach Cream, CRT Amber, and many more
-- **Sidebar-Driven Settings** — Completely redesigned, premium settings interface for easier customization
-- **Terminal Palette Preview** — Visualize font colors (ANSI) directly in the Settings menu
-- **Collapsible panels** — Sidebar, SFTP Browser, and Snippet Manager can each be collapsed to an icon rail for maximum terminal space; sidebar state is persisted across restarts
+- **App Themes** — 39+ high-quality themes: Mint Frost, Golden Sand, Sky Blue, Soft Lilac, Desert White, Sage Garden, Sunset Glow, Lemon Chiffon, Cyberpunk Red, Hacker Void, Neon Tokyo, Vaporwave, and many more.
+- **Theme Grouping** — Reorganized preferences UI with themes categorized into **Light** and **Dark** groups for easier selection.
+- **Sidebar-Driven Settings** — Completely redesigned, premium settings interface for easier customization.
+- **Modern Icons** — Refined UI with modern panel icons for collapse/expand functionality across the Sidebar, SFTP, and Snippets panels.
 
 ### Security
 - Passwords and key passphrases stored via **OS Keyring** (Keychain on macOS, libsecret on Linux, Windows Credential Manager)

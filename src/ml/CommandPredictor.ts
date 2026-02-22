@@ -299,6 +299,29 @@ export class CommandPredictor {
     }
 
     /**
+     * Search command history (for Ctrl+R reverse-i-search).
+     * Returns commands containing the query, sorted by frecency.
+     */
+    searchHistory(query: string, maxResults: number = 20): string[] {
+        const q = query.toLowerCase();
+        const now = Date.now();
+        return Array.from(this.history.values())
+            .filter(entry => entry.command.toLowerCase().includes(q))
+            .sort((a, b) => this.calculateFrecency(b, now) - this.calculateFrecency(a, now))
+            .slice(0, maxResults)
+            .map(entry => entry.command);
+    }
+
+    /**
+     * Get all history commands sorted by recency.
+     */
+    getAllHistory(): string[] {
+        return Array.from(this.history.values())
+            .sort((a, b) => b.lastUsed - a.lastUsed)
+            .map(entry => entry.command);
+    }
+
+    /**
      * Get model stats for debugging.
      */
     getStats(): { historySize: number; markovKeys: number; ngramCount: number } {

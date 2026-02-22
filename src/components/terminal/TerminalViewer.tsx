@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
+import { SearchAddon } from '@xterm/addon-search';
+import { WebLinksAddon } from '@xterm/addon-web-links';
+import { ClipboardAddon } from '@xterm/addon-clipboard';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { SshProfile } from '../../types/connection';
 import { api } from '../../services/api';
@@ -9,6 +12,8 @@ import { useTheme } from '../../hooks/useTheme';
 import { useTerminalHistory } from '../../hooks/useTerminalHistory';
 import { FileBrowser } from './FileBrowser';
 import { SnippetManager } from './SnippetManager';
+import { TerminalSearchBar } from './TerminalSearchBar';
+import { TerminalHistorySearch } from './TerminalHistorySearch';
 // Make sure to import xterm styles
 import '@xterm/xterm/css/xterm.css';
 
@@ -24,6 +29,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<Terminal | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
+    const searchAddonRef = useRef<SearchAddon | null>(null);
     const unlistenRxRef = useRef<UnlistenFn | null>(null);
     const unlistenCloseRef = useRef<UnlistenFn | null>(null);
     const [connected, setConnected] = useState(false);
@@ -32,10 +38,16 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
     const { theme, terminalTheme, terminalFont, terminalCursorStyle } = useTheme();
 
     // ML-powered autocomplete
-    const { processKeystroke, processOutput, getSuggestionRemainder } = useTerminalHistory(profile.id);
+    const { processKeystroke, processOutput, getSuggestionRemainder, predictor } = useTerminalHistory(profile.id);
     const [ghostText, setGhostText] = useState<string | null>(null);
     const ghostRef = useRef<HTMLDivElement>(null);
     const activeSuggestionRef = useRef<string | null>(null);
+
+    // Advanced terminal features
+    const [showSearchBar, setShowSearchBar] = useState(false);
+    const [showHistorySearch, setShowHistorySearch] = useState(false);
+    const [showLineNumbers, setShowLineNumbers] = useState(false);
+    const [lineNumberData, setLineNumberData] = useState<{ start: number; count: number }>({ start: 1, count: 0 });
 
     const getXtermTheme = useCallback(() => {
         if (terminalTheme.id === 'appTheme') {
@@ -78,6 +90,25 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
 
         const fitAddon = new FitAddon();
         term.loadAddon(fitAddon);
+
+        // Load search addon
+        const searchAddon = new SearchAddon();
+        term.loadAddon(searchAddon);
+        searchAddonRef.current = searchAddon;
+
+        // Load web links addon — clickable URLs
+        const webLinksAddon = new WebLinksAddon((_event, uri) => {
+            window.open(uri, '_blank');
+        });
+        term.loadAddon(webLinksAddon);
+
+        // Load clipboard addon
+        try {
+            const clipboardAddon = new ClipboardAddon();
+            term.loadAddon(clipboardAddon);
+        } catch (e) {
+            console.warn('Clipboard addon could not be loaded', e);
+        }
 
         term.open(terminalRef.current);
 
@@ -287,6 +318,74 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         ghostRef.current.style.lineHeight = `${cellHeight}px`;
     }, [ghostText, terminalFont]);
 
+    // Keyboard shortcuts for Ctrl+F (search) and Ctrl+R (history)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!isActive) return;
+
+            // Ctrl+F: Toggle search bar
+            if (e.ctrlKey && e.key === 'f') {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowSearchBar(prev => !prev);
+                setShowHistorySearch(false);
+            }
+
+            // Ctrl+R: Toggle history search
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowHistorySearch(prev => !prev);
+                setShowSearchBar(false);
+            }
+
+            // Ctrl+L: Toggle line numbers
+            if (e.ctrlKey && e.shiftKey && e.key === 'L') {
+                e.preventDefault();
+                setShowLineNumbers(prev => !prev);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [isActive]);
+
+    // Update line number data when scrolling
+    useEffect(() => {
+        if (!showLineNumbers || !xtermRef.current) return;
+
+        const term = xtermRef.current;
+        const updateLineNumbers = () => {
+            const viewportY = term.buffer.active.viewportY;
+            setLineNumberData({
+                start: viewportY + 1,
+                count: term.rows,
+            });
+        };
+
+        updateLineNumbers();
+
+        // Listen for scroll events
+        const scrollDisposable = term.onScroll(() => updateLineNumbers());
+        const writeDisposable = term.onWriteParsed(() => updateLineNumbers());
+
+        return () => {
+            scrollDisposable.dispose();
+            writeDisposable.dispose();
+        };
+    }, [showLineNumbers]);
+
+    // Handle history search selection — send selected command to PTY
+    const handleHistorySelect = useCallback((command: string) => {
+        if (!connectedRef.current) return;
+        const encoder = new TextEncoder();
+        // Clear current line (Ctrl+U), then type the command
+        const clearLine = '\x15'; // Ctrl+U
+        const bytes = Array.from(encoder.encode(clearLine + command));
+        api.writeToPty(sessionId, bytes).catch(console.error);
+        setShowHistorySearch(false);
+    }, [sessionId]);
+
     return (
         <div
             className="w-full h-full flex flex-row"
@@ -294,11 +393,62 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
             {!paneMode && <FileBrowser profile={profile} sessionId={sessionId} isActive={isActive} />}
 
             <div className="flex-1 relative h-full">
+                {/* Line Numbers Gutter */}
+                {showLineNumbers && (
+                    <div
+                        className="absolute left-0 top-0 bottom-0 z-10 select-none pointer-events-none overflow-hidden"
+                        style={{
+                            width: 40,
+                            paddingTop: 8,
+                            paddingLeft: 4,
+                            fontFamily: terminalFont.fontFamily,
+                            fontSize: `${terminalFont.fontSize}px`,
+                            lineHeight: terminalFont.lineHeight,
+                            color: 'var(--text-dimmed)',
+                            opacity: 0.4,
+                            background: 'linear-gradient(90deg, var(--bg-sidebar) 0%, transparent 100%)',
+                        }}
+                    >
+                        {Array.from({ length: lineNumberData.count }, (_, i) => (
+                            <div
+                                key={i}
+                                className="text-right pr-1 tabular-nums"
+                                style={{
+                                    height: `${100 / lineNumberData.count}%`,
+                                    lineHeight: `${100 / lineNumberData.count}vh`,
+                                }}
+                            >
+                                {lineNumberData.start + i}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <div
                     ref={terminalRef}
                     className="absolute inset-0 p-2 overflow-hidden"
-                    style={{ backgroundColor: terminalTheme.id === 'appTheme' ? theme.colors.bgPrimary : terminalTheme.colors.background }}
+                    style={{
+                        backgroundColor: terminalTheme.id === 'appTheme' ? theme.colors.bgPrimary : terminalTheme.colors.background,
+                        paddingLeft: showLineNumbers ? 44 : undefined,
+                    }}
                 />
+
+                {/* Search Bar Overlay (Ctrl+F) */}
+                {showSearchBar && (
+                    <TerminalSearchBar
+                        searchAddon={searchAddonRef.current}
+                        onClose={() => setShowSearchBar(false)}
+                    />
+                )}
+
+                {/* History Search Overlay (Ctrl+R) */}
+                {showHistorySearch && (
+                    <TerminalHistorySearch
+                        predictor={predictor}
+                        onSelect={handleHistorySelect}
+                        onClose={() => setShowHistorySearch(false)}
+                    />
+                )}
 
                 {/* ML Autocomplete Ghost Text Overlay */}
                 {ghostText && connected && (

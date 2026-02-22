@@ -152,6 +152,12 @@ Share SSH connection profiles (including passwords) with teammates on the same l
 - **Cursor Customization** — Choose between Block, Underline, or Bar cursor styles with optional blinking
 - **Dynamic ANSI Colors** — "Match App Theme" automatically switches between Light and Dark optimized ANSI palettes for maximum readability
 - **Font Settings** — choose font family, size, and line height with a live preview
+- **Gelişmiş Terminal Özellikleri**:
+    - **Find & Replace (`Ctrl+F`)**: Tam özellikli arama çubuğu; büyük/küçük harf duyarlılığı ve regex desteği ile terminal buffer'ında gelişmiş arama.
+    - **Komut Geçmişi Araması (`Ctrl+R`)**: İnteraktif reverse-i-search özelliği ile geçmiş komutları hızla bulup çalıştırma (Makine öğrenmesi destekli).
+    - **Tıklanabilir URL'ler**: Terminaldeki web adreslerini otomatik algılar ve tıklanınca varsayılan tarayıcıda açar.
+    - **Satır Numaraları (`Ctrl+Shift+L`)**: Scrollback buffer'daki satır numaralarını opsiyonel olarak görüntüleme.
+    - **Clipboard Entegrasyonu**: Gelişmiş kopyala/yapıştır desteği.
 - **ML-Powered Autocomplete** — Fish-shell style inline suggestions that learn from your history using a Markov Chain model; accepts with `Tab` or `→`
 
 ### SFTP File Browser
@@ -261,7 +267,9 @@ Experience a smarter terminal that learns how you work. Cliqon includes a built-
 | `Ctrl + Shift + Tab` | Switch to previous SSH tab |
 | `Ctrl + N` | Open "New Connection" modal |
 | `Ctrl + B` | Toggle SFTP browser panel |
-| `Ctrl + F` | Focus sidebar connection search |
+| `Ctrl + F` | Focus sidebar search / Show Terminal search bar |
+| `Ctrl + R` | Interactive command history search (reverse-i-search) |
+| `Ctrl + Shift + L` | Toggle terminal line numbers |
 | `Ctrl + Shift + H` | Split current tab horizontally |
 
 ---

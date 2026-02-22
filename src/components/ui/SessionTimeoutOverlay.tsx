@@ -1,27 +1,40 @@
 import React, { useEffect } from 'react';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, X } from 'lucide-react';
 
 interface SessionTimeoutOverlayProps {
     onReconnect: () => void;
+    onClose: () => void;
 }
 
-export const SessionTimeoutOverlay: React.FC<SessionTimeoutOverlayProps> = ({ onReconnect }) => {
+export const SessionTimeoutOverlay: React.FC<SessionTimeoutOverlayProps> = ({ onReconnect, onClose }) => {
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'r' || e.key === 'R') {
                 e.preventDefault();
                 onReconnect();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                onClose();
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [onReconnect]);
+    }, [onReconnect, onClose]);
 
     return (
         <div className="absolute inset-0 z-[200] flex items-center justify-center p-4">
             {/* Backdrop with heavy blur and dark overlay */}
             <div className="absolute inset-0 bg-black/60 backdrop-blur-md transition-all duration-500 animate-in fade-in" />
+
+            {/* Close Button - Top Right */}
+            <button
+                onClick={onClose}
+                className="absolute top-6 right-6 z-[210] p-2 bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-500 border border-white/10 hover:border-red-500/30 rounded-full transition-all duration-300 hover:rotate-90 active:scale-90"
+                title="Close Tab (Esc)"
+            >
+                <X className="w-6 h-6" />
+            </button>
 
             {/* Content Card */}
             <div className="relative bg-[var(--bg-primary)] border border-red-500/30 rounded-2xl shadow-[0_20px_50px_rgba(255,0,0,0.1)] w-full max-w-lg p-8 flex flex-col items-center text-center animate-in fade-in zoom-in duration-300">

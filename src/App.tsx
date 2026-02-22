@@ -90,6 +90,13 @@ function App() {
     });
   };
 
+  const handleCloseActiveTabAndUnlock = () => {
+    if (activeTab) {
+      handleTabClose(activeTab);
+      resetTimeout();
+    }
+  };
+
   const handleToggleManagementPanel = (tabId: string, type: ManagementTab) => {
     setTabs(prev => prev.map(tab => {
       if (tab.id !== tabId) return tab;
@@ -212,7 +219,7 @@ function App() {
 
           {/* Main Terminal Area */}
           <div className="flex-1 p-0 overflow-hidden relative">
-            {isTimedOut && <SessionTimeoutOverlay onReconnect={resetTimeout} />}
+            {isTimedOut && <SessionTimeoutOverlay onReconnect={resetTimeout} onClose={handleCloseActiveTabAndUnlock} />}
 
             {!isTimedOut && tabs.length === 0 ? (
               <div className="absolute inset-0 flex items-center justify-center text-[var(--text-muted)] opacity-50 flex-col gap-6 select-none animate-in fade-in duration-1000">

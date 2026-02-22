@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.6] - 2026-02-22
+
+### Added
+- **Session Timeout UX Refinement**:
+  - Added a **Close Tab** button to the Session Locked overlay, allowing specific tab closure without exiting the application.
+  - Bound the **Esc** key to the Close Tab action for faster keyboard navigation during locks.
+- **Robust Inactivity Detection**:
+  - Implemented jitter protection to ignore redundant mouse movements caused by sensor noise.
+  - Added `mousedown` tracking to ensure the session stays active during clicks without significant movement.
+  - Added debug logging for session timeout triggers.
+
 ## [0.3.5] - 2026-02-22
 
 ### Added

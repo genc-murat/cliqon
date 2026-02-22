@@ -295,7 +295,7 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-hidden relative">
+            <div className="flex-1 overflow-hidden relative flex flex-col">
                 {activeTab === 'ports' ? (
                     <DockerPortForwards containers={containers} host={profile.host} />
                 ) : activeTab === 'volumes' ? (

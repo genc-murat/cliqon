@@ -238,6 +238,7 @@ impl SharingService {
         let active = self.active.clone();
         let instance_id = self.instance_id.clone();
         let display_name = self.display_name.clone();
+        let peers = self.peers.clone();
 
         thread::spawn(move || {
             let socket = match UdpSocket::bind("0.0.0.0:0") {
@@ -291,6 +292,15 @@ impl SharingService {
                                 }
                             }
                         }
+                    }
+
+                    // Also send unicast beacon to all currently known peers to keep them alive on VPNs
+                    // without relying on the infrequent full sweep
+                    let known_peers: Vec<String> = {
+                        peers.lock().unwrap().values().map(|p| p.ip.clone()).collect()
+                    };
+                    for peer_ip in known_peers {
+                        let _ = socket.send_to(&data, format!("{}:{}", peer_ip, DISCOVERY_PORT));
                     }
                 }
 

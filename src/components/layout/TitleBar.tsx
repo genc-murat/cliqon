@@ -1,26 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { Minus, Square, X, Copy } from 'lucide-react';
+import { Minus, Square, X } from 'lucide-react';
 import { Logo } from './Logo';
 
 export const TitleBar: React.FC = () => {
     const appWindow = getCurrentWindow();
-    const [isMaximized, setIsMaximized] = useState(false);
-
-    useEffect(() => {
-        const updateMaximized = async () => {
-            setIsMaximized(await appWindow.isMaximized());
-        };
-
-        updateMaximized();
-        const unlisten = appWindow.onResized(() => {
-            updateMaximized();
-        });
-
-        return () => {
-            unlisten.then(u => u());
-        };
-    }, []);
 
     const handleMinimize = () => appWindow.minimize();
     const handleMaximize = async () => {
@@ -53,9 +37,9 @@ export const TitleBar: React.FC = () => {
                 <button
                     onClick={handleMaximize}
                     className="h-full w-10 flex items-center justify-center hover:bg-[var(--hover-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-                    title={isMaximized ? "Restore" : "Maximize"}
+                    title="Toggle Maximize"
                 >
-                    {isMaximized ? <Copy size={12} /> : <Square size={12} />}
+                    <Square size={12} />
                 </button>
                 <button
                     onClick={handleClose}

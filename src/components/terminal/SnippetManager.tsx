@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Play, Plus, Trash2, Code, ChevronLeft, ChevronRight, Folder, Copy } from 'lucide-react';
+import { Play, Plus, Trash2, Code, ChevronLeft, ChevronRight, Folder, Copy, Share2, User } from 'lucide-react';
 import { Snippet } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
 import { useSnippets } from '../../hooks/useSnippets';
 import { useConfirm } from '../../hooks/useConfirm';
+import { useSharing } from '../../contexts/SharingContext';
 
 interface SnippetManagerProps {
     sessionId: string;
@@ -14,10 +15,12 @@ interface SnippetManagerProps {
 export const SnippetManager: React.FC<SnippetManagerProps> = ({ sessionId, isActive }) => {
     const { width, startResizing, isResizing } = useResizable(240, 180, 450, 'right');
     const { snippets, saveSnippet, deleteSnippet } = useSnippets();
+    const { status, peers, handleShareItems } = useSharing();
     const confirm = useConfirm();
 
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
+    const [sharingSnippetId, setSharingSnippetId] = useState<string | null>(null);
 
     const [newName, setNewName] = useState('');
     const [newCommand, setNewCommand] = useState('');
@@ -98,6 +101,16 @@ export const SnippetManager: React.FC<SnippetManagerProps> = ({ sessionId, isAct
             } catch (err) {
                 console.error("Failed to delete snippet", err);
             }
+        }
+    };
+
+    const handleShareSnippet = async (peerId: string, snippetId: string) => {
+        try {
+            await handleShareItems(peerId, [], [snippetId]);
+            setSharingSnippetId(null);
+            // Could add a toast notification here
+        } catch (err) {
+            console.error("Failed to share snippet", err);
         }
     };
 
@@ -243,6 +256,54 @@ export const SnippetManager: React.FC<SnippetManagerProps> = ({ sessionId, isAct
                                                         </button>
 
                                                         <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--bg-primary)] pl-2 pb-0.5">
+                                                            {status?.active && (
+                                                                <div className="relative">
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setSharingSnippetId(sharingSnippetId === snippet.id ? null : snippet.id);
+                                                                        }}
+                                                                        className={`p-1.5 rounded-md transition-colors ${sharingSnippetId === snippet.id ? 'text-[var(--accent-color)] bg-[var(--accent-color)]/10' : 'text-[var(--text-muted)] hover:text-[var(--accent-color)] hover:bg-[var(--accent-color)]/10'}`}
+                                                                        title="Share snippet with network"
+                                                                    >
+                                                                        <Share2 size={13} />
+                                                                    </button>
+
+                                                                    {sharingSnippetId === snippet.id && (
+                                                                        <div className="absolute bottom-full right-0 mb-2 w-48 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-2">
+                                                                            <div className="p-2 border-b border-[var(--border-color)] bg-[var(--bg-primary)]">
+                                                                                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Share with Peer</span>
+                                                                            </div>
+                                                                            <div className="max-h-48 overflow-y-auto">
+                                                                                {peers.length === 0 ? (
+                                                                                    <div className="p-3 text-[10px] text-[var(--text-muted)] text-center">
+                                                                                        No peers discovered on network.
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    peers.map(peer => (
+                                                                                        <button
+                                                                                            key={peer.id}
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
+                                                                                                handleShareSnippet(peer.id, snippet.id);
+                                                                                            }}
+                                                                                            className="w-full text-left p-2 hover:bg-[var(--hover-color)] flex items-center gap-2 transition-colors border-b border-[var(--border-color)] last:border-0"
+                                                                                        >
+                                                                                            <div className="w-6 h-6 rounded-full bg-[var(--accent-color)]/10 flex items-center justify-center text-[var(--accent-color)]">
+                                                                                                <User size={12} />
+                                                                                            </div>
+                                                                                            <div className="flex-1 min-w-0">
+                                                                                                <div className="text-xs text-[var(--text-main)] truncate font-medium">{peer.display_name}</div>
+                                                                                                <div className="text-[9px] text-[var(--text-muted)] truncate">{peer.ip}</div>
+                                                                                            </div>
+                                                                                        </button>
+                                                                                    ))
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                             <button
                                                                 onClick={(e) => handleCopySnippet(snippet, e)}
                                                                 className="p-1.5 text-[var(--text-muted)] hover:text-[var(--accent-color)] rounded-md hover:bg-[var(--accent-color)]/10"

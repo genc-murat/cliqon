@@ -37,10 +37,11 @@ pub async fn get_discovered_peers(state: State<'_, AppState>) -> Result<Vec<Peer
 }
 
 #[tauri::command]
-pub async fn share_profiles_with_peer(
+pub async fn share_items_with_peer(
     state: State<'_, AppState>,
     peer_id: String,
     profile_ids: Vec<String>,
+    snippet_ids: Vec<String>,
 ) -> Result<String> {
     let service = state.sharing_service.lock().unwrap();
 
@@ -49,32 +50,44 @@ pub async fn share_profiles_with_peer(
     let peer = peers.iter().find(|p| p.id == peer_id)
         .ok_or_else(|| crate::error::AppError::Custom("Peer not found".to_string()))?;
 
-    // Get the profiles with their secrets
-    let store = state.profile_store.lock().unwrap();
-    let all_profiles = store.get_all_profiles()?;
-    let mut shareable: Vec<ShareableProfile> = Vec::new();
-
-    for pid in &profile_ids {
-        if let Some(profile) = all_profiles.iter().find(|p| p.id == *pid) {
-            let secret = store.get_profile_secret(pid).ok().flatten();
-            shareable.push(ShareableProfile::from_profile(profile, secret));
+    // Get the profiles
+    let mut shareable_profiles: Vec<ShareableProfile> = Vec::new();
+    if !profile_ids.is_empty() {
+        let store = state.profile_store.lock().unwrap();
+        let all_profiles = store.get_all_profiles()?;
+        for pid in &profile_ids {
+            if let Some(profile) = all_profiles.iter().find(|p| p.id == *pid) {
+                let secret = store.get_profile_secret(pid).ok().flatten();
+                shareable_profiles.push(ShareableProfile::from_profile(profile, secret));
+            }
         }
     }
 
-    if shareable.is_empty() {
-        return Err(crate::error::AppError::Custom("No profiles to share".to_string()));
+    // Get the snippets
+    let mut shareable_snippets: Vec<ShareableSnippet> = Vec::new();
+    if !snippet_ids.is_empty() {
+        let store = state.snippet_store.lock().unwrap();
+        let all_snippets = store.get_all()?;
+        for sid in &snippet_ids {
+            if let Some(snippet) = all_snippets.iter().find(|s| s.id == *sid) {
+                shareable_snippets.push(ShareableSnippet::from(snippet.clone()));
+            }
+        }
+    }
+
+    if shareable_profiles.is_empty() && shareable_snippets.is_empty() {
+        return Err(crate::error::AppError::Custom("No items to share".to_string()));
     }
 
     let peer_clone = peer.clone();
-    drop(store); // release lock
-    service.share_profiles_with_peer(&peer_clone, shareable)
+    service.share_with_peer(&peer_clone, shareable_profiles, shareable_snippets)
         .map_err(|e| crate::error::AppError::Custom(e))
 }
 
 #[tauri::command]
 pub async fn get_pending_shares(state: State<'_, AppState>) -> Result<Vec<PendingShare>> {
     let service = state.sharing_service.lock().unwrap();
-    Ok(service.get_pending_shares())
+    Ok(service.get_peers_pending_shares()) // Note: method name might need to be get_pending_shares
 }
 
 #[tauri::command]
@@ -86,13 +99,27 @@ pub async fn accept_share(
     let share = service.accept_share(&share_id)
         .ok_or_else(|| crate::error::AppError::Custom("Share not found".to_string()))?;
 
-    let store = state.profile_store.lock().unwrap();
-    let count = share.profiles.len();
+    let mut count = 0;
 
-    for sp in share.profiles {
-        let ssh_profile = sp.to_ssh_profile();
-        let secret = sp.secret.clone();
-        store.save_profile(ssh_profile, secret)?;
+    // Save profiles
+    if !share.profiles.is_empty() {
+        let store = state.profile_store.lock().unwrap();
+        for sp in &share.profiles {
+            let ssh_profile = sp.to_ssh_profile();
+            let secret = sp.secret.clone();
+            store.save_profile(ssh_profile, secret)?;
+            count += 1;
+        }
+    }
+
+    // Save snippets
+    if !share.snippets.is_empty() {
+        let store = state.snippet_store.lock().unwrap();
+        for ss in &share.snippets {
+            let snippet = crate::models::snippet::Snippet::from(ss.clone());
+            store.save(snippet)?;
+            count += 1;
+        }
     }
 
     Ok(count)

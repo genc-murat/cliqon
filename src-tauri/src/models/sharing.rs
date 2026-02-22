@@ -1,4 +1,5 @@
 use crate::models::profile::{AuthMethod, SshProfile};
+use crate::models::snippet::Snippet;
 use serde::{Deserialize, Serialize};
 
 /// Information about a discovered peer on the local network
@@ -9,6 +10,43 @@ pub struct PeerInfo {
     pub ip: String,
     pub port: u16,
     pub last_seen: u64,
+}
+
+/// A snippet that can be shared over the network
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ShareableSnippet {
+    pub id: String,
+    pub name: String,
+    pub command: String,
+    pub folder: Option<String>,
+    pub auto_run: bool,
+    pub description: Option<String>,
+}
+
+impl From<Snippet> for ShareableSnippet {
+    fn from(s: Snippet) -> Self {
+        Self {
+            id: uuid::Uuid::new_v4().to_string(), // new ID for imported snippet
+            name: s.name,
+            command: s.command,
+            folder: s.folder,
+            auto_run: s.auto_run,
+            description: s.description,
+        }
+    }
+}
+
+impl From<ShareableSnippet> for Snippet {
+    fn from(s: ShareableSnippet) -> Self {
+        Self {
+            id: s.id,
+            name: s.name,
+            command: s.command,
+            folder: s.folder,
+            auto_run: s.auto_run,
+            description: s.description,
+        }
+    }
 }
 
 /// A profile that can be shared over the network (includes secrets)
@@ -64,12 +102,13 @@ impl ShareableProfile {
     }
 }
 
-/// Payload sent when sharing profiles
+/// Payload sent when sharing profiles or snippets
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SharePayload {
     pub sender_name: String,
     pub sender_ip: String,
-    pub profiles: Vec<ShareableProfile>,
+    pub profiles: Option<Vec<ShareableProfile>>,
+    pub snippets: Option<Vec<ShareableSnippet>>,
     pub timestamp: u64,
 }
 
@@ -80,6 +119,7 @@ pub struct PendingShare {
     pub from_name: String,
     pub from_ip: String,
     pub profiles: Vec<ShareableProfile>,
+    pub snippets: Vec<ShareableSnippet>,
     pub received_at: u64,
 }
 

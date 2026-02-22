@@ -114,15 +114,17 @@ impl SharingService {
         peers.values().cloned().collect()
     }
 
-    pub fn share_profiles_with_peer(
+    pub fn share_with_peer(
         &self,
         peer: &PeerInfo,
         profiles: Vec<ShareableProfile>,
+        snippets: Vec<ShareableSnippet>,
     ) -> Result<String, String> {
         let payload = SharePayload {
             sender_name: self.display_name.lock().unwrap().clone(),
             sender_ip: self.local_ip.lock().unwrap().clone(),
-            profiles,
+            profiles: if profiles.is_empty() { None } else { Some(profiles) },
+            snippets: if snippets.is_empty() { None } else { Some(snippets) },
             timestamp: now_secs(),
         };
 
@@ -161,9 +163,9 @@ impl SharingService {
         let _ = stream.read_to_string(&mut response);
 
         if response.contains("200 OK") {
-            Ok("Profiles shared successfully".to_string())
+            Ok("Items shared successfully".to_string())
         } else {
-            Ok("Profiles sent (peer may need to accept)".to_string())
+            Ok("Items sent (peer may need to accept)".to_string())
         }
     }
 
@@ -400,7 +402,8 @@ impl SharingService {
                             id: uuid::Uuid::new_v4().to_string(),
                             from_name: payload.sender_name,
                             from_ip: payload.sender_ip,
-                            profiles: payload.profiles,
+                            profiles: payload.profiles.unwrap_or_default(),
+                            snippets: payload.snippets.unwrap_or_default(),
                             received_at: now_secs(),
                         };
 

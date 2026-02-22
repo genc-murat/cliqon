@@ -16,6 +16,7 @@ interface SharingContextType {
     saveDisplayName: (name: string) => Promise<void>;
     handleAccept: (shareId: string) => Promise<number>;
     handleReject: (shareId: string) => Promise<void>;
+    handleShareItems: (peerId: string, profileIds: string[], snippetIds: string[]) => Promise<string>;
     pingPeer: (ip: string, port: number) => Promise<PeerInfo>;
     refreshStatus: () => Promise<void>;
 }
@@ -101,6 +102,10 @@ export const SharingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setPendingShares(prev => prev.filter(s => s.id !== shareId));
     }, []);
 
+    const handleShareItems = useCallback(async (peerId: string, profileIds: string[], snippetIds: string[]) => {
+        return await api.shareItemsWithPeer(peerId, profileIds, snippetIds);
+    }, []);
+
     const pingPeer = useCallback(async (ip: string, port: number) => {
         const peer = await api.pingPeer(ip, port);
         setPeers(prev => {
@@ -122,6 +127,7 @@ export const SharingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         saveDisplayName,
         handleAccept,
         handleReject,
+        handleShareItems,
         pingPeer,
         refreshStatus
     };

@@ -61,7 +61,7 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
         setIsSending(true);
         try {
             const { api } = await import('../../services/api');
-            const msg = await api.shareProfiles(selectedPeer.id, Array.from(selectedProfileIds));
+            const msg = await api.shareItemsWithPeer(selectedPeer.id, Array.from(selectedProfileIds), []);
             showToast(msg, 'success');
             setSelectedPeer(null);
             setSelectedProfileIds(new Set());

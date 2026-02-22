@@ -85,7 +85,7 @@ pub fn run() {
             get_sharing_status,
             set_sharing_display_name,
             get_discovered_peers,
-            share_profiles_with_peer,
+            share_items_with_peer,
             get_pending_shares,
             accept_share,
             reject_share,

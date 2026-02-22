@@ -189,8 +189,8 @@ export const api = {
         return await invoke<PeerInfo[]>('get_discovered_peers');
     },
 
-    shareProfiles: async (peerId: string, profileIds: string[]): Promise<string> => {
-        return await invoke<string>('share_profiles_with_peer', { peerId, profileIds });
+    shareItemsWithPeer: async (peerId: string, profileIds: string[], snippetIds: string[]): Promise<string> => {
+        return await invoke<string>('share_items_with_peer', { peerId, profileIds, snippetIds });
     },
 
     getPendingShares: async (): Promise<PendingShare[]> => {

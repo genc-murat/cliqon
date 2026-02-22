@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-02-22
+
+### Added
+- **Network Snippet Sharing**:
+  - Expanded the P2P sharing infrastructure to support **Global Snippets**.
+  - Added a "Share" action to the Snippet Manager panel, allowing one-click sharing of command snippets with discovered network peers.
+  - Implemented backend support for unified profile and snippet transfer payloads.
+  - Updated the incoming share interface to display and accept snippets alongside SSH profiles.
+
 ## [0.3.9] - 2026-02-22
 
 ### Changed

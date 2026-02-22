@@ -6,6 +6,15 @@ export interface PeerInfo {
     last_seen: number;
 }
 
+export interface ShareableSnippet {
+    id: string;
+    name: string;
+    command: string;
+    folder: string | null;
+    auto_run: boolean;
+    description: string | null;
+}
+
 export interface ShareableProfile {
     id: string;
     name: string;
@@ -25,6 +34,7 @@ export interface PendingShare {
     from_name: string;
     from_ip: string;
     profiles: ShareableProfile[];
+    snippets: ShareableSnippet[];
     received_at: number;
 }
 

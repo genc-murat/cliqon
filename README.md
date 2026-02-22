@@ -112,11 +112,11 @@ sequenceDiagram
     B->>LAN: Beacon (name, ip, http_port)
     LAN->>A: Discover User B
 
-    Note over A,B: User B selects profiles to share
+    Note over A,B: User B selects profiles or snippets to share
 
-    B->>A: HTTP POST /share (profiles + secrets)
+    B->>A: HTTP POST /share (profiles/snippets + secrets)
     A->>A: Show incoming share notification
-    A->>A: Accept → Import profiles
+    A->>A: Accept → Import items
     A-->>B: HTTP 200 OK
 ```
 
@@ -134,11 +134,11 @@ sequenceDiagram
 - Supports **Password**, **Private Key**, and **SSH Agent** authentication
 
 ### 🔗 Network Sharing
-Share SSH connection profiles (including passwords) with teammates on the same local network — no server required:
+Share SSH connection profiles and global snippets with teammates on the same local network — no server required:
 - **Global Active Indicator** — A continuous status indicator in the top TitleBar displays when sharing is active, with a notification badge for incoming share requests. You can click it from anywhere to open the panel.
 - **Auto-Discovery** — Cliqon instances on the same LAN automatically discover each other via UDP broadcast (port `19875`)
-- **Profile Sharing** — Select one or more profiles and send them directly to a discovered peer; passwords and keys are included
-- **Incoming Share Notifications** — Received shares appear as interactive cards with profile details; one-click **Accept** imports directly into your connection list
+- **Profile & Snippet Sharing** — Select one or more profiles or snippets and send them directly to a discovered peer; passwords and keys are included for profiles.
+- **Incoming Share Notifications** — Received shares appear as interactive cards with item details; one-click **Accept** imports directly into your connection or snippet list.
 - **Display Name** — Set a custom display name (defaults to hostname) so teammates know who's sharing
 - **Zero Configuration** — No central server, no cloud, no accounts; works entirely peer-to-peer on your LAN
 - **Privacy-First** — All data stays on your network; sharing is opt-in and each share request can be individually accepted or rejected

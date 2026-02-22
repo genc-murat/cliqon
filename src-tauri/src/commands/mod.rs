@@ -8,3 +8,4 @@ pub mod system;
 pub mod logging;
 pub mod sharing;
 pub mod tunnel;
+pub mod snippet;

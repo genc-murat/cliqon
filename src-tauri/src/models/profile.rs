@@ -7,13 +7,6 @@ pub enum AuthMethod {
     Agent,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Snippet {
-    pub id: String,
-    pub name: String,
-    pub command: String,
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum TunnelType {
     Local,
@@ -44,7 +37,6 @@ pub struct SshProfile {
     // Note: We don't store passwords/key passphrases directly in this struct.
     pub private_key_path: Option<String>,
     pub obfuscated_secret: Option<String>,
-    pub snippets: Option<Vec<Snippet>>,
     pub tunnels: Option<Vec<TunnelConfig>>,
     pub is_favorite: Option<bool>,
     pub color: Option<String>,
@@ -62,7 +54,6 @@ impl Default for SshProfile {
             category: None,
             private_key_path: None,
             obfuscated_secret: None,
-            snippets: Some(Vec::new()),
             tunnels: Some(Vec::new()),
             is_favorite: Some(false),
             color: None,

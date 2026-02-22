@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::models::profile::{SshProfile, AuthMethod, Snippet};
+use crate::models::profile::{SshProfile, AuthMethod};
 
 /// Information about a discovered peer on the local network
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -23,7 +23,6 @@ pub struct ShareableProfile {
     pub category: Option<String>,
     pub private_key_path: Option<String>,
     pub secret: Option<String>,
-    pub snippets: Option<Vec<Snippet>>,
     pub is_favorite: Option<bool>,
     pub color: Option<String>,
 }
@@ -41,7 +40,6 @@ impl ShareableProfile {
             category: profile.category.clone(),
             private_key_path: profile.private_key_path.clone(),
             secret,
-            snippets: profile.snippets.clone(),
             is_favorite: profile.is_favorite,
             color: profile.color.clone(),
         }
@@ -59,7 +57,6 @@ impl ShareableProfile {
             category: self.category.clone(),
             private_key_path: self.private_key_path.clone(),
             obfuscated_secret: None,
-            snippets: self.snippets.clone(),
             tunnels: Some(Vec::new()),
             is_favorite: self.is_favorite,
             color: self.color.clone(),

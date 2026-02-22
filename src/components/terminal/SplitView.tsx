@@ -118,7 +118,7 @@ export const SplitView: React.FC<SplitViewProps> = ({ panes, activePane, onPaneC
             </div>
 
             {/* SnippetManager — once per tab */}
-            <SnippetManager profile={firstPane.profile} sessionId={firstPane.id} isActive={isTabActive} />
+            <SnippetManager sessionId={firstPane.id} isActive={isTabActive} />
         </div>
     );
 };

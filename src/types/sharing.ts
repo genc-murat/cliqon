@@ -16,7 +16,6 @@ export interface ShareableProfile {
     category: string | null;
     private_key_path?: string;
     secret?: string;
-    snippets?: Array<{ id: string; name: string; command: string }>;
     is_favorite?: boolean;
     color?: string;
 }

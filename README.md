@@ -176,10 +176,11 @@ Share SSH connection profiles (including passwords) with teammates on the same l
 - **Properties & Permissions** — View details and edit `chmod` permissions interactively.
 - Refresh button, Copy Path, and file size display on hover.
 
-### Connection Snippets
-- Save per-connection command snippets
-- One-click execution — snippet is sent directly to the active terminal
-- Add/delete snippets with a clean sidebar panel
+### Global Connection Snippets
+- **Global Library** — Save your most-used commands globally to access them across any SSH profile or connection.
+- **Folder Organization** — Group snippets logically (e.g., "Docker", "Updates", "Network").
+- **Auto-run Toggle** — Choose whether a snippet executes instantly upon clicking, or just pastes into the terminal buffer for further editing.
+- Add, edit, or delete snippets with a clean, collapsable sidebar panel.
 
 ### SSH Tunneling (Port Forwarding)
 - **Local & Remote Forwarding** — Securely expose local services to the remote host, or access remote internal services on your local machine.

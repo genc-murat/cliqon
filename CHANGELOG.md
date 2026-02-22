@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.5] - 2026-02-22
+
+### Added
+- **Global Snippet System**:
+  - Snippets are now stored globally and can be used across any SSH connection.
+  - Added support for folder-based snippet organization.
+  - Added an "Auto-run" toggle for immediate execution vs. pasting into the terminal buffer.
+  - Complete backend and frontend rewrite of the snippet manager for a faster, termius-like experience.
+
 ## [0.3.0] - 2026-02-22
 
 ### Added

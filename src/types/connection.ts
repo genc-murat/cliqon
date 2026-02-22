@@ -4,6 +4,9 @@ export interface Snippet {
     id: string;
     name: string;
     command: string;
+    folder?: string | null;
+    auto_run: boolean;
+    description?: string;
 }
 
 export interface SshProfile {
@@ -15,7 +18,6 @@ export interface SshProfile {
     auth_method: AuthMethod;
     category: string | null;
     private_key_path?: string;
-    snippets?: Snippet[];
     tunnels?: TunnelConfig[];
     is_favorite?: boolean;
     color?: string;

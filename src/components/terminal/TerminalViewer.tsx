@@ -480,7 +480,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                 )}
             </div>
 
-            {!paneMode && <SnippetManager profile={profile} sessionId={sessionId} isActive={isActive} />}
+            {!paneMode && <SnippetManager sessionId={sessionId} isActive={isActive} />}
         </div>
     );
 };

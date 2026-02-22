@@ -14,6 +14,8 @@ interface ThemeContextType {
     availableTerminalThemes: TerminalTheme[];
     autoOpenMonitor: boolean;
     setAutoOpenMonitor: (open: boolean) => void;
+    sessionTimeout: number;
+    setSessionTimeout: (timeout: number) => void;
 }
 
 export const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -53,6 +55,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return saved === 'true';
     });
 
+    const [sessionTimeout, setSessionTimeoutState] = useState<number>(() => {
+        const saved = localStorage.getItem('cliqon-session-timeout');
+        return saved ? parseInt(saved, 10) : 30; // Default 30 minutes
+    });
+
     const setTheme = (themeId: string) => {
         if (themes[themeId]) {
             setThemeState(themes[themeId]);
@@ -83,6 +90,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const setAutoOpenMonitor = (open: boolean) => {
         setAutoOpenMonitorState(open);
         localStorage.setItem('cliqon-auto-open-monitor', String(open));
+    };
+
+    const setSessionTimeout = (timeout: number) => {
+        setSessionTimeoutState(timeout);
+        localStorage.setItem('cliqon-session-timeout', String(timeout));
     };
 
     useEffect(() => {
@@ -117,7 +129,9 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             availableThemes: Object.values(themes),
             availableTerminalThemes: Object.values(terminalThemes),
             autoOpenMonitor,
-            setAutoOpenMonitor
+            setAutoOpenMonitor,
+            sessionTimeout,
+            setSessionTimeout
         }}>
             {children}
         </ThemeContext.Provider>

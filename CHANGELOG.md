@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.5] - 2026-02-22
+
+### Added
+- **Session Timeout & Auto-Lock**:
+  - Implemented a secure inactivity timeout (configurable: 5m, 15m, 30m, 60m, or Never).
+  - **Strict Disconnection**: When timed out, the application forcefully unmounts all active terminal and SFTP views, triggering backend process cleanup for SSH/SFTP sessions.
+  - **Secure Overlay**: Added a high-fidelity, blur-background lock screen that prevents unauthorized access while timed out.
+  - **Quick Reconnect**: Pressing 'R' on the lock screen instantly re-establishes all previously active secure connections.
+- Added "Session Timeout" configuration to the General Settings panel.
+
+
 ## [0.1.2] - 2026-02-22
 
 ### Added

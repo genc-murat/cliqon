@@ -190,6 +190,7 @@ Share SSH connection profiles (including passwords) with teammates on the same l
 ### Security
 - Passwords and key passphrases stored via **OS Keyring** (Keychain on macOS, libsecret on Linux, Windows Credential Manager)
 - Obfuscated local fallback for environments where the system keyring is unavailable
+- **Auto-Locking & Session Timeout** — Automatically locks the application and forcefully closes all backend SSH/SFTP connections after a period of inactivity (configurable from 5m to 1h). Unlocks with a single keypress ('R') to re-establish secure channels.
 
 ### Server Health Monitor
 - **Real-Time Dashboard** — Live CPU, RAM, Disk, and Load Average metrics

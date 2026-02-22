@@ -8,6 +8,8 @@ import { Logo } from './components/layout/Logo';
 import { useTheme } from "./hooks/useTheme";
 import { SshProfile } from "./types/connection";
 import { api } from "./services/api";
+import { useSessionTimeout } from './hooks/useSessionTimeout';
+import { SessionTimeoutOverlay } from './components/ui/SessionTimeoutOverlay';
 
 interface SessionTab extends TabData {
   profile: SshProfile;
@@ -24,7 +26,9 @@ function App() {
   // Refs to allow keyboard shortcuts to trigger sidebar actions
   const openAddModalRef = useRef<(() => void) | null>(null);
   const focusSearchRef = useRef<(() => void) | null>(null);
-  const { autoOpenMonitor } = useTheme();
+  const { autoOpenMonitor, sessionTimeout } = useTheme();
+
+  const { isTimedOut, resetTimeout } = useSessionTimeout(sessionTimeout);
 
   const handleConnect = (profile: SshProfile) => {
     const sessionId = crypto.randomUUID();
@@ -206,12 +210,14 @@ function App() {
 
           {/* Main Terminal Area */}
           <div className="flex-1 p-0 overflow-hidden relative">
-            {tabs.length === 0 ? (
+            {isTimedOut && <SessionTimeoutOverlay onReconnect={resetTimeout} />}
+
+            {!isTimedOut && tabs.length === 0 ? (
               <div className="absolute inset-0 flex items-center justify-center text-[var(--text-muted)] opacity-50 flex-col gap-6 select-none animate-in fade-in duration-1000">
                 <Logo size={96} className="grayscale brightness-125 transition-all duration-700" style={{ filter: 'grayscale(1) opacity(0.2)' }} />
                 <p className="text-sm font-medium tracking-wide uppercase">Cliqon terminal</p>
               </div>
-            ) : (
+            ) : !isTimedOut && (
               tabs.map((tab) => (
                 <div key={tab.id} className={`absolute inset-0 flex flex-col ${activeTab === tab.id ? '' : 'hidden'}`}>
                   <div className="flex-1 relative min-h-0">

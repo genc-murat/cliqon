@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Palette, Terminal as TerminalIcon, Monitor, Info, Check, Activity } from 'lucide-react';
+import { X, Palette, Terminal as TerminalIcon, Monitor, Info, Check, Activity, Shield } from 'lucide-react';
 import { Logo } from '../layout/Logo';
 import { useTheme } from '../../hooks/useTheme';
 import { terminalFontFamilies } from '../../lib/themes';
@@ -17,7 +17,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         availableTerminalThemes, terminalTheme, setTerminalTheme,
         terminalFont, setTerminalFont,
         terminalCursorStyle, setTerminalCursorStyle,
-        autoOpenMonitor, setAutoOpenMonitor
+        autoOpenMonitor, setAutoOpenMonitor,
+        sessionTimeout, setSessionTimeout
     } = useTheme();
 
     const [activeSection, setActiveSection] = useState<SettingsSection>('appearance');
@@ -301,6 +302,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                                 `} />
                                             </button>
                                         </div>
+
+                                        <div className="flex items-center justify-between p-4 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-2xl hover:border-[var(--text-muted)] transition-all group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="p-2 bg-[var(--accent-color)]/10 rounded-xl text-[var(--accent-color)]">
+                                                    <Shield size={20} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-[var(--text-main)]">Session Timeout</h4>
+                                                    <p className="text-xs text-[var(--text-muted)]">Lock app and close connections after inactivity</p>
+                                                </div>
+                                            </div>
+                                            <select
+                                                value={sessionTimeout}
+                                                onChange={(e) => setSessionTimeout(Number(e.target.value))}
+                                                className="bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-main)] text-sm font-medium rounded-xl focus:ring-2 focus:ring-[var(--accent-color)] focus:border-transparent block p-2 outline-none cursor-pointer hover:border-[var(--text-muted)] transition-colors"
+                                            >
+                                                <option value={0}>Never</option>
+                                                <option value={5}>5 Minutes</option>
+                                                <option value={15}>15 Minutes</option>
+                                                <option value={30}>30 Minutes</option>
+                                                <option value={60}>1 Hour</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -328,7 +352,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 </div>
                                 <div className="space-y-2 pt-4">
                                     <div className="px-4 py-2 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-full text-xs font-bold text-[var(--text-main)] shadow-sm">
-                                        Version 0.1.0-alpha
+                                        Version 0.2.5
                                     </div>
                                     <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Made with ❤️ for developers</p>
                                 </div>

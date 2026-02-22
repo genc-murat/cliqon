@@ -224,7 +224,7 @@ const CompactRow: React.FC<CompactRowProps> = ({
 
 export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, focusSearchRef }) => {
     const { profiles, isLoading, saveProfile, deleteProfile, refresh } = useConnections();
-    const { width, startResizing, isResizing } = useResizable(256, 160, 600);
+    const { width, startResizing, isResizing } = useResizable(280, 160, 600, 'left', 'sidebar-width');
     const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -385,6 +385,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                         <Logo size={24} />
                         <div className="w-full border-t border-[var(--border-color)]" />
                         <button
+                            onClick={() => setIsSettingsOpen(true)}
+                            className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-2 rounded-md transition-colors"
+                            title="Settings"
+                        >
+                            <Settings size={16} />
+                        </button>
+                        <button
                             onClick={handleAdd}
                             className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-2 rounded-md transition-colors"
                             title="New Connection"
@@ -422,9 +429,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                 ) : (
                     /* ── Expanded ────────────────────────────────── */
                     <div className="flex-1 overflow-hidden flex flex-col p-4">
-                        <div className="flex items-center gap-2 mb-6 shrink-0">
-                            <Logo size={32} />
-                            <h1 className="text-xl font-bold tracking-tight text-[var(--text-main)]">Cliqon</h1>
+                        <div className="flex items-center justify-between mb-6 shrink-0 gap-2">
+                            <div className="flex items-center gap-2">
+                                <Logo size={32} />
+                                <h1 className="text-xl font-bold tracking-tight text-[var(--text-main)]">Cliqon</h1>
+                            </div>
+                            <button
+                                onClick={() => setIsSettingsOpen(true)}
+                                className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-1.5 rounded-md transition-colors"
+                                title="Settings"
+                            >
+                                <Settings size={16} />
+                            </button>
                         </div>
 
                         <div className="flex-1 overflow-y-auto pr-1 space-y-3">
@@ -555,18 +571,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                 )}
             </div>
 
-            {/* Settings — Always visible */}
-            <div className={`border-t border-[var(--border-color)] shrink-0 ${isCollapsed ? 'p-2' : 'px-4 pt-4 pb-4 space-y-3'}`}>
-                <button
-                    onClick={() => setIsSettingsOpen(true)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded-md transition-colors font-medium"
-                    style={{ width: '100%', justifyContent: isCollapsed ? 'center' : 'flex-start' }}
-                    title="Settings"
-                >
-                    <Settings size={18} />
-                    {!isCollapsed && 'Settings'}
-                </button>
-            </div>
+            {/* Settings button moved to top of sidebar */}
 
             <ProfileModal
                 isOpen={isModalOpen}

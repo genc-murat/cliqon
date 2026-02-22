@@ -30,14 +30,17 @@ export const TitleBar: React.FC = () => {
 
     return (
         <div
-            data-tauri-drag-region
             onDoubleClick={handleMaximize}
             className="h-8 w-full bg-[var(--bg-sidebar)] flex items-center justify-between select-none shrink-0 border-b border-[var(--border-color)] cursor-default"
         >
-            <div className="flex items-center gap-2 px-3 pointer-events-none" data-tauri-drag-region>
-                <Logo size={14} />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mt-0.5">Cliqon</span>
+            <div data-tauri-drag-region className="flex items-center gap-2 px-3 h-full">
+                <div className="pointer-events-none flex items-center gap-2">
+                    <Logo size={14} />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mt-0.5">Cliqon</span>
+                </div>
             </div>
+
+            <div className="flex-1 h-full" data-tauri-drag-region />
 
             <div className="flex h-full">
                 <button

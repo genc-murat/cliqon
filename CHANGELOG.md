@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.8] - 2026-02-22
+
+### Fixed
+- **macOS Window Controls**: Fixed an issue where the custom application header was not draggable and the minimize/maximize/close buttons were unresponsive on macOS.
+
 ## [0.3.7] - 2026-02-22
 
 ### Added

@@ -246,6 +246,8 @@ impl SharingService {
             };
             let _ = socket.set_broadcast(true);
 
+            let mut iteration = 0;
+
             while active.load(Ordering::SeqCst) {
                 let beacon = BeaconPacket {
                     id: instance_id.clone(),
@@ -259,20 +261,40 @@ impl SharingService {
 
                     // Then try to broadcast on all discovered IPv4 interfaces
                     if let Ok(ifas) = local_ip_address::list_afinet_netifas() {
+                        let do_sweep = iteration % 10 == 0; // Sweep every 30 seconds (10 * 3s)
+                        
                         for (_, ip) in ifas {
                             if ip.is_ipv4() && !ip.is_loopback() {
                                 let ip_str = ip.to_string();
+                                
+                                // Standard subnet broadcast
                                 if let Some(broadcast) = subnet_broadcast(&ip_str) {
                                     let _ = socket.send_to(
                                         &data,
                                         format!("{}:{}", broadcast, DISCOVERY_PORT),
                                     );
                                 }
+
+                                // Unicast sweep for VPNs that drop broadcasts.
+                                // Run infrequently to avoid ARP/network spam on physical networks.
+                                if do_sweep {
+                                    let parts: Vec<&str> = ip_str.split('.').collect();
+                                    if parts.len() == 4 {
+                                        for i in 1..=254 {
+                                            let target = format!("{}.{}.{}.{}", parts[0], parts[1], parts[2], i);
+                                            // Skip our own IP
+                                            if target != ip_str {
+                                                let _ = socket.send_to(&data, format!("{}:{}", target, DISCOVERY_PORT));
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
 
+                iteration += 1;
                 thread::sleep(std::time::Duration::from_millis(BEACON_INTERVAL_MS));
             }
         });
@@ -281,6 +303,8 @@ impl SharingService {
     fn spawn_listener(&self) {
         let active = self.active.clone();
         let instance_id = self.instance_id.clone();
+        let display_name = self.display_name.clone();
+        let http_port_ref = self.http_port.clone();
         let peers = self.peers.clone();
 
         thread::spawn(move || {
@@ -304,16 +328,33 @@ impl SharingService {
                                 continue;
                             }
 
+                            let mut p = peers.lock().unwrap();
+                            let is_new = !p.contains_key(&beacon.id);
+
                             let peer_ip = addr.ip().to_string();
                             let peer = PeerInfo {
                                 id: beacon.id.clone(),
                                 display_name: beacon.display_name,
-                                ip: peer_ip,
+                                ip: peer_ip.clone(),
                                 port: beacon.http_port,
                                 last_seen: now_secs(),
                             };
 
-                            peers.lock().unwrap().insert(beacon.id, peer);
+                            p.insert(beacon.id.clone(), peer);
+                            drop(p);
+
+                            // Reply directly to new peers (helps with VPN discovery)
+                            if is_new {
+                                let my_port = *http_port_ref.lock().unwrap();
+                                let my_beacon = BeaconPacket {
+                                    id: instance_id.clone(),
+                                    display_name: display_name.lock().unwrap().clone(),
+                                    http_port: my_port,
+                                };
+                                if let Ok(data) = serde_json::to_vec(&my_beacon) {
+                                    let _ = socket.send_to(&data, format!("{}:{}", peer_ip, DISCOVERY_PORT));
+                                }
+                            }
                         }
                     }
                     Err(_) => continue, // timeout, just loop

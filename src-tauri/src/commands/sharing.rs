@@ -87,7 +87,7 @@ pub async fn share_items_with_peer(
 #[tauri::command]
 pub async fn get_pending_shares(state: State<'_, AppState>) -> Result<Vec<PendingShare>> {
     let service = state.sharing_service.lock().unwrap();
-    Ok(service.get_peers_pending_shares()) // Note: method name might need to be get_pending_shares
+    Ok(service.get_pending_shares())
 }
 
 #[tauri::command]

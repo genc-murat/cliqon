@@ -204,5 +204,9 @@ export const api = {
     rejectShare: async (shareId: string): Promise<void> => {
         return await invoke('reject_share', { shareId });
     },
+
+    pingPeer: async (ip: string, port: number): Promise<PeerInfo> => {
+        return await invoke<PeerInfo>('ping_peer', { ip, port });
+    },
 };
 

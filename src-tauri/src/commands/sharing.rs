@@ -107,3 +107,10 @@ pub async fn reject_share(
     service.reject_share(&share_id);
     Ok(())
 }
+#[tauri::command]
+pub async fn ping_peer(state: State<'_, AppState>, ip: String, port: u16) -> Result<PeerInfo> {
+    let service = state.sharing_service.lock().unwrap();
+    let peer = service.ping_peer(&ip, port).map_err(|e| crate::error::AppError::Custom(e))?;
+    service.add_manual_peer(peer.clone());
+    Ok(peer)
+}

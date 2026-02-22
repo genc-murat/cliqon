@@ -158,6 +158,47 @@ impl SharingService {
         }
     }
 
+    pub fn ping_peer(&self, ip: &str, port: u16) -> Result<PeerInfo, String> {
+        let stream = std::net::TcpStream::connect_timeout(
+            &format!("{}:{}", ip, port).parse().map_err(|e| format!("Invalid address: {}", e))?,
+            std::time::Duration::from_secs(3),
+        ).map_err(|e| format!("Connection failed: {}", e))?;
+
+        let request = format!(
+            "GET /ping HTTP/1.1\r\nHost: {}:{}\r\nConnection: close\r\n\r\n",
+            ip, port
+        );
+
+        use std::io::Write;
+        let mut stream = stream;
+        stream.write_all(request.as_bytes())
+            .map_err(|e| format!("Write failed: {}", e))?;
+
+        use std::io::Read;
+        let mut response = String::new();
+        stream.set_read_timeout(Some(std::time::Duration::from_secs(3))).ok();
+        let _ = stream.read_to_string(&mut response);
+
+        if response.contains("200 OK") {
+            // Very hacky way to get peer info from ping: we just return a placeholder PeerInfo
+            // and let the frontend handle it, or we could extend /ping to return more info.
+            // Let's improve the /ping handler later.
+            Ok(PeerInfo {
+                id: format!("manual-{}", ip),
+                display_name: format!("Manual: {}", ip),
+                ip: ip.to_string(),
+                port,
+                last_seen: now_secs(),
+            })
+        } else {
+            Err("Peer did not respond to ping".to_string())
+        }
+    }
+
+    pub fn add_manual_peer(&self, peer: PeerInfo) {
+        self.peers.lock().unwrap().insert(peer.id.clone(), peer);
+    }
+
     pub fn get_pending_shares(&self) -> Vec<PendingShare> {
         self.pending_shares.lock().unwrap().clone()
     }
@@ -178,7 +219,7 @@ impl SharingService {
 
     // ─── Private spawn helpers ─────────────────────────────────
 
-    fn spawn_broadcaster(&self, local_ip: String, http_port: u16) {
+    fn spawn_broadcaster(&self, _local_ip: String, http_port: u16) {
         let active = self.active.clone();
         let instance_id = self.instance_id.clone();
         let display_name = self.display_name.clone();
@@ -198,11 +239,19 @@ impl SharingService {
                 };
 
                 if let Ok(data) = serde_json::to_vec(&beacon) {
-                    // Broadcast to all network interfaces
+                    // Try to send to the global broadcast address first
                     let _ = socket.send_to(&data, format!("255.255.255.255:{}", DISCOVERY_PORT));
-                    // Also try the local subnet broadcast
-                    if let Some(broadcast) = subnet_broadcast(&local_ip) {
-                        let _ = socket.send_to(&data, format!("{}:{}", broadcast, DISCOVERY_PORT));
+
+                    // Then try to broadcast on all discovered IPv4 interfaces
+                    if let Ok(ifas) = local_ip_address::list_afinet_netifas() {
+                        for (_, ip) in ifas {
+                            if ip.is_ipv4() && !ip.is_loopback() {
+                                let ip_str = ip.to_string();
+                                if let Some(broadcast) = subnet_broadcast(&ip_str) {
+                                    let _ = socket.send_to(&data, format!("{}:{}", broadcast, DISCOVERY_PORT));
+                                }
+                            }
+                        }
                     }
                 }
 

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.7] - 2026-02-22
+
+### Added
+- **Enhanced Network Discovery**:
+  - Implemented multi-interface broadcasting to support VPN and complex network environments.
+  - Added a **Manual Connection** UI in the Sharing Panel for direct P2P connection via IP and port.
+  - Improved peer discovery reliability across different operating systems on the same network.
+
 ## [0.3.6] - 2026-02-22
 
 ### Added

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Users, Wifi, WifiOff, Send, Check, X,
-    Monitor, Shield, RefreshCw, Inbox, User, Radio
+    Monitor, Shield, RefreshCw, Inbox, User, Radio, Plus
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { SshProfile } from '../../types/connection';
@@ -25,6 +25,9 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
     const [selectedPeer, setSelectedPeer] = useState<PeerInfo | null>(null);
     const [selectedProfileIds, setSelectedProfileIds] = useState<Set<string>>(new Set());
     const [isSending, setIsSending] = useState(false);
+    const [manualIp, setManualIp] = useState('');
+    const [manualPort, setManualPort] = useState('19875');
+    const [isPinging, setIsPinging] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const pollRef = useRef<number | null>(null);
     const nameInputRef = useRef<HTMLInputElement>(null);
@@ -119,6 +122,26 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
             setPendingShares(prev => prev.filter(s => s.id !== shareId));
         } catch (err: any) {
             showToast(err.toString(), 'error');
+        }
+    };
+
+    const handleManualConnect = async () => {
+        if (!manualIp.trim()) return;
+        setIsPinging(true);
+        try {
+            const port = parseInt(manualPort) || 19875;
+            const peer = await api.pingPeer(manualIp.trim(), port);
+            setPeers(prev => {
+                if (prev.find(p => p.id === peer.id)) return prev;
+                return [...prev, peer];
+            });
+            setSelectedPeer(peer);
+            showToast(`Found peer: ${peer.display_name}`, 'success');
+            setManualIp('');
+        } catch (err: any) {
+            showToast(`Could not find peer at ${manualIp}:${manualPort}`, 'error');
+        } finally {
+            setIsPinging(false);
         }
     };
 
@@ -336,6 +359,48 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
                                         ))}
                                     </div>
                                 )}
+                            </div>
+
+                            {/* ─── Manual Connect ─────────────────── */}
+                            <div className="border-t border-[var(--border-color)] pt-4">
+                                <div className="flex items-center gap-1.5 mb-2">
+                                    <Send size={12} className="text-[var(--text-muted)]" />
+                                    <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                                        Manual Connection
+                                    </h3>
+                                </div>
+                                <div className="flex gap-2">
+                                    <div className="flex-1 flex bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg overflow-hidden focus-within:border-[var(--accent-color)] transition-colors">
+                                        <input
+                                            type="text"
+                                            placeholder="IP Address"
+                                            value={manualIp}
+                                            onChange={(e) => setManualIp(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleManualConnect()}
+                                            className="min-w-0 flex-1 px-3 py-2 text-xs bg-transparent text-[var(--text-main)] focus:outline-none"
+                                        />
+                                        <div className="w-px bg-[var(--border-color)] my-1.5" />
+                                        <input
+                                            type="text"
+                                            placeholder="Port"
+                                            value={manualPort}
+                                            onChange={(e) => setManualPort(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleManualConnect()}
+                                            className="w-16 px-2 py-2 text-xs bg-transparent text-[var(--text-muted)] focus:outline-none text-center"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={handleManualConnect}
+                                        disabled={!manualIp || isPinging}
+                                        className="px-3 py-2 rounded-lg bg-[var(--hover-color)] text-[var(--text-main)] hover:bg-[var(--accent-color)] hover:text-white transition-all disabled:opacity-40"
+                                        title="Connect manually"
+                                    >
+                                        {isPinging ? <RefreshCw size={14} className="animate-spin" /> : <Plus size={14} />}
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-[var(--text-muted)] mt-2 italic px-1">
+                                    Use this if auto-discovery fails on VPN or complex networks.
+                                </p>
                             </div>
 
                             {/* ─── Profile selection for sharing ──── */}

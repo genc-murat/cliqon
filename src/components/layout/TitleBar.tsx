@@ -1,10 +1,12 @@
 import React from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { Minus, Square, X } from 'lucide-react';
+import { Minus, Square, X, Radio } from 'lucide-react';
 import { Logo } from './Logo';
+import { useSharing } from '../../contexts/SharingContext';
 
 export const TitleBar: React.FC = () => {
     const appWindow = getCurrentWindow();
+    const { status, togglePanel, pendingShares } = useSharing();
 
     const handleMinimize = () => appWindow.minimize();
     const handleMaximize = async () => {
@@ -25,6 +27,21 @@ export const TitleBar: React.FC = () => {
             </div>
 
             <div className="flex-1 h-full" data-tauri-drag-region />
+
+            <div className="flex items-center h-full mr-2">
+                {status?.active && (
+                    <button
+                        onClick={togglePanel}
+                        className="relative flex items-center justify-center p-1.5 rounded-md hover:bg-[var(--hover-color)] transition-colors group"
+                        title="Network Sharing Active"
+                    >
+                        <Radio size={14} className="text-emerald-500 animate-pulse group-hover:animate-none" />
+                        {pendingShares.length > 0 && (
+                            <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-amber-500 rounded-full border border-[var(--bg-sidebar)]" />
+                        )}
+                    </button>
+                )}
+            </div>
 
             <div className="flex h-full">
                 <button

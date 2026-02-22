@@ -135,6 +135,7 @@ sequenceDiagram
 
 ### 🔗 Network Sharing
 Share SSH connection profiles (including passwords) with teammates on the same local network — no server required:
+- **Global Active Indicator** — A continuous status indicator in the top TitleBar displays when sharing is active, with a notification badge for incoming share requests. You can click it from anywhere to open the panel.
 - **Auto-Discovery** — Cliqon instances on the same LAN automatically discover each other via UDP broadcast (port `19875`)
 - **Profile Sharing** — Select one or more profiles and send them directly to a discovered peer; passwords and keys are included
 - **Incoming Share Notifications** — Received shares appear as interactive cards with profile details; one-click **Accept** imports directly into your connection list

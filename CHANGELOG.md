@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.9] - 2026-02-22
+
+### Changed
+- **Network Sharing UI**:
+  - Extracted the Network Sharing interface to be accessible globally across the application.
+  - Added a global active sharing indicator to the TitleBar.
+  - Added a notification badge to the TitleBar indicator when there are pending incoming share requests.
+
 ## [0.3.8] - 2026-02-22
 
 ### Fixed

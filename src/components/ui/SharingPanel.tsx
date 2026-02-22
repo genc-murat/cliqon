@@ -1,27 +1,28 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
     Users, Wifi, WifiOff, Send, Check, X,
     Monitor, Shield, RefreshCw, Inbox, User, Radio, Plus
 } from 'lucide-react';
-import { api } from '../../services/api';
+import { useSharing } from '../../contexts/SharingContext';
 import { SshProfile } from '../../types/connection';
-import { PeerInfo, PendingShare, SharingStatus } from '../../types/sharing';
+import { PeerInfo } from '../../types/sharing';
 
 interface SharingPanelProps {
-    isOpen: boolean;
-    onClose: () => void;
     profiles: SshProfile[];
     onProfilesChanged: () => void;
 }
 
 export const SharingPanel: React.FC<SharingPanelProps> = ({
-    isOpen, onClose, profiles, onProfilesChanged
+    profiles, onProfilesChanged
 }) => {
-    const [status, setStatus] = useState<SharingStatus | null>(null);
-    const [peers, setPeers] = useState<PeerInfo[]>([]);
-    const [pendingShares, setPendingShares] = useState<PendingShare[]>([]);
-    const [displayName, setDisplayName] = useState('');
+    const {
+        isPanelOpen, status, peers, pendingShares, displayName,
+        togglePanel, toggleSharing, saveDisplayName,
+        handleAccept: acceptShare, handleReject: rejectShare, pingPeer
+    } = useSharing();
+
     const [isEditingName, setIsEditingName] = useState(false);
+    const [localName, setLocalName] = useState('');
     const [selectedPeer, setSelectedPeer] = useState<PeerInfo | null>(null);
     const [selectedProfileIds, setSelectedProfileIds] = useState<Set<string>>(new Set());
     const [isSending, setIsSending] = useState(false);
@@ -29,71 +30,37 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
     const [manualPort, setManualPort] = useState('19875');
     const [isPinging, setIsPinging] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-    const pollRef = useRef<number | null>(null);
     const nameInputRef = useRef<HTMLInputElement>(null);
-
-    // Load initial status
-    useEffect(() => {
-        if (isOpen) {
-            api.getSharingStatus().then((s) => {
-                setStatus(s);
-                setDisplayName(s.display_name);
-            }).catch(() => { });
-        }
-    }, [isOpen]);
-
-    // Polling for peers and pending shares
-    useEffect(() => {
-        if (!isOpen || !status?.active) {
-            if (pollRef.current) clearInterval(pollRef.current);
-            return;
-        }
-
-        const poll = () => {
-            api.getDiscoveredPeers().then(setPeers).catch(() => { });
-            api.getPendingShares().then(setPendingShares).catch(() => { });
-        };
-        poll();
-        pollRef.current = window.setInterval(poll, 2000);
-
-        return () => {
-            if (pollRef.current) clearInterval(pollRef.current);
-        };
-    }, [isOpen, status?.active]);
 
     const showToast = useCallback((message: string, type: 'success' | 'error') => {
         setToast({ message, type });
         setTimeout(() => setToast(null), 3000);
     }, []);
 
-    const toggleSharing = async () => {
+    const toggleSharingAction = async () => {
         try {
-            if (status?.active) {
-                const s = await api.stopSharing();
-                setStatus(s);
-                setPeers([]);
-            } else {
-                const s = await api.startSharing();
-                setStatus(s);
-            }
+            await toggleSharing();
         } catch (err: any) {
             showToast(err.toString(), 'error');
         }
     };
 
-    const saveName = async () => {
-        if (displayName.trim()) {
-            await api.setDisplayName(displayName.trim());
-            setIsEditingName(false);
-            const s = await api.getSharingStatus();
-            setStatus(s);
+    const handleSaveName = async () => {
+        if (localName.trim() && localName !== status?.display_name) {
+            try {
+                await saveDisplayName(localName);
+            } catch (err: any) {
+                showToast(err.toString(), 'error');
+            }
         }
+        setIsEditingName(false);
     };
 
     const handleShare = async () => {
         if (!selectedPeer || selectedProfileIds.size === 0) return;
         setIsSending(true);
         try {
+            const { api } = await import('../../services/api');
             const msg = await api.shareProfiles(selectedPeer.id, Array.from(selectedProfileIds));
             showToast(msg, 'success');
             setSelectedPeer(null);
@@ -107,10 +74,9 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
 
     const handleAccept = async (shareId: string) => {
         try {
-            const count = await api.acceptShare(shareId);
+            const count = await acceptShare(shareId);
             showToast(`${count} profile(s) imported successfully`, 'success');
             onProfilesChanged();
-            setPendingShares(prev => prev.filter(s => s.id !== shareId));
         } catch (err: any) {
             showToast(err.toString(), 'error');
         }
@@ -118,8 +84,7 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
 
     const handleReject = async (shareId: string) => {
         try {
-            await api.rejectShare(shareId);
-            setPendingShares(prev => prev.filter(s => s.id !== shareId));
+            await rejectShare(shareId);
         } catch (err: any) {
             showToast(err.toString(), 'error');
         }
@@ -130,11 +95,7 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
         setIsPinging(true);
         try {
             const port = parseInt(manualPort) || 19875;
-            const peer = await api.pingPeer(manualIp.trim(), port);
-            setPeers(prev => {
-                if (prev.find(p => p.id === peer.id)) return prev;
-                return [...prev, peer];
-            });
+            const peer = await pingPeer(manualIp.trim(), port);
             setSelectedPeer(peer);
             showToast(`Found peer: ${peer.display_name}`, 'success');
             setManualIp('');
@@ -162,14 +123,14 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
         }
     };
 
-    if (!isOpen) return null;
+    if (!isPanelOpen) return null;
 
     return (
         <>
             {/* Backdrop */}
             <div
                 className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-                onClick={onClose}
+                onClick={togglePanel}
             />
 
             {/* Panel */}
@@ -189,7 +150,7 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
                             </div>
                         </div>
                         <button
-                            onClick={onClose}
+                            onClick={togglePanel}
                             className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] transition-colors"
                         >
                             <X size={16} />
@@ -199,7 +160,7 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
                     {/* Toggle + Name */}
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={toggleSharing}
+                            onClick={toggleSharingAction}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${status?.active
                                 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25'
                                 : 'bg-[var(--hover-color)] text-[var(--text-muted)] border border-[var(--border-color)] hover:text-[var(--text-main)]'
@@ -216,13 +177,13 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
                                 <input
                                     ref={nameInputRef}
                                     type="text"
-                                    value={displayName}
-                                    onChange={(e) => setDisplayName(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && saveName()}
+                                    value={localName}
+                                    onChange={(e) => setLocalName(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
                                     className="flex-1 px-2 py-1 text-xs bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-color)]"
                                     autoFocus
                                 />
-                                <button onClick={saveName} className="p-1 text-emerald-400 hover:bg-emerald-500/10 rounded">
+                                <button onClick={handleSaveName} className="p-1 text-emerald-400 hover:bg-emerald-500/10 rounded">
                                     <Check size={12} />
                                 </button>
                                 <button onClick={() => setIsEditingName(false)} className="p-1 text-[var(--text-muted)] hover:bg-[var(--hover-color)] rounded">
@@ -231,7 +192,7 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
                             </div>
                         ) : (
                             <button
-                                onClick={() => { setIsEditingName(true); setTimeout(() => nameInputRef.current?.focus(), 50); }}
+                                onClick={() => { setIsEditingName(true); setLocalName(status?.display_name || displayName); setTimeout(() => nameInputRef.current?.focus(), 50); }}
                                 className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded-lg transition-colors flex-1 truncate"
                                 title="Change display name"
                             >

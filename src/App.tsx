@@ -11,6 +11,8 @@ import { api } from "./services/api";
 import { useSessionTimeout } from './hooks/useSessionTimeout';
 import { SessionTimeoutOverlay } from './components/ui/SessionTimeoutOverlay';
 import { ConfirmProvider } from './hooks/useConfirm';
+import { SharingPanel } from './components/ui/SharingPanel';
+import { useConnections } from './hooks/useConnections';
 
 interface SessionTab extends TabData {
   profile: SshProfile;
@@ -23,6 +25,7 @@ interface SessionTab extends TabData {
 function App() {
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
+  const { profiles, refresh } = useConnections();
 
   // Refs to allow keyboard shortcuts to trigger sidebar actions
   const openAddModalRef = useRef<(() => void) | null>(null);
@@ -257,6 +260,7 @@ function App() {
             </div>
           </div>
         </div>
+        <SharingPanel profiles={profiles} onProfilesChanged={refresh} />
       </div>
     </ConfirmProvider>
   );

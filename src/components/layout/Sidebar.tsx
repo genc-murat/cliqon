@@ -12,7 +12,7 @@ import { SshProfile, AuthMethod } from '../../types/connection';
 import { useResizable } from '../../hooks/useResizable';
 import { Logo } from './Logo';
 import { ImportModal } from '../ui/ImportModal';
-import { SharingPanel } from '../ui/SharingPanel';
+import { useSharing } from '../../contexts/SharingContext';
 import { useConfirm } from '../../hooks/useConfirm';
 
 /* ── Helpers ────────────────────────────────────────────────── */
@@ -224,7 +224,7 @@ const CompactRow: React.FC<CompactRowProps> = ({
 /* ── Sidebar ────────────────────────────────────────────────── */
 
 export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, focusSearchRef }) => {
-    const { profiles, isLoading, saveProfile, deleteProfile, refresh } = useConnections();
+    const { profiles, isLoading, saveProfile, deleteProfile } = useConnections();
     const confirm = useConfirm();
     const { width, startResizing, isResizing } = useResizable(280, 160, 600, 'left', 'sidebar-width');
     const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
@@ -232,7 +232,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const [isSharingOpen, setIsSharingOpen] = useState(false);
+    const { togglePanel } = useSharing();
     const [editingProfile, setEditingProfile] = useState<SshProfile | null>(null);
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -414,7 +414,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                             <Upload size={16} />
                         </button>
                         <button
-                            onClick={() => setIsSharingOpen(true)}
+                            onClick={togglePanel}
                             className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-2 rounded-md transition-colors"
                             title="Network Sharing"
                         >
@@ -489,7 +489,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                                             <Upload size={14} />
                                         </button>
                                         <button
-                                            onClick={() => setIsSharingOpen(true)}
+                                            onClick={togglePanel}
                                             className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-1 rounded-md transition-colors"
                                             title="Network sharing"
                                         >
@@ -598,13 +598,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
             <SettingsModal
                 isOpen={isSettingsOpen}
                 onClose={() => setIsSettingsOpen(false)}
-            />
-
-            <SharingPanel
-                isOpen={isSharingOpen}
-                onClose={() => setIsSharingOpen(false)}
-                profiles={profiles}
-                onProfilesChanged={refresh}
             />
 
             {/* Click outside context menu */}

@@ -1,12 +1,12 @@
+use crate::error::Result;
+use crate::models::profile::SshProfile;
+use crate::services::auth::authenticate_session;
 use ssh2::Session;
-use tauri::{AppHandle, Emitter};
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use crate::error::Result;
-use crate::models::profile::SshProfile;
-use crate::services::auth::authenticate_session;
+use tauri::{AppHandle, Emitter};
 
 pub struct LogManager {
     // Keeps track of active log tailing sessions
@@ -37,17 +37,20 @@ impl LogManager {
         authenticate_session(&mut session, &profile, secret.as_deref())?;
 
         let mut channel = session.channel_session()?;
-        
+
         let safe_path = path.replace("'", "'\\''");
         // Tail the last 200 lines and follow
         let cmd = format!("tail -n 200 -f '{}' 2>&1", safe_path);
         channel.exec(&cmd)?;
-        
+
         // We set session to non-blocking so we can periodically check the stop flag
         session.set_blocking(false);
 
         let stop_flag = Arc::new(Mutex::new(false));
-        self.active_tails.lock().unwrap().insert(session_id.clone(), stop_flag.clone());
+        self.active_tails
+            .lock()
+            .unwrap()
+            .insert(session_id.clone(), stop_flag.clone());
 
         thread::spawn(move || {
             let mut buf = [0u8; 8192];

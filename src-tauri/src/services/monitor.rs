@@ -75,7 +75,10 @@ impl MonitorManager {
         let stop_clone = stop_flag.clone();
 
         let monitor_thread = MonitorThread { stop_flag };
-        self.monitors.lock().unwrap().insert(session_id.clone(), monitor_thread);
+        self.monitors
+            .lock()
+            .unwrap()
+            .insert(session_id.clone(), monitor_thread);
 
         let monitors_ref = self.monitors.clone();
         let sid = session_id.clone();
@@ -129,7 +132,10 @@ impl MonitorManager {
                         // OS Info
                         let os_raw = sections[6].trim();
                         let os_info = if os_raw.starts_with("PRETTY_NAME=") {
-                            os_raw.trim_start_matches("PRETTY_NAME=").trim_matches('"').to_string()
+                            os_raw
+                                .trim_start_matches("PRETTY_NAME=")
+                                .trim_matches('"')
+                                .to_string()
                         } else {
                             os_raw.to_string()
                         };
@@ -188,7 +194,9 @@ fn exec_command(session: &Session, cmd: &str) -> Result<String> {
     channel.exec(cmd).map_err(|e| AppError::Ssh(e))?;
 
     let mut output = String::new();
-    channel.read_to_string(&mut output).map_err(|e| AppError::Io(e))?;
+    channel
+        .read_to_string(&mut output)
+        .map_err(|e| AppError::Io(e))?;
 
     channel.wait_close().ok();
     Ok(output)
@@ -216,12 +224,18 @@ fn parse_cpu(raw: &str, prev: &mut Option<(u64, u64)>) -> f64 {
         if d_total == 0 {
             return 0.0;
         }
-        ((d_total - d_idle) as f64 / d_total as f64 * 100.0).min(100.0).max(0.0)
+        ((d_total - d_idle) as f64 / d_total as f64 * 100.0)
+            .min(100.0)
+            .max(0.0)
     } else {
         *prev = Some((idle, total));
         // First sample — return rough estimate
-        if total == 0 { return 0.0; }
-        ((total - idle) as f64 / total as f64 * 100.0).min(100.0).max(0.0)
+        if total == 0 {
+            return 0.0;
+        }
+        ((total - idle) as f64 / total as f64 * 100.0)
+            .min(100.0)
+            .max(0.0)
     }
 }
 
@@ -236,7 +250,11 @@ fn parse_memory(raw: &str) -> (u64, u64, f64) {
             if parts.len() >= 4 {
                 let total: u64 = parts[1].parse().unwrap_or(0);
                 let used: u64 = parts[2].parse().unwrap_or(0);
-                let percent = if total > 0 { used as f64 / total as f64 * 100.0 } else { 0.0 };
+                let percent = if total > 0 {
+                    used as f64 / total as f64 * 100.0
+                } else {
+                    0.0
+                };
                 return (total, used, percent);
             }
         }
@@ -250,7 +268,11 @@ fn parse_disk(raw: &str) -> (u64, u64, f64) {
     if parts.len() >= 4 {
         let total: u64 = parts[1].parse().unwrap_or(0);
         let used: u64 = parts[2].parse().unwrap_or(0);
-        let percent = if total > 0 { used as f64 / total as f64 * 100.0 } else { 0.0 };
+        let percent = if total > 0 {
+            used as f64 / total as f64 * 100.0
+        } else {
+            0.0
+        };
         return (total, used, percent);
     }
     (0, 0, 0.0)

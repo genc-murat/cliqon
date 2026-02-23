@@ -123,8 +123,16 @@ impl SharingService {
         let payload = SharePayload {
             sender_name: self.display_name.lock().unwrap().clone(),
             sender_ip: self.local_ip.lock().unwrap().clone(),
-            profiles: if profiles.is_empty() { None } else { Some(profiles) },
-            snippets: if snippets.is_empty() { None } else { Some(snippets) },
+            profiles: if profiles.is_empty() {
+                None
+            } else {
+                Some(profiles)
+            },
+            snippets: if snippets.is_empty() {
+                None
+            } else {
+                Some(snippets)
+            },
             timestamp: now_secs(),
         };
 
@@ -265,11 +273,11 @@ impl SharingService {
                     // Then try to broadcast on all discovered IPv4 interfaces
                     if let Ok(ifas) = local_ip_address::list_afinet_netifas() {
                         let do_sweep = iteration % 10 == 0; // Sweep every 30 seconds (10 * 3s)
-                        
+
                         for (_, ip) in ifas {
                             if ip.is_ipv4() && !ip.is_loopback() {
                                 let ip_str = ip.to_string();
-                                
+
                                 // Standard subnet broadcast
                                 if let Some(broadcast) = subnet_broadcast(&ip_str) {
                                     let _ = socket.send_to(
@@ -284,10 +292,16 @@ impl SharingService {
                                     let parts: Vec<&str> = ip_str.split('.').collect();
                                     if parts.len() == 4 {
                                         for i in 1..=254 {
-                                            let target = format!("{}.{}.{}.{}", parts[0], parts[1], parts[2], i);
+                                            let target = format!(
+                                                "{}.{}.{}.{}",
+                                                parts[0], parts[1], parts[2], i
+                                            );
                                             // Skip our own IP
                                             if target != ip_str {
-                                                let _ = socket.send_to(&data, format!("{}:{}", target, DISCOVERY_PORT));
+                                                let _ = socket.send_to(
+                                                    &data,
+                                                    format!("{}:{}", target, DISCOVERY_PORT),
+                                                );
                                             }
                                         }
                                     }
@@ -299,7 +313,12 @@ impl SharingService {
                     // Also send unicast beacon to all currently known peers to keep them alive on VPNs
                     // without relying on the infrequent full sweep
                     let known_peers: Vec<String> = {
-                        peers.lock().unwrap().values().map(|p| p.ip.clone()).collect()
+                        peers
+                            .lock()
+                            .unwrap()
+                            .values()
+                            .map(|p| p.ip.clone())
+                            .collect()
                     };
                     for peer_ip in known_peers {
                         let _ = socket.send_to(&data, format!("{}:{}", peer_ip, DISCOVERY_PORT));
@@ -364,7 +383,8 @@ impl SharingService {
                                     http_port: my_port,
                                 };
                                 if let Ok(data) = serde_json::to_vec(&my_beacon) {
-                                    let _ = socket.send_to(&data, format!("{}:{}", peer_ip, DISCOVERY_PORT));
+                                    let _ = socket
+                                        .send_to(&data, format!("{}:{}", peer_ip, DISCOVERY_PORT));
                                 }
                             }
                         }

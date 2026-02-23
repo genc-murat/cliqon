@@ -35,7 +35,9 @@ impl DockerManager {
         channel.exec(cmd).map_err(|e| AppError::Ssh(e))?;
 
         let mut output = String::new();
-        channel.read_to_string(&mut output).map_err(|e| AppError::Io(e))?;
+        channel
+            .read_to_string(&mut output)
+            .map_err(|e| AppError::Io(e))?;
 
         channel.wait_close().ok();
         Ok(output)
@@ -47,7 +49,12 @@ impl DockerManager {
         self.exec_command(&session, cmd)
     }
 
-    pub fn start_container(&self, profile: &SshProfile, secret: Option<&str>, container_id: &str) -> Result<String> {
+    pub fn start_container(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        container_id: &str,
+    ) -> Result<String> {
         let session = self.open_session(profile, secret)?;
         if container_id.contains(';') || container_id.contains('&') || container_id.contains('|') {
             return Err(AppError::Custom("Invalid container ID".to_string()));
@@ -56,7 +63,12 @@ impl DockerManager {
         self.exec_command(&session, &cmd)
     }
 
-    pub fn stop_container(&self, profile: &SshProfile, secret: Option<&str>, container_id: &str) -> Result<String> {
+    pub fn stop_container(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        container_id: &str,
+    ) -> Result<String> {
         let session = self.open_session(profile, secret)?;
         if container_id.contains(';') || container_id.contains('&') || container_id.contains('|') {
             return Err(AppError::Custom("Invalid container ID".to_string()));
@@ -65,7 +77,12 @@ impl DockerManager {
         self.exec_command(&session, &cmd)
     }
 
-    pub fn restart_container(&self, profile: &SshProfile, secret: Option<&str>, container_id: &str) -> Result<String> {
+    pub fn restart_container(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        container_id: &str,
+    ) -> Result<String> {
         let session = self.open_session(profile, secret)?;
         if container_id.contains(';') || container_id.contains('&') || container_id.contains('|') {
             return Err(AppError::Custom("Invalid container ID".to_string()));
@@ -87,7 +104,12 @@ impl DockerManager {
         self.exec_command(&session, cmd)
     }
 
-    pub fn read_docker_compose(&self, profile: &SshProfile, secret: Option<&str>, path: &str) -> Result<String> {
+    pub fn read_docker_compose(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        path: &str,
+    ) -> Result<String> {
         let session = self.open_session(profile, secret)?;
         if path.contains(';') || path.contains('&') || path.contains('|') {
             return Err(AppError::Custom("Invalid path".to_string()));
@@ -103,7 +125,13 @@ impl DockerManager {
         self.exec_command(&session, cmd)
     }
 
-    pub fn get_volume_files(&self, profile: &SshProfile, secret: Option<&str>, volume_name: &str, inner_path: &str) -> Result<String> {
+    pub fn get_volume_files(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        volume_name: &str,
+        inner_path: &str,
+    ) -> Result<String> {
         let session = self.open_session(profile, secret)?;
         if volume_name.contains(';') || volume_name.contains('&') || volume_name.contains('|') {
             return Err(AppError::Custom("Invalid volume name".to_string()));
@@ -111,7 +139,7 @@ impl DockerManager {
         if inner_path.contains(';') || inner_path.contains('&') || inner_path.contains('|') {
             return Err(AppError::Custom("Invalid inner path".to_string()));
         }
-        
+
         let path_to_list = if inner_path.trim() == "" || inner_path == "/" {
             "/data".to_string()
         } else {

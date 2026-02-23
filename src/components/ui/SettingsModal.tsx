@@ -1,15 +1,26 @@
-import React, { useState } from 'react';
-import { X, Palette, Terminal as TerminalIcon, Monitor, Info, Check, Activity, Shield } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Palette, Terminal as TerminalIcon, Monitor, Info, Check, Activity, Shield, Zap, HardDrive } from 'lucide-react';
 import { Logo } from '../layout/Logo';
 import { useTheme } from '../../hooks/useTheme';
 import { terminalFontFamilies } from '../../lib/themes';
+import { exportAllData, importData as importDataFn, ExportData, getDatabaseStats } from '../../lib/db';
 
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-type SettingsSection = 'appearance' | 'terminal' | 'general' | 'about';
+type SettingsSection = 'appearance' | 'terminal' | 'performance' | 'general' | 'backup' | 'about';
+
+interface DbStats {
+    profiles: number;
+    snippets: number;
+    settings: number;
+    panelStates: number;
+    mlModels: number;
+    backups: number;
+    estimatedSize: number;
+}
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     const {
@@ -18,17 +29,72 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         terminalFont, setTerminalFont,
         terminalCursorStyle, setTerminalCursorStyle,
         autoOpenMonitor, setAutoOpenMonitor,
-        sessionTimeout, setSessionTimeout
+        sessionTimeout, setSessionTimeout,
+        terminalPerformance, setTerminalPerformance
     } = useTheme();
 
     const [activeSection, setActiveSection] = useState<SettingsSection>('appearance');
+    const [dbStats, setDbStats] = useState<DbStats | null>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            loadDbStats();
+        }
+    }, [isOpen]);
+
+    const loadDbStats = async () => {
+        try {
+            const stats = await getDbStats();
+            setDbStats(stats);
+        } catch (e) {
+            console.error('Failed to load db stats:', e);
+        }
+    };
+
+    const getDbStats = async (): Promise<DbStats> => {
+        return await getDatabaseStats();
+    };
+
+    const handleExport = async () => {
+        try {
+            const data = await exportAllData();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cliqon-backup-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Export failed:', e);
+        }
+    };
+
+    const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const text = await file.text();
+            const data: ExportData = JSON.parse(text);
+            await importDataFn(data, 'merge');
+            await loadDbStats();
+        } catch (e) {
+            console.error('Import failed:', e);
+        }
+        event.target.value = '';
+    };
 
     if (!isOpen) return null;
 
     const navItems = [
         { id: 'appearance', label: 'Appearance', icon: Palette },
         { id: 'terminal', label: 'Terminal', icon: TerminalIcon },
+        { id: 'performance', label: 'Performance', icon: Zap },
         { id: 'general', label: 'General', icon: Monitor },
+        { id: 'backup', label: 'Backup', icon: HardDrive },
         { id: 'about', label: 'About', icon: Info },
     ];
 
@@ -308,6 +374,113 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                             </section>
                         )}
 
+                        {activeSection === 'performance' && (
+                            <section className="space-y-8 max-w-2xl animate-in slide-in-from-bottom-4 duration-300">
+                                <div>
+                                    <h3 className="text-lg font-bold text-[var(--text-main)] mb-1">Terminal Performance</h3>
+                                    <p className="text-sm text-[var(--text-muted)] mb-6">Optimize terminal rendering for your system.</p>
+
+                                    <div className="space-y-4">
+                                        <div className="p-4 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-2xl">
+                                            <div className="flex justify-between mb-3">
+                                                <label className="text-sm font-semibold text-[var(--text-main)]">Scrollback Buffer</label>
+                                                <span className="text-xs font-mono bg-[var(--hover-color)] px-2 py-0.5 rounded text-[var(--text-main)]">
+                                                    {terminalPerformance.scrollbackMode === 'unlimited' ? 'Unlimited' : `${terminalPerformance.scrollbackLines.toLocaleString()} lines`}
+                                                </span>
+                                            </div>
+                                            <div className="flex gap-3 items-center">
+                                                <select
+                                                    value={terminalPerformance.scrollbackMode}
+                                                    onChange={(e) => setTerminalPerformance({ scrollbackMode: e.target.value as 'limited' | 'unlimited' })}
+                                                    className="bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-main)] text-sm rounded-lg px-3 py-2 outline-none"
+                                                >
+                                                    <option value="limited">Limited</option>
+                                                    <option value="unlimited">Unlimited</option>
+                                                </select>
+                                                {terminalPerformance.scrollbackMode === 'limited' && (
+                                                    <input
+                                                        type="range" min={1000} max={100000} step={1000}
+                                                        value={terminalPerformance.scrollbackLines}
+                                                        onChange={(e) => setTerminalPerformance({ scrollbackLines: Number(e.target.value) })}
+                                                        className="flex-1 accent-[var(--accent-color)] h-1.5 bg-[var(--hover-color)] rounded-lg appearance-none cursor-pointer"
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-2xl">
+                                            <div className="flex justify-between mb-3">
+                                                <label className="text-sm font-semibold text-[var(--text-main)]">Renderer</label>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {(['auto', 'webgl', 'canvas'] as const).map((mode) => (
+                                                    <button
+                                                        key={mode}
+                                                        onClick={() => setTerminalPerformance({ rendererMode: mode })}
+                                                        className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all ${
+                                                            terminalPerformance.rendererMode === mode
+                                                                ? 'bg-[var(--accent-color)] text-white'
+                                                                : 'bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                                                        }`}
+                                                    >
+                                                        {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <p className="text-xs text-[var(--text-muted)] mt-2">
+                                                WebGL provides better performance. Canvas is more compatible.
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-4 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-2xl">
+                                            <div>
+                                                <h4 className="text-sm font-bold text-[var(--text-main)]">Show FPS Counter</h4>
+                                                <p className="text-xs text-[var(--text-muted)]">Display rendering stats in terminal corner</p>
+                                            </div>
+                                            <button
+                                                onClick={() => setTerminalPerformance({ showFpsCounter: !terminalPerformance.showFpsCounter })}
+                                                className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
+                                                    terminalPerformance.showFpsCounter ? 'bg-[var(--accent-color)]' : 'bg-[var(--hover-color)]'
+                                                }`}
+                                            >
+                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+                                                    terminalPerformance.showFpsCounter ? 'translate-x-6' : 'translate-x-0'
+                                                }`} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="pt-6 border-t border-[var(--border-color)]">
+                                    <h3 className="text-lg font-bold text-[var(--text-main)] mb-4">Storage Stats</h3>
+                                    {dbStats && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="p-3 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-xl">
+                                                <div className="text-xs text-[var(--text-muted)]">Profiles</div>
+                                                <div className="text-lg font-bold text-[var(--text-main)]">{dbStats.profiles}</div>
+                                            </div>
+                                            <div className="p-3 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-xl">
+                                                <div className="text-xs text-[var(--text-muted)]">Snippets</div>
+                                                <div className="text-lg font-bold text-[var(--text-main)]">{dbStats.snippets}</div>
+                                            </div>
+                                            <div className="p-3 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-xl">
+                                                <div className="text-xs text-[var(--text-muted)]">ML Models</div>
+                                                <div className="text-lg font-bold text-[var(--text-main)]">{dbStats.mlModels}</div>
+                                            </div>
+                                            <div className="p-3 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-xl">
+                                                <div className="text-xs text-[var(--text-muted)]">Estimated Size</div>
+                                                <div className="text-lg font-bold text-[var(--text-main)]">
+                                                    {dbStats.estimatedSize > 1024 * 1024 
+                                                        ? `${(dbStats.estimatedSize / 1024 / 1024).toFixed(1)} MB`
+                                                        : `${(dbStats.estimatedSize / 1024).toFixed(1)} KB`}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+                        )}
+
                         {activeSection === 'general' && (
                             <section className="space-y-8 max-w-2xl animate-in slide-in-from-bottom-4 duration-300">
                                 <div>
@@ -371,6 +544,69 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                     <h3 className="text-xl font-bold text-[var(--text-main)]">More Settings Coming Soon</h3>
                                     <p className="text-xs text-[var(--text-muted)] max-w-sm">System integrity and per-protocol behaviors will be configurable here.</p>
                                 </div>
+                            </section>
+                        )}
+
+                        {activeSection === 'backup' && (
+                            <section className="space-y-8 max-w-2xl animate-in slide-in-from-bottom-4 duration-300">
+                                <div>
+                                    <h3 className="text-lg font-bold text-[var(--text-main)] mb-1">Backup & Restore</h3>
+                                    <p className="text-sm text-[var(--text-muted)] mb-6">Export or import your Cliqon data.</p>
+
+                                    <div className="space-y-4">
+                                        <div className="p-4 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-2xl">
+                                            <h4 className="text-sm font-bold text-[var(--text-main)] mb-2">Export Data</h4>
+                                            <p className="text-xs text-[var(--text-muted)] mb-4">Download all your profiles, snippets, and settings as a JSON file.</p>
+                                            <button
+                                                onClick={handleExport}
+                                                className="px-4 py-2 text-sm font-medium rounded-xl text-white bg-[var(--accent-color)] hover:opacity-90 transition-all"
+                                            >
+                                                Export All Data
+                                            </button>
+                                        </div>
+
+                                        <div className="p-4 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-2xl">
+                                            <h4 className="text-sm font-bold text-[var(--text-main)] mb-2">Import Data</h4>
+                                            <p className="text-xs text-[var(--text-muted)] mb-4">Restore data from a previously exported backup file.</p>
+                                            <label className="px-4 py-2 text-sm font-medium rounded-xl text-[var(--text-main)] bg-[var(--hover-color)] hover:bg-[var(--border-color)] cursor-pointer transition-all inline-block">
+                                                Import from File
+                                                <input
+                                                    type="file"
+                                                    accept=".json"
+                                                    onChange={handleImport}
+                                                    className="hidden"
+                                                />
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {dbStats && (
+                                    <div className="pt-6 border-t border-[var(--border-color)]">
+                                        <h3 className="text-lg font-bold text-[var(--text-main)] mb-4">What will be exported</h3>
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between py-2 border-b border-[var(--border-color)]">
+                                                <span className="text-[var(--text-muted)]">SSH Profiles</span>
+                                                <span className="font-medium text-[var(--text-main)]">{dbStats.profiles}</span>
+                                            </div>
+                                            <div className="flex justify-between py-2 border-b border-[var(--border-color)]">
+                                                <span className="text-[var(--text-muted)]">Global Snippets</span>
+                                                <span className="font-medium text-[var(--text-main)]">{dbStats.snippets}</span>
+                                            </div>
+                                            <div className="flex justify-between py-2 border-b border-[var(--border-color)]">
+                                                <span className="text-[var(--text-muted)]">ML Models (Autocomplete)</span>
+                                                <span className="font-medium text-[var(--text-main)]">{dbStats.mlModels}</span>
+                                            </div>
+                                            <div className="flex justify-between py-2">
+                                                <span className="text-[var(--text-muted)]">Settings</span>
+                                                <span className="font-medium text-[var(--text-main)]">{dbStats.settings}</span>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-[var(--text-muted)] mt-4">
+                                            Note: Passwords and private keys are stored securely in your OS keyring and cannot be exported.
+                                        </p>
+                                    </div>
+                                )}
                             </section>
                         )}
 

@@ -1,7 +1,7 @@
-use ssh2::Session;
 use crate::error::{AppError, Result};
 use crate::models::profile::SshProfile;
 use crate::services::auth::authenticate_session;
+use ssh2::Session;
 use std::net::TcpStream;
 
 pub struct SystemService;
@@ -28,13 +28,19 @@ impl SystemService {
 
         let mut output = String::new();
         use std::io::Read;
-        channel.read_to_string(&mut output).map_err(|e| AppError::Io(e))?;
+        channel
+            .read_to_string(&mut output)
+            .map_err(|e| AppError::Io(e))?;
 
         channel.wait_close().ok();
         Ok(output)
     }
 
-    pub fn get_system_services(&self, profile: &SshProfile, secret: Option<&str>) -> Result<String> {
+    pub fn get_system_services(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+    ) -> Result<String> {
         let session = self.open_session(profile, secret)?;
         // We output as JSON manually using awk/jq if possible, or just raw output and parse in JS.
         // `systemctl list-units --type=service --all` is standard on systemd.
@@ -55,13 +61,27 @@ impl SystemService {
         self.exec_command(&session, cmd)
     }
 
-    pub fn manage_service(&self, profile: &SshProfile, secret: Option<&str>, action: &str, service: &str) -> Result<String> {
+    pub fn manage_service(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        action: &str,
+        service: &str,
+    ) -> Result<String> {
         // action: start, stop, restart, enable, disable
         let session = self.open_session(profile, secret)?;
-        
-        let safe_action = action.replace("'", "'\\''").replace(";", "").replace("&", "").replace("|", "");
-        let safe_service = service.replace("'", "'\\''").replace(";", "").replace("&", "").replace("|", "");
-        
+
+        let safe_action = action
+            .replace("'", "'\\''")
+            .replace(";", "")
+            .replace("&", "")
+            .replace("|", "");
+        let safe_service = service
+            .replace("'", "'\\''")
+            .replace(";", "")
+            .replace("&", "")
+            .replace("|", "");
+
         // Try without sudo first. If it fails due to permissions, the frontend will see it in the output.
         // Later we can implement sudo if we pass the passover over stdin.
         let cmd = format!("systemctl {} {} 2>&1", safe_action, safe_service);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { storage } from '../lib/storage';
 
 export type ResizeDirection = 'left' | 'right' | 'top' | 'bottom';
 
@@ -11,16 +12,29 @@ export function useResizable(
 ) {
     const isVertical = direction === 'top' || direction === 'bottom';
 
-    const [size, setSize] = useState(() => {
-        if (storageKey) {
-            const saved = localStorage.getItem(storageKey);
-            if (saved) return parseInt(saved, 10);
-        }
-        return defaultSize;
-    });
-
+    const [size, setSize] = useState(defaultSize);
     const [isResizing, setIsResizing] = useState(false);
+    const [isLoaded, setIsLoaded] = useState(false);
     const resizeRef = useRef({ startPos: 0, startSize: 0 });
+
+    useEffect(() => {
+        if (!storageKey) {
+            setIsLoaded(true);
+            return;
+        }
+        
+        if (storage.isInitialized()) {
+            const saved = storage.getCached<number>(storageKey, defaultSize);
+            setSize(saved);
+            setIsLoaded(true);
+        } else {
+            storage.initialize().then(() => {
+                const saved = storage.getCached<number>(storageKey, defaultSize);
+                setSize(saved);
+                setIsLoaded(true);
+            });
+        }
+    }, [storageKey, defaultSize]);
 
     const startResizing = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
@@ -49,10 +63,9 @@ export function useResizable(
             setSize(clampedSize);
 
             if (storageKey) {
-                localStorage.setItem(storageKey, clampedSize.toString());
+                storage.set(storageKey, clampedSize);
             }
 
-            // Fire a custom event to force xterm/layout to resize
             window.dispatchEvent(new Event('resize'));
         };
 
@@ -75,10 +88,11 @@ export function useResizable(
     }, [isResizing, minSize, maxSize, direction, isVertical, storageKey]);
 
     return {
-        size,
-        width: isVertical ? undefined : size,
-        height: isVertical ? size : undefined,
+        size: isLoaded ? size : defaultSize,
+        width: isVertical ? undefined : (isLoaded ? size : defaultSize),
+        height: isVertical ? (isLoaded ? size : defaultSize) : undefined,
         startResizing,
-        isResizing
+        isResizing,
+        isLoaded
     };
 }

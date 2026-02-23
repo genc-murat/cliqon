@@ -10,3 +10,5 @@ export function useTheme() {
 
     return context;
 }
+
+export type ThemeContextValue = ReturnType<typeof useTheme>;

@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crossbeam_channel::{unbounded, Sender};
 use ssh2::Session;
@@ -12,6 +12,9 @@ use crate::error::{AppError, Result};
 use crate::models::profile::SshProfile;
 use crate::services::auth::authenticate_session;
 
+const OUTPUT_BATCH_INTERVAL_MS: u64 = 16;
+const OUTPUT_BATCH_MAX_SIZE: usize = 32768;
+
 #[derive(Clone)]
 pub struct SshPayload {
     pub session_id: String,
@@ -20,12 +23,9 @@ pub struct SshPayload {
 
 pub struct ActiveSession {
     pub profile_id: String,
-    pub session_id: String, // Unique tab/session ID
-    // Cloned ssh session for auxiliary services like tunneling
+    pub session_id: String,
     pub session: Session,
-    // Sender to send keystrokes/data to the SSH write loop
     tx: Sender<Vec<u8>>,
-    // Sender to send resize events (cols, rows)
     resize_tx: Sender<(u32, u32)>,
 }
 
@@ -33,14 +33,13 @@ impl ActiveSession {
     pub fn write_data(&self, data: Vec<u8>) {
         let _ = self.tx.send(data);
     }
-    
+
     pub fn resize(&self, cols: u32, rows: u32) {
         let _ = self.resize_tx.send((cols, rows));
     }
 }
 
 pub struct SshManager {
-    // Map of active SSH sessions to their write channels
     active_sessions: Arc<Mutex<std::collections::HashMap<String, ActiveSession>>>,
 }
 
@@ -51,11 +50,7 @@ impl SshManager {
         }
     }
 
-    pub fn test_connection(
-        &self,
-        profile: &SshProfile,
-        secret: Option<&str>,
-    ) -> Result<()> {
+    pub fn test_connection(&self, profile: &SshProfile, secret: Option<&str>) -> Result<()> {
         let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
         let _ = tcp.set_read_timeout(Some(Duration::from_secs(5)));
         let _ = tcp.set_write_timeout(Some(Duration::from_secs(5)));
@@ -87,7 +82,6 @@ impl SshManager {
         channel.request_pty("xterm", None, None)?;
         channel.exec("bash -l").or_else(|_| channel.shell())?;
 
-        // We use non-blocking approach to handle both reads from SSH and writes from Tauri in a single thread thread
         let (tx, rx) = unbounded::<Vec<u8>>();
         let (resize_tx, resize_rx) = unbounded::<(u32, u32)>();
 
@@ -99,42 +93,62 @@ impl SshManager {
             resize_tx,
         };
 
-        self.active_sessions.lock().unwrap().insert(session_id.clone(), active_session);
+        self.active_sessions
+            .lock()
+            .unwrap()
+            .insert(session_id.clone(), active_session);
 
-        // Spawn actor thread
         thread::spawn(move || {
             let mut buf = [0u8; 4096];
-            // Non-blocking loop requires setting the channel to non-blocking
-            // However, ssh2-rs has some quirks with non-blocking PTYs,
-            // we will set session to non-blocking.
+            let mut output_buffer: Vec<u8> = Vec::with_capacity(OUTPUT_BATCH_MAX_SIZE);
+            let mut last_flush = Instant::now();
+
             session.set_blocking(false);
 
             loop {
                 let mut activity = false;
 
-                // 1. Read from SSH, send to Tauri frontend
                 match channel.read(&mut buf) {
                     Ok(0) => {
-                        // EOF, connection closed
+                        if !output_buffer.is_empty() {
+                            let _ = app.emit(
+                                &format!("ssh_data_rx_{}", session_id),
+                                output_buffer.clone(),
+                            );
+                        }
                         let _ = app.emit(&format!("ssh_close_{}", session_id), ());
                         break;
                     }
                     Ok(n) => {
-                        let data = buf[..n].to_vec();
-                        let _ = app.emit(&format!("ssh_data_rx_{}", session_id), data);
+                        output_buffer.extend_from_slice(&buf[..n]);
                         activity = true;
+
+                        let should_flush = output_buffer.len() >= OUTPUT_BATCH_MAX_SIZE
+                            || last_flush.elapsed().as_millis() as u64 >= OUTPUT_BATCH_INTERVAL_MS;
+
+                        if should_flush && !output_buffer.is_empty() {
+                            let _ = app.emit(
+                                &format!("ssh_data_rx_{}", session_id),
+                                output_buffer.clone(),
+                            );
+                            output_buffer.clear();
+                            output_buffer.reserve(OUTPUT_BATCH_MAX_SIZE);
+                            last_flush = Instant::now();
+                        }
                     }
-                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                        // Keep going
-                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
                     Err(_) => {
-                        // Ignore or handle errors, then exit loop
+                        if !output_buffer.is_empty() {
+                            let _ = app.emit(
+                                &format!("ssh_data_rx_{}", session_id),
+                                output_buffer.clone(),
+                            );
+                        }
                         let _ = app.emit(&format!("ssh_close_{}", session_id), ());
                         break;
                     }
                 }
 
-                // 2. Read from Tauri, send to SSH
                 if let Ok(data) = rx.try_recv() {
                     let mut pos = 0;
                     while pos < data.len() {
@@ -143,18 +157,14 @@ impl SshManager {
                             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                                 thread::sleep(Duration::from_millis(5));
                             }
-                            Err(_) => break, // Error writing
+                            Err(_) => break,
                         }
                     }
-                    if let Err(_) = channel.flush() {
-                        // Ignore flush errors for now
-                    }
+                    let _ = channel.flush();
                     activity = true;
                 }
 
-                // 3. Handle Resize events
                 if let Ok((cols, rows)) = resize_rx.try_recv() {
-                    // Temporarily set to blocking to resize
                     session.set_blocking(true);
                     let _ = channel.request_pty_size(cols, rows, None, None);
                     session.set_blocking(false);
@@ -162,7 +172,17 @@ impl SshManager {
                 }
 
                 if !activity {
-                    // Small sleep to prevent 100% CPU core usage
+                    if !output_buffer.is_empty()
+                        && last_flush.elapsed().as_millis() as u64 >= OUTPUT_BATCH_INTERVAL_MS
+                    {
+                        let _ = app.emit(
+                            &format!("ssh_data_rx_{}", session_id),
+                            output_buffer.clone(),
+                        );
+                        output_buffer.clear();
+                        output_buffer.reserve(OUTPUT_BATCH_MAX_SIZE);
+                        last_flush = Instant::now();
+                    }
                     thread::sleep(Duration::from_millis(15));
                 }
             }
@@ -198,7 +218,7 @@ impl SshManager {
         let mut lock = self.active_sessions.lock().unwrap();
         lock.remove(session_id);
     }
-    
+
     pub fn get_session(&self, session_id: &str) -> Option<Session> {
         let lock = self.active_sessions.lock().unwrap();
         lock.get(session_id).map(|s| s.session.clone())

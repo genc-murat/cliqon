@@ -14,15 +14,18 @@ import { FileBrowser } from './FileBrowser';
 import { SnippetManager } from './SnippetManager';
 import { TerminalSearchBar } from './TerminalSearchBar';
 import { TerminalHistorySearch } from './TerminalHistorySearch';
-// Make sure to import xterm styles
 import '@xterm/xterm/css/xterm.css';
 
 interface TerminalViewerProps {
     profile: SshProfile;
     sessionId: string;
     isActive: boolean;
-    /** When true, only render the terminal — no FileBrowser or SnippetManager */
     paneMode?: boolean;
+}
+
+interface GpuInfo {
+    renderer: string;
+    vendor: string;
 }
 
 export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, sessionId, isActive, paneMode = false }) => {
@@ -35,15 +38,15 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
     const [connected, setConnected] = useState(false);
     const connectedRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
-    const { theme, terminalTheme, terminalFont, terminalCursorStyle } = useTheme();
+    const { theme, terminalTheme, terminalFont, terminalCursorStyle, terminalPerformance } = useTheme();
+    const [gpuInfo, setGpuInfo] = useState<GpuInfo | null>(null);
+    const [rendererActive, setRendererActive] = useState<'webgl' | 'canvas' | null>(null);
 
-    // ML-powered autocomplete
     const { processKeystroke, processOutput, getSuggestionRemainder, predictor } = useTerminalHistory(profile.id);
     const [ghostText, setGhostText] = useState<string | null>(null);
     const ghostRef = useRef<HTMLDivElement>(null);
     const activeSuggestionRef = useRef<string | null>(null);
 
-    // Advanced terminal features
     const [showSearchBar, setShowSearchBar] = useState(false);
     const [showHistorySearch, setShowHistorySearch] = useState(false);
     const [showLineNumbers, setShowLineNumbers] = useState(false);
@@ -58,18 +61,24 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                 cursor: theme.colors.accent,
                 selectionBackground: theme.colors.hover,
                 ...terminalTheme.colors,
-                // Override specific ANSI colors for better contrast in light mode if needed
                 ...(isLight ? {
                     black: '#000000',
                     white: '#333333',
                     brightWhite: '#000000',
-                    yellow: '#859900', // Solarized-style yellow/green for visibility
+                    yellow: '#859900',
                     brightYellow: '#b58900',
                 } : {})
             };
         }
         return terminalTheme.colors;
     }, [theme, terminalTheme]);
+
+    const getScrollbackLines = useCallback(() => {
+        if (terminalPerformance.scrollbackMode === 'unlimited') {
+            return 999999;
+        }
+        return terminalPerformance.scrollbackLines;
+    }, [terminalPerformance]);
 
     useEffect(() => {
         connectedRef.current = connected;
@@ -78,31 +87,30 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
     useEffect(() => {
         if (!terminalRef.current) return;
 
-        // Initialize xterm.js
+        const scrollback = getScrollbackLines();
+        
         const term = new Terminal({
             cursorBlink: true,
             cursorStyle: terminalCursorStyle,
             fontFamily: terminalFont.fontFamily,
             fontSize: terminalFont.fontSize,
             lineHeight: terminalFont.lineHeight,
+            scrollback,
             theme: getXtermTheme()
         });
 
         const fitAddon = new FitAddon();
         term.loadAddon(fitAddon);
 
-        // Load search addon
         const searchAddon = new SearchAddon();
         term.loadAddon(searchAddon);
         searchAddonRef.current = searchAddon;
 
-        // Load web links addon — clickable URLs
         const webLinksAddon = new WebLinksAddon((_event, uri) => {
             window.open(uri, '_blank');
         });
         term.loadAddon(webLinksAddon);
 
-        // Load clipboard addon
         try {
             const clipboardAddon = new ClipboardAddon();
             term.loadAddon(clipboardAddon);
@@ -112,12 +120,38 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
 
         term.open(terminalRef.current);
 
-        try {
-            const webglAddon = new WebglAddon();
-            webglAddon.onContextLoss(() => webglAddon.dispose());
-            term.loadAddon(webglAddon);
-        } catch (e) {
-            console.warn('WebGL addon could not be loaded, falling back to canvas', e);
+        const shouldTryWebgl = terminalPerformance.rendererMode !== 'canvas';
+        
+        if (shouldTryWebgl) {
+            try {
+                const webglAddon = new WebglAddon();
+                webglAddon.onContextLoss(() => {
+                    console.warn('WebGL context lost');
+                    webglAddon.dispose();
+                    setRendererActive('canvas');
+                });
+                term.loadAddon(webglAddon);
+                setRendererActive('webgl');
+                
+                const gl = (webglAddon as unknown as { _gl?: WebGLRenderingContext })._gl;
+                if (gl && terminalPerformance.showFpsCounter) {
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    if (debugInfo) {
+                        setGpuInfo({
+                            renderer: gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL),
+                            vendor: gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL),
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn('WebGL addon could not be loaded, falling back to canvas', e);
+                setRendererActive('canvas');
+                if (terminalPerformance.rendererMode === 'webgl') {
+                    setError('WebGL renderer requested but not available. Using canvas fallback.');
+                }
+            }
+        } else {
+            setRendererActive('canvas');
         }
 
         fitAddon.fit();
@@ -125,24 +159,20 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         xtermRef.current = term;
         fitAddonRef.current = fitAddon;
 
-        // Cleanup
         return () => {
             term.dispose();
             if (unlistenRxRef.current) unlistenRxRef.current();
             if (unlistenCloseRef.current) unlistenCloseRef.current();
             api.closePty(sessionId).catch(console.error);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Only run once on mount
+    }, []);
 
-    // Handle theme changes
     useEffect(() => {
         if (xtermRef.current) {
             xtermRef.current.options.theme = getXtermTheme();
         }
     }, [getXtermTheme]);
 
-    // Handle font changes
     useEffect(() => {
         if (xtermRef.current) {
             xtermRef.current.options.fontFamily = terminalFont.fontFamily;
@@ -152,14 +182,12 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         }
     }, [terminalFont]);
 
-    // Handle cursor style changes
     useEffect(() => {
         if (xtermRef.current) {
             xtermRef.current.options.cursorStyle = terminalCursorStyle;
         }
     }, [terminalCursorStyle]);
 
-    // Handle connection and events
     useEffect(() => {
         let isMounted = true;
 
@@ -170,12 +198,10 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
             try {
                 term.writeln(`\x1b[36mConnecting to ${profile.username}@${profile.host}:${profile.port}...\x1b[0m`);
 
-                // Start listening to events before connecting
                 unlistenRxRef.current = await listen<number[]>(`ssh_data_rx_${sessionId}`, (event) => {
                     if (xtermRef.current) {
                         const data = new Uint8Array(event.payload);
                         xtermRef.current.write(data);
-                        // Feed output to ML engine for interactive program detection
                         const decoded = new TextDecoder().decode(data);
                         processOutput(decoded);
                     }
@@ -188,14 +214,12 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                     setConnected(false);
                 });
 
-                // Connect via API
                 await api.connectSsh(profile, sessionId);
 
                 if (isMounted) {
                     setConnected(true);
                     term.writeln(`\r\x1b[32mConnected successfully.\x1b[0m\r\n`);
 
-                    // Trigger initial resize sync
                     if (fitAddonRef.current) {
                         const dims = fitAddonRef.current.proposeDimensions();
                         if (dims) {
@@ -213,13 +237,11 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
 
         setupConnection();
 
-        // Handle user input with ML autocomplete
         const onDataDisposable = xtermRef.current?.onData((data) => {
             if (!connectedRef.current) return;
 
             const encoder = new TextEncoder();
 
-            // Tab or Right Arrow: accept suggestion if one is active
             if ((data === '\t' || data === '\x1b[C') && activeSuggestionRef.current) {
                 const remainder = activeSuggestionRef.current;
                 if (remainder) {
@@ -227,18 +249,15 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                     api.writeToPty(sessionId, bytes).catch(console.error);
                     activeSuggestionRef.current = null;
                     setGhostText(null);
-                    return; // Consume the keystroke
+                    return;
                 }
             }
 
-            // Escape: dismiss suggestion
             if (data === '\x1b' && activeSuggestionRef.current) {
                 activeSuggestionRef.current = null;
                 setGhostText(null);
-                // Still send Escape to terminal
             }
 
-            // Process keystroke through ML engine
             const { suggestion } = processKeystroke(data);
 
             if (suggestion) {
@@ -258,12 +277,10 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                 setGhostText(null);
             }
 
-            // Send the original keystroke to the PTY
             const bytes = Array.from(encoder.encode(data));
             api.writeToPty(sessionId, bytes).catch(console.error);
         });
 
-        // Handle terminal resize
         const onResizeDisposable = xtermRef.current?.onResize((sizes) => {
             if (connectedRef.current) {
                 api.resizePty(sessionId, sizes.cols, sizes.rows).catch(console.error);
@@ -277,7 +294,6 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         };
     }, [profile, sessionId]);
 
-    // Handle window resize triggering terminal fit
     useEffect(() => {
         const handleResize = () => {
             if (isActive && fitAddonRef.current) {
@@ -287,7 +303,6 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
 
         window.addEventListener('resize', handleResize);
 
-        // Fit when becoming active
         if (isActive) {
             setTimeout(() => handleResize(), 10);
         }
@@ -295,7 +310,6 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         return () => window.removeEventListener('resize', handleResize);
     }, [isActive]);
 
-    // Position the ghost text overlay near the cursor
     useEffect(() => {
         if (!ghostText || !xtermRef.current || !ghostRef.current || !terminalRef.current) {
             return;
@@ -304,11 +318,10 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         const cursorX = term.buffer.active.cursorX;
         const cursorY = term.buffer.active.cursorY;
 
-        // Calculate pixel position using cell dimensions
         const cellWidth = term.element?.querySelector('.xterm-char-measure-element')?.getBoundingClientRect().width || 9;
         const cellHeight = (term.element?.querySelector('.xterm-rows')?.getBoundingClientRect().height || 0) / term.rows || 18;
 
-        const left = cursorX * cellWidth + 10; // +10 for padding
+        const left = cursorX * cellWidth + 10;
         const top = cursorY * cellHeight + 4;
 
         ghostRef.current.style.left = `${left}px`;
@@ -318,12 +331,10 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         ghostRef.current.style.lineHeight = `${cellHeight}px`;
     }, [ghostText, terminalFont]);
 
-    // Keyboard shortcuts for Ctrl+F (search) and Ctrl+R (history)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!isActive) return;
 
-            // Ctrl+F: Toggle search bar
             if (e.ctrlKey && e.key === 'f') {
                 e.preventDefault();
                 e.stopPropagation();
@@ -331,7 +342,6 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                 setShowHistorySearch(false);
             }
 
-            // Ctrl+R: Toggle history search
             if (e.ctrlKey && e.key === 'r') {
                 e.preventDefault();
                 e.stopPropagation();
@@ -339,7 +349,6 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                 setShowSearchBar(false);
             }
 
-            // Ctrl+L: Toggle line numbers
             if (e.ctrlKey && e.shiftKey && e.key === 'L') {
                 e.preventDefault();
                 setShowLineNumbers(prev => !prev);
@@ -350,7 +359,6 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         return () => window.removeEventListener('keydown', handleKeyDown, true);
     }, [isActive]);
 
-    // Update line number data when scrolling
     useEffect(() => {
         if (!showLineNumbers || !xtermRef.current) return;
 
@@ -365,7 +373,6 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
 
         updateLineNumbers();
 
-        // Listen for scroll events
         const scrollDisposable = term.onScroll(() => updateLineNumbers());
         const writeDisposable = term.onWriteParsed(() => updateLineNumbers());
 
@@ -375,12 +382,10 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         };
     }, [showLineNumbers]);
 
-    // Handle history search selection — send selected command to PTY
     const handleHistorySelect = useCallback((command: string) => {
         if (!connectedRef.current) return;
         const encoder = new TextEncoder();
-        // Clear current line (Ctrl+U), then type the command
-        const clearLine = '\x15'; // Ctrl+U
+        const clearLine = '\x15';
         const bytes = Array.from(encoder.encode(clearLine + command));
         api.writeToPty(sessionId, bytes).catch(console.error);
         setShowHistorySearch(false);
@@ -393,7 +398,6 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
             {!paneMode && <FileBrowser profile={profile} sessionId={sessionId} isActive={isActive} />}
 
             <div className="flex-1 relative h-full">
-                {/* Line Numbers Gutter */}
                 {showLineNumbers && (
                     <div
                         className="absolute left-0 top-0 bottom-0 z-10 select-none pointer-events-none overflow-hidden"
@@ -433,7 +437,6 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                     }}
                 />
 
-                {/* Search Bar Overlay (Ctrl+F) */}
                 {showSearchBar && (
                     <TerminalSearchBar
                         searchAddon={searchAddonRef.current}
@@ -441,7 +444,6 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                     />
                 )}
 
-                {/* History Search Overlay (Ctrl+R) */}
                 {showHistorySearch && (
                     <TerminalHistorySearch
                         predictor={predictor}
@@ -450,7 +452,6 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                     />
                 )}
 
-                {/* ML Autocomplete Ghost Text Overlay */}
                 {ghostText && connected && (
                     <div
                         ref={ghostRef}
@@ -476,6 +477,12 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                         <div className="bg-[var(--bg-sidebar)] px-4 py-2 rounded-md border border-[var(--border-color)] shadow-lg animate-pulse text-sm">
                             Connecting...
                         </div>
+                    </div>
+                )}
+                
+                {terminalPerformance.showFpsCounter && gpuInfo && (
+                    <div className="absolute bottom-2 right-2 text-[10px] text-[var(--text-muted)] opacity-50 pointer-events-none">
+                        {rendererActive}: {gpuInfo.renderer}
                     </div>
                 )}
             </div>

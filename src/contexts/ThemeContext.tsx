@@ -1,5 +1,26 @@
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Theme, themes, TerminalTheme, terminalThemes, TerminalFont, defaultTerminalFont } from '../lib/themes';
+import { storage } from '../lib/storage';
+import { checkAndMigrate } from '../lib/migration';
+
+export type ScrollbackMode = 'limited' | 'unlimited';
+export type RendererMode = 'auto' | 'webgl' | 'canvas';
+
+export interface TerminalPerformanceSettings {
+    scrollbackLines: number;
+    scrollbackMode: ScrollbackMode;
+    outputThrottleMs: number;
+    rendererMode: RendererMode;
+    showFpsCounter: boolean;
+}
+
+const defaultPerformanceSettings: TerminalPerformanceSettings = {
+    scrollbackLines: 10000,
+    scrollbackMode: 'limited',
+    outputThrottleMs: 16,
+    rendererMode: 'auto',
+    showFpsCounter: false,
+};
 
 interface ThemeContextType {
     theme: Theme;
@@ -16,88 +37,132 @@ interface ThemeContextType {
     setAutoOpenMonitor: (open: boolean) => void;
     sessionTimeout: number;
     setSessionTimeout: (timeout: number) => void;
+    terminalPerformance: TerminalPerformanceSettings;
+    setTerminalPerformance: (settings: Partial<TerminalPerformanceSettings>) => void;
+    isLoading: boolean;
 }
 
 export const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [theme, setThemeState] = useState<Theme>(() => {
-        const saved = localStorage.getItem('cliqon-theme');
-        if (saved && themes[saved]) {
-            return themes[saved];
-        }
-        return themes.modernDark;
-    });
-
-    const [terminalTheme, setTerminalThemeState] = useState<TerminalTheme>(() => {
-        const saved = localStorage.getItem('cliqon-terminal-theme');
-        if (saved && terminalThemes[saved]) {
-            return terminalThemes[saved];
-        }
-        return terminalThemes.appTheme;
-    });
-
-    const [terminalFont, setTerminalFontState] = useState<TerminalFont>(() => {
-        try {
-            const saved = localStorage.getItem('cliqon-terminal-font');
-            if (saved) return { ...defaultTerminalFont, ...JSON.parse(saved) };
-        } catch { }
-        return defaultTerminalFont;
-    });
-
-    const [terminalCursorStyle, setTerminalCursorStyleState] = useState<'block' | 'underline' | 'bar'>(() => {
-        const saved = localStorage.getItem('cliqon-terminal-cursor');
-        return (saved as any) || 'block';
-    });
-
-    const [autoOpenMonitor, setAutoOpenMonitorState] = useState<boolean>(() => {
-        const saved = localStorage.getItem('cliqon-auto-open-monitor');
-        return saved === 'true';
-    });
-
-    const [sessionTimeout, setSessionTimeoutState] = useState<number>(() => {
-        const saved = localStorage.getItem('cliqon-session-timeout');
-        return saved ? parseInt(saved, 10) : 30; // Default 30 minutes
-    });
-
-    const setTheme = (themeId: string) => {
-        if (themes[themeId]) {
-            setThemeState(themes[themeId]);
-            localStorage.setItem('cliqon-theme', themeId);
-        }
-    };
-
-    const setTerminalTheme = (themeId: string) => {
-        if (terminalThemes[themeId]) {
-            setTerminalThemeState(terminalThemes[themeId]);
-            localStorage.setItem('cliqon-terminal-theme', themeId);
-        }
-    };
-
-    const setTerminalFont = (font: Partial<TerminalFont>) => {
-        setTerminalFontState(prev => {
-            const next = { ...prev, ...font };
-            localStorage.setItem('cliqon-terminal-font', JSON.stringify(next));
-            return next;
-        });
-    };
-
-    const setTerminalCursorStyle = (style: 'block' | 'underline' | 'bar') => {
-        setTerminalCursorStyleState(style);
-        localStorage.setItem('cliqon-terminal-cursor', style);
-    };
-
-    const setAutoOpenMonitor = (open: boolean) => {
-        setAutoOpenMonitorState(open);
-        localStorage.setItem('cliqon-auto-open-monitor', String(open));
-    };
-
-    const setSessionTimeout = (timeout: number) => {
-        setSessionTimeoutState(timeout);
-        localStorage.setItem('cliqon-session-timeout', String(timeout));
-    };
+    const [isLoading, setIsLoading] = useState(true);
+    
+    const [theme, setThemeState] = useState<Theme>(themes.modernDark);
+    const [terminalTheme, setTerminalThemeState] = useState<TerminalTheme>(terminalThemes.appTheme);
+    const [terminalFont, setTerminalFontState] = useState<TerminalFont>(defaultTerminalFont);
+    const [terminalCursorStyle, setTerminalCursorStyleState] = useState<'block' | 'underline' | 'bar'>('block');
+    const [autoOpenMonitor, setAutoOpenMonitorState] = useState<boolean>(false);
+    const [sessionTimeout, setSessionTimeoutState] = useState<number>(30);
+    const [terminalPerformance, setTerminalPerformanceState] = useState<TerminalPerformanceSettings>(defaultPerformanceSettings);
 
     useEffect(() => {
+        let mounted = true;
+        
+        const initialize = async () => {
+            try {
+                await checkAndMigrate();
+                await storage.initialize();
+                
+                if (!mounted) return;
+                
+                const savedTheme = storage.getCached<string>('cliqon-theme', 'modernDark');
+                if (savedTheme && themes[savedTheme]) {
+                    setThemeState(themes[savedTheme]);
+                }
+                
+                const savedTerminalTheme = storage.getCached<string>('cliqon-terminal-theme', 'appTheme');
+                if (savedTerminalTheme && terminalThemes[savedTerminalTheme]) {
+                    setTerminalThemeState(terminalThemes[savedTerminalTheme]);
+                }
+                
+                const savedFont = storage.getCached<Partial<TerminalFont>>('cliqon-terminal-font', {});
+                if (Object.keys(savedFont).length > 0) {
+                    setTerminalFontState({ ...defaultTerminalFont, ...savedFont });
+                }
+                
+                const savedCursor = storage.getCached<string>('cliqon-terminal-cursor', 'block');
+                if (savedCursor === 'block' || savedCursor === 'underline' || savedCursor === 'bar') {
+                    setTerminalCursorStyleState(savedCursor);
+                }
+                
+                const savedAutoOpen = storage.getCached<string>('cliqon-auto-open-monitor', 'false');
+                setAutoOpenMonitorState(savedAutoOpen === 'true');
+                
+                const savedTimeout = storage.getCached<string>('cliqon-session-timeout', '30');
+                const parsed = parseInt(savedTimeout, 10);
+                if (!isNaN(parsed)) {
+                    setSessionTimeoutState(parsed);
+                }
+                
+                const savedPerf = storage.getCached<Partial<TerminalPerformanceSettings>>('cliqon-terminal-performance', {});
+                if (Object.keys(savedPerf).length > 0) {
+                    setTerminalPerformanceState({ ...defaultPerformanceSettings, ...savedPerf });
+                }
+                
+            } catch (err) {
+                console.error('Failed to initialize theme context:', err);
+            } finally {
+                if (mounted) {
+                    setIsLoading(false);
+                }
+            }
+        };
+        
+        initialize();
+        
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const setTheme = useCallback((themeId: string) => {
+        if (themes[themeId]) {
+            setThemeState(themes[themeId]);
+            storage.set('cliqon-theme', themeId);
+        }
+    }, []);
+
+    const setTerminalTheme = useCallback((themeId: string) => {
+        if (terminalThemes[themeId]) {
+            setTerminalThemeState(terminalThemes[themeId]);
+            storage.set('cliqon-terminal-theme', themeId);
+        }
+    }, []);
+
+    const setTerminalFont = useCallback((font: Partial<TerminalFont>) => {
+        setTerminalFontState(prev => {
+            const next = { ...prev, ...font };
+            storage.set('cliqon-terminal-font', next);
+            return next;
+        });
+    }, []);
+
+    const setTerminalCursorStyle = useCallback((style: 'block' | 'underline' | 'bar') => {
+        setTerminalCursorStyleState(style);
+        storage.set('cliqon-terminal-cursor', style);
+    }, []);
+
+    const setAutoOpenMonitor = useCallback((open: boolean) => {
+        setAutoOpenMonitorState(open);
+        storage.set('cliqon-auto-open-monitor', String(open));
+    }, []);
+
+    const setSessionTimeout = useCallback((timeout: number) => {
+        setSessionTimeoutState(timeout);
+        storage.set('cliqon-session-timeout', String(timeout));
+    }, []);
+
+    const setTerminalPerformance = useCallback((settings: Partial<TerminalPerformanceSettings>) => {
+        setTerminalPerformanceState(prev => {
+            const next = { ...prev, ...settings };
+            storage.set('cliqon-terminal-performance', next);
+            return next;
+        });
+    }, []);
+
+    useEffect(() => {
+        if (isLoading) return;
+        
         const root = document.documentElement;
         root.setAttribute('data-theme', theme.type);
 
@@ -114,7 +179,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         } else {
             root.classList.remove('theme-glass');
         }
-    }, [theme]);
+    }, [theme, isLoading]);
 
     return (
         <ThemeContext.Provider value={{
@@ -131,7 +196,10 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             autoOpenMonitor,
             setAutoOpenMonitor,
             sessionTimeout,
-            setSessionTimeout
+            setSessionTimeout,
+            terminalPerformance,
+            setTerminalPerformance,
+            isLoading
         }}>
             {children}
         </ThemeContext.Provider>

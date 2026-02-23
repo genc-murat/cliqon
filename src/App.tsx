@@ -32,7 +32,7 @@ function App() {
   const focusSearchRef = useRef<(() => void) | null>(null);
   const { autoOpenMonitor, sessionTimeout } = useTheme();
 
-  const { isTimedOut, resetTimeout } = useSessionTimeout(sessionTimeout);
+  const { isTimedOut, resetTimeout } = useSessionTimeout(tabs.length > 0 ? sessionTimeout : 0);
 
   const handleConnect = (profile: SshProfile) => {
     const sessionId = crypto.randomUUID();

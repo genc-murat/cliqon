@@ -1,6 +1,6 @@
 [package]
 name = "cliqon"
-version = "0.4.0"
+version = "0.4.5"
 description = "Cliqon - Cross-platform SSH and DevOps Client"
 authors = ["Murat Genc"]
 edition = "2021"

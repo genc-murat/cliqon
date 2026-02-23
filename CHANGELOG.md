@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.5] - 2026-02-23
+
+### Added
+- **IndexedDB Storage Migration**:
+  - Migrated from localStorage to IndexedDB for improved data persistence and larger storage capacity.
+  - Automatic, silent migration on first launch - all existing settings preserved.
+  - ML autocomplete models now stored in IndexedDB (up to 50MB+ per profile).
+  - New storage abstraction layer (`src/lib/storage.ts`) for unified data access.
+- **Connection Pooling (Backend)**:
+  - Implemented SSH connection pooling in Rust for better resource management.
+  - Connections reused across terminal, SFTP, and Docker operations.
+  - Automatic cleanup after 5 minutes of inactivity.
+  - Keep-alive packets every 30 seconds to prevent connection drops.
+- **Terminal Performance Settings**:
+  - New "Performance" tab in Settings modal.
+  - Configurable scrollback buffer size (1,000 - 100,000 lines or unlimited).
+  - Renderer selection: Auto, WebGL, or Canvas fallback.
+  - Optional FPS counter and GPU info display.
+- **Output Throttling**:
+  - Terminal output now batched every 16ms for smoother rendering.
+  - Reduces CPU usage during high-volume output (e.g., `cat` large files).
+- **Backup & Restore UI**:
+  - Export all data (profiles, snippets, settings, ML models) as JSON.
+  - Import from backup file with merge support.
+  - Storage statistics display (profiles, snippets, ML models count).
+
+### Changed
+- **Storage Architecture**:
+  - `ThemeContext.tsx` now uses IndexedDB via storage abstraction.
+  - `useResizable.ts` panel sizes persisted to IndexedDB.
+  - `useTerminalHistory.ts` ML models stored in IndexedDB.
+
+### Technical
+- Added `dexie` package for IndexedDB management.
+- New `src/lib/db.ts` with Dexie schema and helper functions.
+- New `src/lib/migration.ts` for automatic localStorage migration.
+- New `src-tauri/src/services/connection_pool.rs` with pooling logic.
+
 ## [0.4.0] - 2026-02-22
 
 ### Added

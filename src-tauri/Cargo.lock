@@ -506,7 +506,7 @@ dependencies = [
 
 [[package]]
 name = "cliqon"
-version = "0.4.0"
+version = "0.4.5"
 dependencies = [
  "crossbeam-channel",
  "hostname",

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Palette, Terminal as TerminalIcon, Monitor, Info, Check, Activity, Shield, Zap, HardDrive } from 'lucide-react';
+import { X, Palette, Terminal as TerminalIcon, Monitor, Info, Check, Activity, Shield, Zap, HardDrive, Key } from 'lucide-react';
 import { Logo } from '../layout/Logo';
+import { KeyStore } from '../settings/KeyStore';
 import { useTheme } from '../../hooks/useTheme';
 import { terminalFontFamilies } from '../../lib/themes';
 import { exportAllData, importData as importDataFn, ExportData, getDatabaseStats } from '../../lib/db';
@@ -10,7 +11,7 @@ interface SettingsModalProps {
     onClose: () => void;
 }
 
-type SettingsSection = 'appearance' | 'terminal' | 'performance' | 'general' | 'backup' | 'about';
+type SettingsSection = 'appearance' | 'terminal' | 'performance' | 'general' | 'keys' | 'backup' | 'about';
 
 interface DbStats {
     profiles: number;
@@ -94,6 +95,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         { id: 'terminal', label: 'Terminal', icon: TerminalIcon },
         { id: 'performance', label: 'Performance', icon: Zap },
         { id: 'general', label: 'General', icon: Monitor },
+        { id: 'keys', label: 'Keys', icon: Key },
         { id: 'backup', label: 'Backup', icon: HardDrive },
         { id: 'about', label: 'About', icon: Info },
     ];
@@ -421,8 +423,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                                         key={mode}
                                                         onClick={() => setTerminalPerformance({ rendererMode: mode })}
                                                         className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all ${terminalPerformance.rendererMode === mode
-                                                                ? 'bg-[var(--accent-color)] text-white'
-                                                                : 'bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                                                            ? 'bg-[var(--accent-color)] text-white'
+                                                            : 'bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
                                                             }`}
                                                     >
                                                         {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -536,16 +538,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="pt-8 border-t border-[var(--border-color)] flex flex-col items-center justify-center text-center space-y-4 opacity-50">
-                                    <div className="p-6 bg-[var(--hover-color)] rounded-full text-[var(--text-muted)]">
-                                        <Monitor size={48} />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-[var(--text-main)]">More Settings Coming Soon</h3>
-                                    <p className="text-xs text-[var(--text-muted)] max-w-sm">System integrity and per-protocol behaviors will be configurable here.</p>
-                                </div>
                             </section>
                         )}
+
+                        {activeSection === 'keys' && <KeyStore />}
 
                         {activeSection === 'backup' && (
                             <section className="space-y-8 max-w-2xl animate-in slide-in-from-bottom-4 duration-300">

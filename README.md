@@ -36,6 +36,8 @@ graph TB
         Sharing["Sharing Panel"]
         NetTools["Network Tools"]
         Monitor["Server Monitor"]
+        CronManager["Cron Manager"]
+        KeyStore["SSH Key Store"]
         ML["ML Autocomplete<br/>(Markov Chain)"]
         Settings["Settings & Themes"]
     end
@@ -71,6 +73,8 @@ graph TB
     Sharing --> Commands
     NetTools --> Commands
     Monitor --> Commands
+    CronManager --> Commands
+    KeyStore --> Commands
 
     Commands --> ProfileStore
     Commands --> SSHMgr
@@ -188,6 +192,19 @@ Share SSH connection profiles and global snippets with teammates on the same loc
 - **Dynamic Port Forwarding (SOCKS5)** — Route your browser traffic securely through the SSH connection without complex command line flags.
 - **Dedicated Management Panel** — Add, edit, and toggle tunnels directly from a new "Tunnels" tab without opening a terminal session.
 - **Background Execution** — Tunnels run in lightweight Rust threads, ensuring high throughput and resilience.
+ 
+### 🔑 SSH Key Management
+Manage your authentication identities securely and contextually:
+- **Global Key Store** — Integrated into the Settings modal for managing local SSH keys; generate new keys or import existing ones with optional passphrases.
+- **Algorithm Support** — Generate modern **ED25519** (recommended), RSA, or ECDSA key pairs.
+- **Remote Deployment** — Deploy your local public keys to any connected server with one click through the Management Panel.
+- **Authorized Keys Audit** — View and remove keys from the remote server's `authorized_keys` file interactively.
+
+### ⏰ Cron Job Manager
+Easily manage repeating tasks on your remote servers:
+- **Visual Management** — List, create, and delete cron jobs without manually editing crontab files.
+- **Preset Schedules** — Quickly set up common intervals (Every minute, hourly, daily, etc.) or use custom expressions.
+- **Execution History** — Monitor the history and logs of your cron tasks directly from the Management Panel.
 
 ### Theming & Appearance
 - **App Themes** — 39+ high-quality themes: Mint Frost, Golden Sand, Sky Blue, Soft Lilac, Desert White, Sage Garden, Sunset Glow, Lemon Chiffon, Cyberpunk Red, Hacker Void, Neon Tokyo, Vaporwave, and many more.

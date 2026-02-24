@@ -5,23 +5,24 @@ All notable changes to this project will be documented in this file.
 ## [0.6.0] - 2026-02-24
 
 ### Added
-- **SSH Key Manager**:
-  - Generate new SSH keys (ED25519, RSA, ECDSA)
-  - Import existing private keys
-  - Deploy keys to remote servers
-  - Manage remote authorized_keys
-  - Local key storage in `~/.ssh/cliqon_keys`
+- **SSH Key Manager (Refactored)**:
+  - **Global Key Store**: New "Keys" section in Settings modal for managing local SSH keys (Generate, Import, Delete).
+  - **Remote Key Manager**: New "Keys" tab in the Management Panel for session-specific key deployment and `authorized_keys` management.
+  - Support for generating ED25519, RSA, and ECDSA keys with optional passphrases.
+  - One-click key deployment to remote servers using active SSH sessions.
 - **Cron Manager**:
-  - View and manage cron jobs on remote servers
-  - Create new cron jobs with preset schedules
-  - Delete existing cron jobs
-  - View cron history/logs
-- **Sidebar Integration**:
-  - SSH Key Manager button added to sidebar (collapsed and expanded modes)
+  - View and manage cron jobs on remote servers via the Management Panel.
+  - Create new cron jobs with preset schedules or custom expressions.
+  - View cron history and logs in real-time.
+
+### Changed
+- **UI Organization**: Removed the dedicated SSH Key button from the Sidebar to declutter the interface.
+- **Modal Standardization**: Improved modal z-index handling and overlay interactions across all system-level modals.
 
 ### Technical
-- New backend commands: `generate_ssh_key`, `import_ssh_key`, `list_local_keys`, `delete_local_key`, `get_remote_authorized_keys`, `add_remote_authorized_key`, `remove_remote_authorized_key`, `deploy_key_to_remote`
-- New backend commands: `list_cron_jobs`, `create_cron_job`, `delete_cron_job`, `get_cron_history`
+- Updated key management APIs to use profile context instead of session IDs for better reliability.
+- New backend commands: `generate_ssh_key`, `import_ssh_key`, `list_local_keys`, `delete_local_key`, `get_remote_authorized_keys`, `add_remote_authorized_key`, `remove_remote_authorized_key`, `deploy_key_to_remote`.
+- New backend commands: `list_cron_jobs`, `create_cron_job`, `delete_cron_job`, `get_cron_history`.
 
 ## [0.5.0] - 2026-02-24
 

@@ -264,10 +264,13 @@ Manage your Docker infrastructure directly through the SSH connection:
 - **Container List** — Real-time view of all containers (Running, Stopped, Exited).
 - **Search & Filter** — Search containers by name, image, or ID. Filter by state (All/Running/Stopped).
 - **Live Performance Stats** — Monitor real-time CPU and Memory (RAM) usage directly in the container list.
-- **Container Inspect** — View detailed container information including environment variables, mounts, and network settings.
+- **Container Inspect** — View detailed container information including environment variables, mounts, network settings, and health check status.
 - **Log Viewer** — Dedicated Logs tab with search (including regex), line count selection, auto-scroll, and color-coded output.
+- **Network Management** — New Networks tab to list, create, and remove Docker networks (bridge, host, none drivers).
+- **Real-time Events** — New Events tab to monitor Docker events in real-time with type filtering and color-coded output.
+- **Docker Compose** — Right-click context menu on `docker-compose.yml` files to Start, Stop, Pause, Resume, or View Services.
 - **Interactive Shell (Exec)** — Drop into a running container's shell (`bash` or `sh`) with a single click, right inside your active terminal.
-- **System Prune** — One-click cleanup of unused containers, networks, and images to free up server disk space.
+- **Prune Options** — Redesigned prune dropdown to clean up containers, networks, images, or volumes individually or all at once.
 - **Bulk Actions** — Select multiple containers at once to perform concurrent Start, Stop, Kill, and Restart operations.
 - **Compose Visualizer** — Right-click any `docker-compose.yml` file in the SFTP browser to automatically generate an interactive architecture diagram.
 - **Volume Browser** — List system volumes and browse their simulated internal filesystem without manually exec-ing into containers.

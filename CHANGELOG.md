@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.6.0] - 2026-02-24
+## [0.6.0] - 2026-02-25
 
 ### Added
 - **Docker Manager Enhancements**:
@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
     - Environment variables (with copy functionality).
     - Mounts (type, source, destination).
     - Network settings (IP, gateway, MAC).
+    - Health check status (healthy/unhealthy, failing streak, logs).
     - Full JSON export with one-click copy.
   - **Log Search/Filter**: New Logs tab with:
     - Container selection dropdown.
@@ -21,6 +22,28 @@ All notable changes to this project will be documented in this file.
     - Auto-scroll toggle.
     - Color-coded output (errors=red, warnings=yellow, info=blue).
     - Real-time statistics (total lines, errors, warnings, info).
+  - **Network Management**: New Networks tab to:
+    - List all Docker networks (bridge, host, none, custom).
+    - Create new networks (bridge, host, none drivers).
+    - Remove custom networks.
+  - **Real-time Events**: New Events tab to:
+    - Stream Docker events in real-time (2s polling).
+    - Filter by type (container, image, volume, network).
+    - Color-coded event types (start=green, stop=red, die=yellow).
+    - Pause/resume auto-refresh.
+  - **Docker Compose Integration**: Right-click context menu for docker-compose.yml files:
+    - Start Compose (docker-compose up -d).
+    - Stop Compose (docker-compose down).
+    - Pause Compose.
+    - Resume Compose.
+    - View Services.
+    - Visualize Compose (existing architecture diagram).
+  - **Prune Options**: Redesigned prune button as dropdown:
+    - Prune Containers.
+    - Prune Networks.
+    - Prune Images.
+    - Prune Volumes.
+    - System Prune (all).
 
 - **Network Tools Revamp**:
   - **Categorized UI**: Completely refactored the Network Tools panel into a modern two-pane layout with a category-based sidebar.

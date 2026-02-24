@@ -45,7 +45,7 @@ impl DockerManager {
 
     pub fn get_containers(&self, profile: &SshProfile, secret: Option<&str>) -> Result<String> {
         let session = self.open_session(profile, secret)?;
-        let cmd = "docker ps -a --format '{{json .}}'";
+        let cmd = "docker ps -a --format '{{json .}}' --filter 'health=none' || docker ps -a --format '{{json .}}'";
         self.exec_command(&session, cmd)
     }
 
@@ -184,6 +184,177 @@ impl DockerManager {
         }
         let tail_lines = tail.unwrap_or(500);
         let cmd = format!("docker logs --tail {} {}", tail_lines, container_id);
+        self.exec_command(&session, &cmd)
+    }
+
+    pub fn get_networks(&self, profile: &SshProfile, secret: Option<&str>) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        let cmd = "docker network ls --format '{{json .}}'";
+        self.exec_command(&session, cmd)
+    }
+
+    pub fn create_network(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        name: &str,
+        driver: &str,
+    ) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        if name.contains(';') || name.contains('&') || name.contains('|') {
+            return Err(AppError::Custom("Invalid network name".to_string()));
+        }
+        if driver.contains(';') || driver.contains('&') || driver.contains('|') {
+            return Err(AppError::Custom("Invalid driver".to_string()));
+        }
+        let cmd = format!("docker network create --driver {} {}", driver, name);
+        self.exec_command(&session, &cmd)
+    }
+
+    pub fn remove_network(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        name: &str,
+    ) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        if name.contains(';') || name.contains('&') || name.contains('|') {
+            return Err(AppError::Custom("Invalid network name".to_string()));
+        }
+        let cmd = format!("docker network rm {}", name);
+        self.exec_command(&session, &cmd)
+    }
+
+    pub fn get_docker_events(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        filter: Option<&str>,
+    ) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        let filter_arg = filter.unwrap_or("");
+        let cmd = if filter_arg.is_empty() {
+            "docker events --format '{{json .}}' --since 60s".to_string()
+        } else {
+            format!(
+                "docker events --format '{{json .}}' --filter '{}' --since 60s",
+                filter_arg
+            )
+        };
+        self.exec_command(&session, &cmd)
+    }
+
+    pub fn prune_containers(&self, profile: &SshProfile, secret: Option<&str>) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        let cmd = "docker container prune -f";
+        self.exec_command(&session, cmd)
+    }
+
+    pub fn prune_networks(&self, profile: &SshProfile, secret: Option<&str>) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        let cmd = "docker network prune -f";
+        self.exec_command(&session, cmd)
+    }
+
+    pub fn prune_images(&self, profile: &SshProfile, secret: Option<&str>) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        let cmd = "docker image prune -af";
+        self.exec_command(&session, cmd)
+    }
+
+    pub fn prune_volumes(&self, profile: &SshProfile, secret: Option<&str>) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        let cmd = "docker volume prune -f";
+        self.exec_command(&session, cmd)
+    }
+
+    pub fn compose_up(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        path: &str,
+    ) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        if path.contains(';') || path.contains('&') || path.contains('|') {
+            return Err(AppError::Custom("Invalid path".to_string()));
+        }
+        let safe_path = path.replace("\\", "/");
+        let cmd = format!(
+            "cd '{}' && docker-compose up -d",
+            safe_path.replace("'", "'\\''")
+        );
+        self.exec_command(&session, &cmd)
+    }
+
+    pub fn compose_down(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        path: &str,
+    ) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        if path.contains(';') || path.contains('&') || path.contains('|') {
+            return Err(AppError::Custom("Invalid path".to_string()));
+        }
+        let safe_path = path.replace("\\", "/");
+        let cmd = format!(
+            "cd '{}' && docker-compose down",
+            safe_path.replace("'", "'\\''")
+        );
+        self.exec_command(&session, &cmd)
+    }
+
+    pub fn compose_pause(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        path: &str,
+    ) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        if path.contains(';') || path.contains('&') || path.contains('|') {
+            return Err(AppError::Custom("Invalid path".to_string()));
+        }
+        let safe_path = path.replace("\\", "/");
+        let cmd = format!(
+            "cd '{}' && docker-compose pause",
+            safe_path.replace("'", "'\\''")
+        );
+        self.exec_command(&session, &cmd)
+    }
+
+    pub fn compose_unpause(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        path: &str,
+    ) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        if path.contains(';') || path.contains('&') || path.contains('|') {
+            return Err(AppError::Custom("Invalid path".to_string()));
+        }
+        let safe_path = path.replace("\\", "/");
+        let cmd = format!(
+            "cd '{}' && docker-compose unpause",
+            safe_path.replace("'", "'\\''")
+        );
+        self.exec_command(&session, &cmd)
+    }
+
+    pub fn compose_ps(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        path: &str,
+    ) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        if path.contains(';') || path.contains('&') || path.contains('|') {
+            return Err(AppError::Custom("Invalid path".to_string()));
+        }
+        let safe_path = path.replace("\\", "/");
+        let cmd = format!(
+            "cd '{}' && docker-compose ps --services --status",
+            safe_path.replace("'", "'\\''")
+        );
         self.exec_command(&session, &cmd)
     }
 }

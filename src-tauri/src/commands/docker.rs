@@ -198,3 +198,233 @@ pub async fn get_docker_container_logs(
         .docker_manager
         .get_container_logs(&profile, secret.as_deref(), &container_id, tail)
 }
+
+#[tauri::command]
+pub async fn get_docker_networks(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .get_networks(&profile, secret.as_deref())
+}
+
+#[tauri::command]
+pub async fn create_docker_network(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    name: String,
+    driver: String,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .create_network(&profile, secret.as_deref(), &name, &driver)
+}
+
+#[tauri::command]
+pub async fn remove_docker_network(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    name: String,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .remove_network(&profile, secret.as_deref(), &name)
+}
+
+#[tauri::command]
+pub async fn get_docker_events(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    filter: Option<String>,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .get_docker_events(&profile, secret.as_deref(), filter.as_deref())
+}
+
+#[tauri::command]
+pub async fn prune_docker_containers(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .prune_containers(&profile, secret.as_deref())
+}
+
+#[tauri::command]
+pub async fn prune_docker_networks(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .prune_networks(&profile, secret.as_deref())
+}
+
+#[tauri::command]
+pub async fn prune_docker_images(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .prune_images(&profile, secret.as_deref())
+}
+
+#[tauri::command]
+pub async fn prune_docker_volumes(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .prune_volumes(&profile, secret.as_deref())
+}
+
+#[tauri::command]
+pub async fn docker_compose_up(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    path: String,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .compose_up(&profile, secret.as_deref(), &path)
+}
+
+#[tauri::command]
+pub async fn docker_compose_down(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    path: String,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .compose_down(&profile, secret.as_deref(), &path)
+}
+
+#[tauri::command]
+pub async fn docker_compose_pause(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    path: String,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .compose_pause(&profile, secret.as_deref(), &path)
+}
+
+#[tauri::command]
+pub async fn docker_compose_unpause(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    path: String,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .compose_unpause(&profile, secret.as_deref(), &path)
+}
+
+#[tauri::command]
+pub async fn docker_compose_ps(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    path: String,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .compose_ps(&profile, secret.as_deref(), &path)
+}

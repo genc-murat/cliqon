@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Play, Square, RotateCw, Terminal, Box, RefreshCw, X, Trash2, ChevronRight, Search, Info, Filter } from 'lucide-react';
+import { Play, Square, RotateCw, Terminal, Box, RefreshCw, X, Trash2, ChevronRight, Search, Info, Filter, ChevronDown } from 'lucide-react';
 import { SshProfile } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
@@ -9,6 +9,8 @@ import { DockerPortForwards } from './DockerPortForwards';
 import { useConfirm } from '../../hooks/useConfirm';
 import { DockerInspectModal } from './DockerInspectModal';
 import { DockerLogsViewer } from './DockerLogsViewer';
+import { DockerNetworks } from './DockerNetworks';
+import { DockerEvents } from './DockerEvents';
 interface DockerContainer {
     ID: string;
     Names: string;
@@ -49,12 +51,13 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
     );
     const confirmCustom = useConfirm();
 
-    const [activeTab, setActiveTab] = useState<'containers' | 'volumes' | 'ports' | 'logs'>('containers');
+    const [activeTab, setActiveTab] = useState<'containers' | 'volumes' | 'ports' | 'logs' | 'networks' | 'events'>('containers');
     const [selectedContainers, setSelectedContainers] = useState<Set<string>>(new Set());
     const [browsingVolume, setBrowsingVolume] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [stateFilter, setStateFilter] = useState<'all' | 'running' | 'stopped'>('all');
     const [inspectingContainer, setInspectingContainer] = useState<string | null>(null);
+    const [showPruneDropdown, setShowPruneDropdown] = useState(false);
 
     const [containers, setContainers] = useState<DockerContainer[]>([]);
     const [stats, setStats] = useState<Record<string, DockerStat>>({});
@@ -129,22 +132,51 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
         }
     };
 
-    const handlePrune = async () => {
+    const handlePrune = async (type: 'containers' | 'networks' | 'images' | 'volumes' | 'system') => {
+        const messages: Record<string, { title: string; message: string }> = {
+            containers: { title: 'Prune Containers', message: 'Remove all stopped containers?' },
+            networks: { title: 'Prune Networks', message: 'Remove all unused networks?' },
+            images: { title: 'Prune Images', message: 'Remove all unused images?' },
+            volumes: { title: 'Prune Volumes', message: 'Remove all unused volumes? WARNING: This will delete all data!' },
+            system: { title: 'System Prune', message: 'Prune containers, networks, images, and optionally volumes?' }
+        };
+        
         const isConfirmed = await confirmCustom({
-            title: 'System Prune',
-            message: 'Are you sure you want to prune the Docker system? This will remove all unused containers, networks, images, and optionally, volumes.',
+            title: messages[type].title,
+            message: messages[type].message,
             confirmLabel: 'Prune',
             isDestructive: true
         });
+        
         if (!isConfirmed) return;
+        
         try {
             isPruning.current = true;
             setActionLoading('pruning');
-            await api.dockerSystemPrune(profile);
+            setShowPruneDropdown(false);
+            
+            switch (type) {
+                case 'containers':
+                    await api.pruneDockerContainers(profile);
+                    break;
+                case 'networks':
+                    await api.pruneDockerNetworks(profile);
+                    break;
+                case 'images':
+                    await api.pruneDockerImages(profile);
+                    break;
+                case 'volumes':
+                    await api.pruneDockerVolumes(profile);
+                    break;
+                case 'system':
+                    await api.dockerSystemPrune(profile);
+                    break;
+            }
+            
             await fetchContainers();
             await fetchStats();
         } catch (err: any) {
-            console.error("Failed to prune system", err);
+            console.error("Failed to prune", err);
         } finally {
             isPruning.current = false;
             setActionLoading(null);
@@ -266,6 +298,18 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                             >
                                 Logs
                             </button>
+                            <button
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'networks' ? 'bg-[var(--accent-color)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                                onClick={() => { setActiveTab('networks'); setBrowsingVolume(null); }}
+                            >
+                                Networks
+                            </button>
+                            <button
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'events' ? 'bg-[var(--accent-color)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                                onClick={() => { setActiveTab('events'); setBrowsingVolume(null); }}
+                            >
+                                Events
+                            </button>
                         </div>
                     </div>
                     <button
@@ -310,15 +354,53 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                             </select>
                         </div>
                         <div className="w-px h-3 bg-[var(--border-color)] mx-1" />
-                        <button
-                            onClick={handlePrune}
-                            disabled={isPruning.current || actionLoading === 'pruning'}
-                            className={`flex items-center gap-1 p-1.5 rounded-lg transition-colors text-red-400 hover:bg-red-500/10 hover:text-red-300 ${actionLoading === 'pruning' ? 'opacity-50' : ''}`}
-                            title="System Prune"
-                        >
-                            <Trash2 size={12} />
-                            <span>Prune</span>
-                        </button>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowPruneDropdown(!showPruneDropdown)}
+                                disabled={isPruning.current || actionLoading === 'pruning'}
+                                className={`flex items-center gap-1 p-1.5 rounded-lg transition-colors text-red-400 hover:bg-red-500/10 hover:text-red-300 ${actionLoading === 'pruning' ? 'opacity-50' : ''}`}
+                                title="Prune Options"
+                            >
+                                <Trash2 size={12} />
+                                <span>Prune</span>
+                                <ChevronDown size={10} />
+                            </button>
+                            {showPruneDropdown && (
+                                <div className="absolute top-full left-0 mt-1 w-40 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg shadow-lg z-50 py-1">
+                                    <button
+                                        onClick={() => handlePrune('containers')}
+                                        className="w-full px-3 py-2 text-xs text-left text-[var(--text-main)] hover:bg-[var(--hover-color)]"
+                                    >
+                                        Containers
+                                    </button>
+                                    <button
+                                        onClick={() => handlePrune('networks')}
+                                        className="w-full px-3 py-2 text-xs text-left text-[var(--text-main)] hover:bg-[var(--hover-color)]"
+                                    >
+                                        Networks
+                                    </button>
+                                    <button
+                                        onClick={() => handlePrune('images')}
+                                        className="w-full px-3 py-2 text-xs text-left text-[var(--text-main)] hover:bg-[var(--hover-color)]"
+                                    >
+                                        Images
+                                    </button>
+                                    <button
+                                        onClick={() => handlePrune('volumes')}
+                                        className="w-full px-3 py-2 text-xs text-left text-[var(--text-main)] hover:bg-[var(--hover-color)]"
+                                    >
+                                        Volumes
+                                    </button>
+                                    <div className="border-t border-[var(--border-color)] my-1" />
+                                    <button
+                                        onClick={() => handlePrune('system')}
+                                        className="w-full px-3 py-2 text-xs text-left text-red-400 hover:bg-red-500/10"
+                                    >
+                                        System (all)
+                                    </button>
+                                </div>
+                            )}
+                        </div>
 
                         {selectedContainers.size > 0 && (
                             <>
@@ -347,6 +429,10 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                     <DockerPortForwards containers={containers} host={profile.host} />
                 ) : activeTab === 'logs' ? (
                     <DockerLogsViewer containers={containers} profile={profile} />
+                ) : activeTab === 'networks' ? (
+                    <DockerNetworks profile={profile} />
+                ) : activeTab === 'events' ? (
+                    <DockerEvents profile={profile} />
                 ) : activeTab === 'volumes' ? (
                     browsingVolume ? (
                         <DockerVolumeBrowser

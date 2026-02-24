@@ -171,6 +171,58 @@ export const api = {
         return await invoke<string>('get_docker_container_logs', { profile, containerId, tail });
     },
 
+    getDockerNetworks: async (profile: SshProfile): Promise<string> => {
+        return await invoke<string>('get_docker_networks', { profile });
+    },
+
+    createDockerNetwork: async (profile: SshProfile, name: string, driver: string): Promise<string> => {
+        return await invoke<string>('create_docker_network', { profile, name, driver });
+    },
+
+    removeDockerNetwork: async (profile: SshProfile, name: string): Promise<string> => {
+        return await invoke<string>('remove_docker_network', { profile, name });
+    },
+
+    getDockerEvents: async (profile: SshProfile, filter?: string): Promise<string> => {
+        return await invoke<string>('get_docker_events', { profile, filter });
+    },
+
+    pruneDockerContainers: async (profile: SshProfile): Promise<string> => {
+        return await invoke<string>('prune_docker_containers', { profile });
+    },
+
+    pruneDockerNetworks: async (profile: SshProfile): Promise<string> => {
+        return await invoke<string>('prune_docker_networks', { profile });
+    },
+
+    pruneDockerImages: async (profile: SshProfile): Promise<string> => {
+        return await invoke<string>('prune_docker_images', { profile });
+    },
+
+    pruneDockerVolumes: async (profile: SshProfile): Promise<string> => {
+        return await invoke<string>('prune_docker_volumes', { profile });
+    },
+
+    dockerComposeUp: async (profile: SshProfile, path: string): Promise<string> => {
+        return await invoke<string>('docker_compose_up', { profile, path });
+    },
+
+    dockerComposeDown: async (profile: SshProfile, path: string): Promise<string> => {
+        return await invoke<string>('docker_compose_down', { profile, path });
+    },
+
+    dockerComposePause: async (profile: SshProfile, path: string): Promise<string> => {
+        return await invoke<string>('docker_compose_pause', { profile, path });
+    },
+
+    dockerComposeUnpause: async (profile: SshProfile, path: string): Promise<string> => {
+        return await invoke<string>('docker_compose_unpause', { profile, path });
+    },
+
+    dockerComposePs: async (profile: SshProfile, path: string): Promise<string> => {
+        return await invoke<string>('docker_compose_ps', { profile, path });
+    },
+
     getSystemServices: async (profile: SshProfile): Promise<string> => {
         return await invoke<string>('get_system_services', { profile });
     },

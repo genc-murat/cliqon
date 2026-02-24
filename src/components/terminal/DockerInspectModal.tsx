@@ -23,6 +23,19 @@ interface DockerInspectData {
         Dead: boolean;
         Pid: number;
         ExitCode: number;
+        Health?: {
+            Status: string;
+            FailingStreak: number;
+            Log: Array<{
+                Start: string;
+                End: string;
+                ExitCode: number;
+                Output: string;
+            }>;
+            StartPeriod: string;
+            LastProbeTime: string;
+            LastExitTime: string;
+        };
     };
     Config: {
         Env: string[];
@@ -50,7 +63,7 @@ export const DockerInspectModal: React.FC<DockerInspectModalProps> = ({ profile,
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [copiedField, setCopiedField] = useState<string | null>(null);
-    const [activeSection, setActiveSection] = useState<'info' | 'env' | 'mounts' | 'network'>('info');
+    const [activeSection, setActiveSection] = useState<'info' | 'env' | 'mounts' | 'network' | 'health'>('info');
 
     useEffect(() => {
         const fetchInspect = async () => {
@@ -130,7 +143,7 @@ export const DockerInspectModal: React.FC<DockerInspectModalProps> = ({ profile,
                 </div>
 
                 <div className="flex border-b border-[var(--border-color)] shrink-0">
-                    {(['info', 'env', 'mounts', 'network'] as const).map(section => (
+                    {(['info', 'env', 'mounts', 'network', 'health'] as const).map(section => (
                         <button
                             key={section}
                             onClick={() => setActiveSection(section)}
@@ -257,6 +270,69 @@ export const DockerInspectModal: React.FC<DockerInspectModalProps> = ({ profile,
                                 ))
                             ) : (
                                 <div className="text-[var(--text-muted)] text-xs">No network settings</div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeSection === 'health' && (
+                        <div className="space-y-3 text-xs">
+                            {data.State.Health ? (
+                                <>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="text-[var(--text-muted)]">Status</div>
+                                        <div className="col-span-2">
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                                                data.State.Health.Status === 'healthy' ? 'bg-green-500/10 text-green-400' :
+                                                data.State.Health.Status === 'unhealthy' ? 'bg-red-500/10 text-red-400' :
+                                                'bg-yellow-500/10 text-yellow-400'
+                                            }`}>
+                                                {data.State.Health.Status}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="text-[var(--text-muted)]">Failing Streak</div>
+                                        <div className="col-span-2 text-[var(--text-main)]">{data.State.Health.FailingStreak}</div>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="text-[var(--text-muted)]">Start Period</div>
+                                        <div className="col-span-2 text-[var(--text-main)]">{data.State.Health.StartPeriod}</div>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="text-[var(--text-muted)]">Last Probe</div>
+                                        <div className="col-span-2 text-[var(--text-main)]">{data.State.Health.LastProbeTime}</div>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="text-[var(--text-muted)]">Last Exit</div>
+                                        <div className="col-span-2 text-[var(--text-main)]">{data.State.Health.LastExitTime}</div>
+                                    </div>
+                                    {data.State.Health.Log && data.State.Health.Log.length > 0 && (
+                                        <div className="mt-4">
+                                            <div className="text-[var(--text-muted)] mb-2">Recent Logs</div>
+                                            <div className="space-y-2 max-h-48 overflow-auto">
+                                                {data.State.Health.Log.slice(-5).map((log, idx) => (
+                                                    <div key={idx} className="bg-[var(--bg-sidebar)] rounded p-2 border border-[var(--border-color)]">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                                                                log.ExitCode === 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                                                            }`}>
+                                                                Exit Code: {log.ExitCode}
+                                                            </span>
+                                                            <span className="text-[var(--text-muted)] text-[10px]">
+                                                                {log.Start} → {log.End}
+                                                            </span>
+                                                        </div>
+                                                        <div className="font-mono text-[10px] text-[var(--text-main)] whitespace-pre-wrap break-all">
+                                                            {log.Output.substring(0, 200)}{log.Output.length > 200 ? '...' : ''}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="text-[var(--text-muted)] text-xs">No health check configured for this container</div>
                             )}
                         </div>
                     )}

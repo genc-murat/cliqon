@@ -527,6 +527,34 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
         setVisualizeComposeFile(file);
     };
 
+    const handleComposeAction = async (file: FileNode, action: 'up' | 'down' | 'pause' | 'unpause' | 'ps') => {
+        closeContextMenu();
+        const filePath = `${currentPath}/${file.name}`.replace(/\/+/g, '/');
+        
+        try {
+            switch (action) {
+                case 'up':
+                    await api.dockerComposeUp(profile, filePath);
+                    break;
+                case 'down':
+                    await api.dockerComposeDown(profile, filePath);
+                    break;
+                case 'pause':
+                    await api.dockerComposePause(profile, filePath);
+                    break;
+                case 'unpause':
+                    await api.dockerComposeUnpause(profile, filePath);
+                    break;
+                case 'ps':
+                    const result = await api.dockerComposePs(profile, filePath);
+                    console.log('Compose services:', result);
+                    break;
+            }
+        } catch (err) {
+            console.error(`Failed to ${action} compose:`, err);
+        }
+    };
+
     const handleTailLog = (file: FileNode) => {
         closeContextMenu();
         setTailingFile(file);
@@ -847,12 +875,45 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                             </>
                         )}
                         {!contextMenu.file.is_dir && (contextMenu.file.name === 'docker-compose.yml' || contextMenu.file.name === 'docker-compose.yaml' || contextMenu.file.name === 'compose.yml' || contextMenu.file.name === 'compose.yaml') && (
-                            <button
-                                onClick={() => handleVisualizeCompose(contextMenu.file)}
-                                className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-main)] hover:bg-[var(--hover-color)]"
-                            >
-                                <Network size={14} className="text-[var(--accent-color)]" /> Visualize Compose
-                            </button>
+                            <>
+                                <button
+                                    onClick={() => handleComposeAction(contextMenu.file, 'up')}
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 text-green-400 hover:bg-[var(--hover-color)]"
+                                >
+                                    <ArrowUpCircle size={14} /> Start Compose
+                                </button>
+                                <button
+                                    onClick={() => handleComposeAction(contextMenu.file, 'down')}
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 text-red-400 hover:bg-[var(--hover-color)]"
+                                >
+                                    <ArrowUpCircle size={14} className="rotate-180" /> Stop Compose
+                                </button>
+                                <button
+                                    onClick={() => handleComposeAction(contextMenu.file, 'pause')}
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 text-yellow-400 hover:bg-[var(--hover-color)]"
+                                >
+                                    <Activity size={14} /> Pause Compose
+                                </button>
+                                <button
+                                    onClick={() => handleComposeAction(contextMenu.file, 'unpause')}
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 text-green-400 hover:bg-[var(--hover-color)]"
+                                >
+                                    <Activity size={14} /> Resume Compose
+                                </button>
+                                <button
+                                    onClick={() => handleComposeAction(contextMenu.file, 'ps')}
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-muted)] hover:bg-[var(--hover-color)]"
+                                >
+                                    <Activity size={14} /> View Services
+                                </button>
+                                <div className="border-t border-[var(--border-color)] my-1" />
+                                <button
+                                    onClick={() => handleVisualizeCompose(contextMenu.file)}
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-main)] hover:bg-[var(--hover-color)]"
+                                >
+                                    <Network size={14} className="text-[var(--accent-color)]" /> Visualize Compose
+                                </button>
+                            </>
                         )}
                         <button
                             onClick={() => handleStartRename(contextMenu.file)}

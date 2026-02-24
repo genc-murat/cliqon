@@ -18,7 +18,7 @@ export const SnippetManager: React.FC<SnippetManagerProps> = ({ sessionId, isAct
     const { status, peers, handleShareItems } = useSharing();
     const confirm = useConfirm();
 
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem('cliqon-snippet-collapsed') === 'true');
     const [isAdding, setIsAdding] = useState(false);
     const [sharingSnippetId, setSharingSnippetId] = useState<string | null>(null);
 
@@ -28,7 +28,9 @@ export const SnippetManager: React.FC<SnippetManagerProps> = ({ sessionId, isAct
     const [newAutoRun, setNewAutoRun] = useState(true);
 
     const toggleCollapse = () => {
-        setIsCollapsed(prev => !prev);
+        const next = !isCollapsed;
+        setIsCollapsed(next);
+        localStorage.setItem('cliqon-snippet-collapsed', String(next));
         setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
     };
 

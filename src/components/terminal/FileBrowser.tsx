@@ -30,7 +30,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     const [currentPath, setCurrentPath] = useState<string>('.');
     const [files, setFiles] = useState<FileNode[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem('cliqon-sftp-collapsed') === 'true');
     const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
     const [renamingFile, setRenamingFile] = useState<FileNode | null>(null);
     const [renameValue, setRenameValue] = useState('');
@@ -57,7 +57,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     const { bookmarks, addBookmark, removeBookmark, isBookmarked } = useSftpBookmarks(profile.host);
 
     const toggleCollapse = () => {
-        setIsCollapsed(prev => !prev);
+        const next = !isCollapsed;
+        setIsCollapsed(next);
+        localStorage.setItem('cliqon-sftp-collapsed', String(next));
         setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
     };
 

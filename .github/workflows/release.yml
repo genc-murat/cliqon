@@ -67,6 +67,7 @@ jobs:
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/updater/*.zip
             src-tauri/target/release/bundle/updater/*.sig
+            src-tauri/target/release/bundle/updater/*.json
           if-no-files-found: ignore
 
   release:
@@ -89,32 +90,30 @@ jobs:
       - name: Prepare Updater latest.json
         run: |
           mkdir -p release_assets
-          cp artifacts/**/* release_assets/ || true
-          # Note: In a real scenario, you'd want to generate a consolidated latest.json 
-          # but Tauri build --updater often generates it per platform or you can 
-          # use a script to merge them. For now, we ensure updater files are included.
-          # The softprops/action-gh-release will upload all files in release_assets.
+          # Merge all platform JSONs into one
+          python3 -c "
+          import json, os, glob
+          merged = {'version': '', 'notes': '', 'pub_date': '', 'platforms': {}}
+          for f in glob.glob('artifacts/**/latest.json', recursive=True):
+              print(f'Processing {f}')
+              with open(f) as j:
+                  data = json.load(j)
+                  merged['version'] = data.get('version', merged['version'])
+                  merged['notes'] = data.get('notes', merged['notes'])
+                  merged['pub_date'] = data.get('pub_date', merged['pub_date'])
+                  merged['platforms'].update(data.get('platforms', {}))
+          with open('release_assets/latest.json', 'w') as f:
+              json.dump(merged, f, indent=2)
+          "
+          # Copy all other assets (zip, sig, deb, etc)
+          find artifacts -type f \( -name "*.zip" -o -name "*.sig" -o -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" -o -name "*.dmg" -o -name "*.msi" -o -name "*.exe" \) -exec cp {} release_assets/ \;
 
       - name: Create Release and Upload Files
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Cliqon ${{ github.ref_name }}
-          files: artifacts/**/*
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create Release and Upload Files
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Cliqon ${{ github.ref_name }}
-          files: |
-            release_assets/**/*
-            artifacts/**/*
+          files: release_assets/*
           generate_release_notes: true
           draft: false
           prerelease: false

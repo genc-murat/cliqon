@@ -100,7 +100,8 @@ impl SftpManager {
                         }
                         SftpCommand::ListDir(path) => {
                             let mut nodes = Vec::new();
-                            if let Ok(dir) = sftp.readdir(Path::new(&path)) {
+                            let p_obj = Path::new(&path);
+                            if let Ok(dir) = sftp.readdir(p_obj) {
                                 for (p, stat) in dir {
                                     let name = p
                                         .file_name()
@@ -121,6 +122,16 @@ impl SftpManager {
                                         modified_at,
                                     });
                                 }
+                                // Also notify frontend of the "real" path we are now in
+                                let real_path = if path == "." {
+                                    match sftp.realpath(Path::new(".")) {
+                                        Ok(p) => p.to_string_lossy().into_owned().replace("\\", "/"),
+                                        Err(_) => ".".to_string(),
+                                    }
+                                } else {
+                                    path.clone()
+                                };
+                                let _ = app.emit(&format!("sftp_current_path_rx_{}", sid), real_path);
                             }
                             nodes.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name)));
                             let _ = app.emit(&format!("sftp_dir_rx_{}", sid), nodes);

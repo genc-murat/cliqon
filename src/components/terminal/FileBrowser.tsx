@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
-import { Folder, Download, RefreshCw, ChevronLeft, ChevronRight, Edit2, Trash2, Copy, FileText, Network, ShieldAlert, Activity, ArrowUpCircle, Star, Bookmark, X as XIcon, File as FileIcon, TerminalSquare, Settings, Eye, EyeOff, Archive, Check, SortAsc, FilePlus, Clipboard, Scissors } from 'lucide-react';
+import { Folder, Download, RefreshCw, ChevronLeft, ChevronRight, Edit2, Trash2, Copy, FileText, Network, ShieldAlert, Activity, ArrowUpCircle, Star, Bookmark, X as XIcon, TerminalSquare, Settings, Eye, EyeOff, Archive, Check, SortAsc, FilePlus, Clipboard, Scissors } from 'lucide-react';
+import { FileIcon } from '../ui/FileIcon';
 import { SshProfile, FileNode } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
@@ -123,6 +124,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     useEffect(() => {
         let isMounted = true;
         let unlistenRx: UnlistenFn | null = null;
+        let unlistenPathRx: UnlistenFn | null = null;
         let unlistenTransferDone: UnlistenFn | null = null;
         let unlistenRenameDone: UnlistenFn | null = null;
         let unlistenDeleteDone: UnlistenFn | null = null;
@@ -142,6 +144,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
             try {
                 unlistenRx = await listen<FileNode[]>(`sftp_dir_rx_${sessionId}`, (event) => {
                     if (isMounted) { setFiles(event.payload); setIsLoading(false); setSelectedIndex(-1); }
+                });
+                unlistenPathRx = await listen<string>(`sftp_current_path_rx_${sessionId}`, (event) => {
+                    if (isMounted) { setCurrentPath(event.payload); }
                 });
                 unlistenTransferDone = await listen<string>(`sftp_transfer_done_${sessionId}`, () => {
                     if (isMounted) fetchDirectory(currentPath);
@@ -202,7 +207,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
 
         return () => {
             isMounted = false;
-            [unlistenRx, unlistenTransferDone, unlistenRenameDone, unlistenRenameErr,
+            [unlistenRx, unlistenPathRx, unlistenTransferDone, unlistenRenameDone, unlistenRenameErr,
                 unlistenDeleteDone, unlistenDeleteErr, unlistenWatch, unlistenCreateDirDone,
                 unlistenCreateDirErr, unlistenCreateFileDone, unlistenCreateFileErr,
                 unlistenCopyDone, unlistenCopyErr, unlistenMoveDone, unlistenMoveErr].forEach(u => u?.());
@@ -215,20 +220,34 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     const handleNavigate = (node: FileNode) => {
         if (node.is_dir) {
             setSelectedFiles(new Set());
-            setCurrentPath(node.path);
             fetchDirectory(node.path);
         }
     };
 
     const handleUpDirectory = () => {
         if (currentPath === '.' || currentPath === '/') return;
-        const normalizedPath = currentPath.startsWith('/') ? currentPath : '/' + currentPath;
-        const parts = normalizedPath.split('/').filter(Boolean);
-        parts.pop();
-        const newPath = parts.length === 0 ? '/' : '/' + parts.join('/');
+        
+        // Try to get parent path
+        let parentPath = '';
+        if (currentPath.includes('/')) {
+            const parts = currentPath.split('/').filter(Boolean);
+            if (currentPath.startsWith('/')) {
+                // Absolute path
+                parts.pop();
+                parentPath = parts.length === 0 ? '/' : '/' + parts.join('/');
+            } else {
+                // Relative path
+                parts.pop();
+                parentPath = parts.length === 0 ? '.' : parts.join('/');
+            }
+        } else if (currentPath !== '.') {
+            parentPath = '.';
+        } else {
+            return;
+        }
+
         setSelectedFiles(new Set());
-        setCurrentPath(newPath);
-        fetchDirectory(newPath);
+        fetchDirectory(parentPath);
     };
 
     const toggleSelection = (e: React.MouseEvent, file: FileNode) => {
@@ -726,11 +745,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                                         >
                                             {selectedFiles.has(file.path) && <Check size={10} strokeWidth={3} />}
                                         </div>
-                                        <div className="shrink-0 text-[var(--accent-color)]">
-                                            {file.is_dir
-                                                ? <Folder size={14} fill="currentColor" fillOpacity={0.2} />
-                                                : <FileIcon size={14} className="text-[var(--text-muted)]" />
-                                            }
+                                        <div className="shrink-0">
+                                            <FileIcon name={file.name} isDir={file.is_dir} size={14} />
                                         </div>
 
                                         {renamingFile?.path === file.path ? (

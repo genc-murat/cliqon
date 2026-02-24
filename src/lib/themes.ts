@@ -560,6 +560,160 @@ export const themes: Record<string, Theme> = {
             hover: '#fff9c4',
         }
     },
+    electricBlue: {
+        id: 'electricBlue',
+        name: 'Electric Blue',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#0a0a1a',
+            bgSidebar: '#12122a',
+            textMain: '#e0e0ff',
+            textMuted: '#6080ff',
+            accent: '#00a0ff',
+            border: '#1a1a3a',
+            hover: '#202040',
+        }
+    },
+    royalPurple: {
+        id: 'royalPurple',
+        name: 'Royal Purple',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#1a0a2e',
+            bgSidebar: '#2a1a4a',
+            textMain: '#f0e0ff',
+            textMuted: '#b080d0',
+            accent: '#9b59b6',
+            border: '#3a2060',
+            hover: '#4a2875',
+        }
+    },
+    strawberry: {
+        id: 'strawberry',
+        name: 'Strawberry',
+        type: 'light',
+        colors: {
+            bgPrimary: '#fff0f5',
+            bgSidebar: '#ffe0e8',
+            textMain: '#4a1a2a',
+            textMuted: '#a04060',
+            accent: '#e91e63',
+            border: '#ffd0e0',
+            hover: '#ffe0e8',
+        }
+    },
+    midnightOcean: {
+        id: 'midnightOcean',
+        name: 'Midnight Ocean',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#020810',
+            bgSidebar: '#041020',
+            textMain: '#c0d8f0',
+            textMuted: '#6090a0',
+            accent: '#00a0c0',
+            border: '#082040',
+            hover: '#0a2848',
+        }
+    },
+    cottonCandy: {
+        id: 'cottonCandy',
+        name: 'Cotton Candy',
+        type: 'light',
+        colors: {
+            bgPrimary: '#fff0ff',
+            bgSidebar: '#ffe0f8',
+            textMain: '#3a2040',
+            textMuted: '#806090',
+            accent: '#ff80d0',
+            border: '#ffd0f0',
+            hover: '#ffe0f8',
+        }
+    },
+    honeyMustard: {
+        id: 'honeyMustard',
+        name: 'Honey Mustard',
+        type: 'light',
+        colors: {
+            bgPrimary: '#fffef5',
+            bgSidebar: '#fff8d8',
+            textMain: '#3a3020',
+            textMuted: '#807040',
+            accent: '#d4a000',
+            border: '#f0e8c0',
+            hover: '#fff8d8',
+        }
+    },
+    synthwaveSunset: {
+        id: 'synthwaveSunset',
+        name: 'Synthwave Sunset',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#1a0a2e',
+            bgSidebar: '#2a1545',
+            textMain: '#ffd0e0',
+            textMuted: '#b080a0',
+            accent: '#ff6b9d',
+            border: '#3a2055',
+            hover: '#4a2870',
+        }
+    },
+    toxicSlime: {
+        id: 'toxicSlime',
+        name: 'Toxic Slime',
+        type: 'dark',
+        colors: {
+            bgPrimary: '#0a1a0a',
+            bgSidebar: '#142814',
+            textMain: '#c0ffc0',
+            textMuted: '#60c060',
+            accent: '#39ff14',
+            border: '#1a3a1a',
+            hover: '#224422',
+        }
+    },
+    peachFuzz: {
+        id: 'peachFuzz',
+        name: 'Peach Fuzz',
+        type: 'light',
+        colors: {
+            bgPrimary: '#fff5ee',
+            bgSidebar: '#ffe8d8',
+            textMain: '#3a2820',
+            textMuted: '#907060',
+            accent: '#ff9966',
+            border: '#ffd8c0',
+            hover: '#ffe8d8',
+        }
+    },
+    matchaGreen: {
+        id: 'matchaGreen',
+        name: 'Matcha Green',
+        type: 'light',
+        colors: {
+            bgPrimary: '#f0f5e8',
+            bgSidebar: '#e6ede0',
+            textMain: '#2a3a20',
+            textMuted: '#5a6a4a',
+            accent: '#90a050',
+            border: '#d8e0c8',
+            hover: '#e6ede0',
+        }
+    },
+    berrySmoothie: {
+        id: 'berrySmoothie',
+        name: 'Berry Smoothie',
+        type: 'light',
+        colors: {
+            bgPrimary: '#f8e8f8',
+            bgSidebar: '#f0d8f0',
+            textMain: '#3a2030',
+            textMuted: '#705060',
+            accent: '#c04080',
+            border: '#e8d0e0',
+            hover: '#f0d8f0',
+        }
+    },
 };
 
 export interface TerminalTheme {

@@ -224,5 +224,53 @@ export const api = {
     pingPeer: async (ip: string, port: number): Promise<PeerInfo> => {
         return await invoke<PeerInfo>('ping_peer', { ip, port });
     },
+
+    generateSshKey: async (name: string, keyType: string, passphrase: string | null): Promise<any> => {
+        return await invoke('generate_ssh_key', { name, keyType, passphrase });
+    },
+
+    importSshKey: async (name: string, privateKey: string, passphrase: string | null): Promise<any> => {
+        return await invoke('import_ssh_key', { name, privateKey, passphrase });
+    },
+
+    listLocalKeys: async (): Promise<any[]> => {
+        return await invoke<any[]>('list_local_keys');
+    },
+
+    deleteLocalKey: async (id: string, name: string): Promise<boolean> => {
+        return await invoke<boolean>('delete_local_key', { id, name });
+    },
+
+    getRemoteAuthorizedKeys: async (profile: SshProfile): Promise<string[]> => {
+        return await invoke<string[]>('get_remote_authorized_keys', { profile });
+    },
+
+    addRemoteAuthorizedKey: async (profile: SshProfile, publicKey: string): Promise<boolean> => {
+        return await invoke<boolean>('add_remote_authorized_key', { profile, publicKey });
+    },
+
+    removeRemoteAuthorizedKey: async (profile: SshProfile, publicKey: string): Promise<boolean> => {
+        return await invoke<boolean>('remove_remote_authorized_key', { profile, publicKey });
+    },
+
+    deployKeyToRemote: async (profile: SshProfile, keyName: string, remoteUsername: string): Promise<boolean> => {
+        return await invoke<boolean>('deploy_key_to_remote', { profile, keyName, remoteUsername });
+    },
+
+    listCronJobs: async (profile: SshProfile): Promise<any[]> => {
+        return await invoke<any[]>('list_cron_jobs', { profile });
+    },
+
+    createCronJob: async (profile: SshProfile, schedule: string, command: string): Promise<boolean> => {
+        return await invoke<boolean>('create_cron_job', { profile, schedule, command });
+    },
+
+    deleteCronJob: async (profile: SshProfile, schedule: string, command: string): Promise<boolean> => {
+        return await invoke<boolean>('delete_cron_job', { profile, schedule, command });
+    },
+
+    getCronHistory: async (profile: SshProfile, limit?: number): Promise<string[]> => {
+        return await invoke<string[]>('get_cron_history', { profile, limit });
+    },
 };
 

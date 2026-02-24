@@ -8,6 +8,7 @@ import {
 import { useConnections } from '../../hooks/useConnections';
 import { ProfileModal } from '../ui/ProfileModal';
 import { SettingsModal } from '../ui/SettingsModal';
+import { KeyManager } from '../ui/KeyManager';
 import { SshProfile, AuthMethod } from '../../types/connection';
 import { useResizable } from '../../hooks/useResizable';
 import { Logo } from './Logo';
@@ -236,6 +237,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isKeyManagerOpen, setIsKeyManagerOpen] = useState(false);
     const { togglePanel, isPanelOpen } = useSharing();
     const [editingProfile, setEditingProfile] = useState<SshProfile | null>(null);
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -420,6 +422,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                             <Settings size={16} />
                         </button>
                         <button
+                            onClick={() => setIsKeyManagerOpen(true)}
+                            className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-2 rounded-md transition-colors"
+                            title="SSH Keys"
+                        >
+                            <Key size={16} />
+                        </button>
+                        <button
                             onClick={handleAdd}
                             className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-2 rounded-md transition-colors"
                             title="New Connection"
@@ -468,6 +477,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                                 title="Settings"
                             >
                                 <Settings size={16} />
+                            </button>
+                            <button
+                                onClick={() => setIsKeyManagerOpen(true)}
+                                className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-1.5 rounded-md transition-colors"
+                                title="SSH Keys"
+                            >
+                                <Key size={16} />
                             </button>
                         </div>
 
@@ -618,6 +634,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
             <SettingsModal
                 isOpen={isSettingsOpen}
                 onClose={() => setIsSettingsOpen(false)}
+            />
+
+            <KeyManager
+                isOpen={isKeyManagerOpen}
+                onClose={() => setIsKeyManagerOpen(false)}
             />
 
             {/* Click outside context menu */}

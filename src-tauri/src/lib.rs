@@ -16,6 +16,8 @@ use commands::logging::*;
 use commands::sharing::*;
 use commands::tunnel::*;
 use commands::snippet::*;
+use commands::ssh_keys::*;
+use commands::cron::*;
 use tauri::Manager;
 use crate::services::system::SystemService;
 use crate::services::logging::LogManager;
@@ -98,7 +100,19 @@ pub fn run() {
             get_active_tunnels,
             get_snippets,
             save_snippet,
-            delete_snippet
+            delete_snippet,
+            generate_ssh_key,
+            import_ssh_key,
+            list_local_keys,
+            delete_local_key,
+            get_remote_authorized_keys,
+            add_remote_authorized_key,
+            remove_remote_authorized_key,
+            deploy_key_to_remote,
+            list_cron_jobs,
+            create_cron_job,
+            delete_cron_job,
+            get_cron_history
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

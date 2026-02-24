@@ -1,13 +1,14 @@
 import React from 'react';
-import { Activity, Globe, Box, Link, X } from 'lucide-react';
+import { Activity, Globe, Box, Link, Clock, X } from 'lucide-react';
 import { SshProfile } from '../../types/connection';
 import { useResizable } from '../../hooks/useResizable';
 import { ServerMonitor } from './ServerMonitor';
 import { NetworkTools } from './NetworkTools';
 import { DockerManager } from './DockerManager';
 import { TunnelManager } from './TunnelManager';
+import { CronManager } from './CronManager';
 
-export type ManagementTab = 'monitor' | 'network' | 'docker' | 'tunnels';
+export type ManagementTab = 'monitor' | 'network' | 'docker' | 'tunnels' | 'cron';
 
 interface ManagementPanelProps {
     profile: SshProfile;
@@ -41,6 +42,7 @@ export const ManagementPanel: React.FC<ManagementPanelProps> = ({
         { id: 'network', label: 'Network', icon: <Globe size={14} />, color: '#10B981' },
         { id: 'docker', label: 'Docker', icon: <Box size={14} />, color: '#2496ED' },
         { id: 'tunnels', label: 'Tunnels', icon: <Link size={14} />, color: '#F59E0B' },
+        { id: 'cron', label: 'Cron', icon: <Clock size={14} />, color: '#8B5CF6' },
     ];
 
     return (
@@ -124,6 +126,11 @@ export const ManagementPanel: React.FC<ManagementPanelProps> = ({
                     <TunnelManager
                         profile={profile}
                         sessionId={sessionId}
+                    />
+                )}
+                {activeTab === 'cron' && (
+                    <CronManager
+                        profile={profile}
                     />
                 )}
             </div>

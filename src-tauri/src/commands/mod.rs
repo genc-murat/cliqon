@@ -9,3 +9,5 @@ pub mod logging;
 pub mod sharing;
 pub mod tunnel;
 pub mod snippet;
+pub mod ssh_keys;
+pub mod cron;

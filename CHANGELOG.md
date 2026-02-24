@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2026-02-24
+
+### Added
+- **SSH Key Manager**:
+  - Generate new SSH keys (ED25519, RSA, ECDSA)
+  - Import existing private keys
+  - Deploy keys to remote servers
+  - Manage remote authorized_keys
+  - Local key storage in `~/.ssh/cliqon_keys`
+- **Cron Manager**:
+  - View and manage cron jobs on remote servers
+  - Create new cron jobs with preset schedules
+  - Delete existing cron jobs
+  - View cron history/logs
+- **Sidebar Integration**:
+  - SSH Key Manager button added to sidebar (collapsed and expanded modes)
+
+### Technical
+- New backend commands: `generate_ssh_key`, `import_ssh_key`, `list_local_keys`, `delete_local_key`, `get_remote_authorized_keys`, `add_remote_authorized_key`, `remove_remote_authorized_key`, `deploy_key_to_remote`
+- New backend commands: `list_cron_jobs`, `create_cron_job`, `delete_cron_job`, `get_cron_history`
+
 ## [0.5.0] - 2026-02-24
 
 ### Added

@@ -92,16 +92,32 @@ jobs:
           mkdir -p release_assets
           # Merge all platform JSONs into one
           python3 -c "
-          import json, os, glob
+          import json, os, glob, sys
           merged = {'version': '', 'notes': '', 'pub_date': '', 'platforms': {}}
-          for f in glob.glob('artifacts/**/latest.json', recursive=True):
-              print(f'Processing {f}')
-              with open(f) as j:
-                  data = json.load(j)
-                  merged['version'] = data.get('version', merged['version'])
-                  merged['notes'] = data.get('notes', merged['notes'])
-                  merged['pub_date'] = data.get('pub_date', merged['pub_date'])
-                  merged['platforms'].update(data.get('platforms', {}))
+          found = False
+          print('Searching for latest.json files in /artifacts...')
+          for root, dirs, files in os.walk('artifacts'):
+              for file in files:
+                  if file == 'latest.json':
+                      found = True
+                      f = os.path.join(root, file)
+                      print(f'Found: {f}')
+                      with open(f) as j:
+                          data = json.load(j)
+                          merged['version'] = data.get('version', merged['version'])
+                          merged['notes'] = data.get('notes', merged['notes'])
+                          merged['pub_date'] = data.get('pub_date', merged['pub_date'])
+                          merged['platforms'].update(data.get('platforms', {}))
+          
+          if not found:
+              print('ERROR: No latest.json files found! Build will fail.')
+              sys.exit(1)
+          
+          if not merged['version']:
+              print('ERROR: Merged version is empty! Build will fail.')
+              sys.exit(1)
+              
+          print(f'Final Merged JSON: {json.dumps(merged, indent=2)}')
           with open('release_assets/latest.json', 'w') as f:
               json.dump(merged, f, indent=2)
           "

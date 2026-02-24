@@ -5,11 +5,14 @@ All notable changes to this project will be documented in this file.
 ## [0.6.0] - 2026-02-24
 
 ### Added
-- **SSH Key Manager (Refactored)**:
-  - **Global Key Store**: New "Keys" section in Settings modal for managing local SSH keys (Generate, Import, Delete).
-  - **Remote Key Manager**: New "Keys" tab in the Management Panel for session-specific key deployment and `authorized_keys` management.
-  - Support for generating ED25519, RSA, and ECDSA keys with optional passphrases.
-  - One-click key deployment to remote servers using active SSH sessions.
+- **SSH Key Manager**:
+  - **Local Key Management**: Completely revamped local key store with dedicated management view.
+  - **Key Fingerprinting**: Robust SHA256 fingerprinting for all local and remote keys using `ssh-keygen`.
+  - **Security Auditing**: Improved remote `authorized_keys` view with detailed key analysis (type, bit-length, comment, and fingerprint).
+  - **Visual Recognition**: Automatic detection and labeling of "Your Key" on remote servers by matching fingerprints.
+  - **Expanded Algorithm Support**: Generate modern **ED25519** (recommended), RSA, or ECDSA key pairs with optional passphrases.
+  - **Import Capabilities**: Enhanced private key import with support for encrypted keys.
+  - **Atomic Deployment**: One-click public key deployment with automatic `.ssh` directory and permission management.
 - **Cron Manager**:
   - View and manage cron jobs on remote servers via the Management Panel.
   - Create new cron jobs with preset schedules or custom expressions.
@@ -18,11 +21,12 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - **UI Organization**: Removed the dedicated SSH Key button from the Sidebar to declutter the interface.
 - **Modal Standardization**: Improved modal z-index handling and overlay interactions across all system-level modals.
+- **API Resilience**: Updated key management backend to return structured metadata instead of raw strings.
 
 ### Technical
-- Updated key management APIs to use profile context instead of session IDs for better reliability.
-- New backend commands: `generate_ssh_key`, `import_ssh_key`, `list_local_keys`, `delete_local_key`, `get_remote_authorized_keys`, `add_remote_authorized_key`, `remove_remote_authorized_key`, `deploy_key_to_remote`.
-- New backend commands: `list_cron_jobs`, `create_cron_job`, `delete_cron_job`, `get_cron_history`.
+- Implemented `get_key_info` backend utility for piping key data to `ssh-keygen` for secure parsing.
+- Refactored `get_remote_authorized_keys` to provide comprehensive `RemoteKey` metadata.
+- Improved shell command escaping for remote `authorized_keys` modification.
 
 ## [0.5.0] - 2026-02-24
 

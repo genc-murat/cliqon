@@ -193,14 +193,16 @@ Share SSH connection profiles and global snippets with teammates on the same loc
 - **Dedicated Management Panel** — Add, edit, and toggle tunnels directly from a new "Tunnels" tab without opening a terminal session.
 - **Background Execution** — Tunnels run in lightweight Rust threads, ensuring high throughput and resilience.
  
-### 🔑 SSH Key Management
+### SSH Key Management & Auditing
 Manage your authentication identities securely and contextually:
 - **Global Key Store** — Integrated into the Settings modal for managing local SSH keys; generate new keys or import existing ones with optional passphrases.
 - **Algorithm Support** — Generate modern **ED25519** (recommended), RSA, or ECDSA key pairs.
+- **SHA256 Fingerprinting** — Every key is automatically analyzed to display its unique fingerprint, type, and bit-length.
 - **Remote Deployment** — Deploy your local public keys to any connected server with one click through the Management Panel.
-- **Authorized Keys Audit** — View and remove keys from the remote server's `authorized_keys` file interactively.
+- **Security Auditing** — Interactively view the remote server's `authorized_keys` file. Cliqon automatically identifies and labels keys that match your local identities, making it easy to see who has access.
+- **One-Click Cleanup** — Safely remove unauthorized or old keys from remote servers without manual editing.
 
-### ⏰ Cron Job Manager
+### Cron Job Manager
 Easily manage repeating tasks on your remote servers:
 - **Visual Management** — List, create, and delete cron jobs without manually editing crontab files.
 - **Preset Schedules** — Quickly set up common intervals (Every minute, hourly, daily, etc.) or use custom expressions.

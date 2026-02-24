@@ -20,6 +20,16 @@ pub struct SshKey {
     pub public_key: String,
     pub private_key_path: String,
     pub created_at: String,
+    pub fingerprint: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RemoteKey {
+    pub raw: String,
+    pub fingerprint: String,
+    pub key_type: String,
+    pub comment: String,
+    pub bit_length: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -78,6 +88,65 @@ fn ensure_keys_dir() -> Result<PathBuf> {
     Ok(dir)
 }
 
+use std::io::Write;
+
+fn get_key_info(public_key: &str) -> Result<RemoteKey> {
+    let mut child = Command::new("ssh-keygen")
+        .args(["-lf", "-"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(public_key.as_bytes())?;
+    }
+
+    let output = child.wait_with_output()?;
+
+    if !output.status.success() {
+        return Ok(RemoteKey {
+            raw: public_key.to_string(),
+            fingerprint: "unknown".to_string(),
+            key_type: "unknown".to_string(),
+            comment: "unknown".to_string(),
+            bit_length: 0,
+        });
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // Format: 256 SHA256:B6c... test (ED25519)
+    let parts: Vec<&str> = stdout.split_whitespace().collect();
+    if parts.len() < 3 {
+        return Ok(RemoteKey {
+            raw: public_key.to_string(),
+            fingerprint: "unknown".to_string(),
+            key_type: "unknown".to_string(),
+            comment: "unknown".to_string(),
+            bit_length: 0,
+        });
+    }
+
+    let bit_length = parts[0].parse::<u32>().unwrap_or(0);
+    let fingerprint = parts[1].to_string();
+    let key_type = parts.last().map(|s| s.trim_matches(|c| c == '(' || c == ')')).unwrap_or("unknown").to_string();
+    
+    // Comment is everything between fingerprint and key_type
+    let comment = if parts.len() > 3 {
+        parts[2..parts.len()-1].join(" ")
+    } else {
+        "".to_string()
+    };
+
+    Ok(RemoteKey {
+        raw: public_key.to_string(),
+        fingerprint,
+        key_type,
+        comment,
+        bit_length,
+    })
+}
+
 #[tauri::command]
 pub async fn generate_ssh_key(
     name: String,
@@ -117,15 +186,17 @@ pub async fn generate_ssh_key(
         .trim()
         .to_string();
 
+    let info = get_key_info(&public_key)?;
     let now = chrono::Utc::now().to_rfc3339();
 
     Ok(SshKey {
         id: uuid::Uuid::new_v4().to_string(),
         name,
-        key_type: key_type.to_string(),
+        key_type: info.key_type,
         public_key,
         private_key_path: key_path.to_string_lossy().to_string(),
         created_at: now,
+        fingerprint: info.fingerprint,
     })
 }
 
@@ -166,15 +237,17 @@ pub async fn import_ssh_key(
         }
     }
 
+    let info = get_key_info(&public_key)?;
     let now = chrono::Utc::now().to_rfc3339();
 
     Ok(SshKey {
         id: uuid::Uuid::new_v4().to_string(),
         name,
-        key_type: "imported".to_string(),
+        key_type: info.key_type,
         public_key,
         private_key_path: key_path.to_string_lossy().to_string(),
         created_at: now,
+        fingerprint: info.fingerprint,
     })
 }
 
@@ -212,21 +285,16 @@ pub async fn list_local_keys() -> Result<Vec<SshKey>> {
                 .map(|t| chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339())
                 .unwrap_or_else(|_| "unknown".to_string());
 
-            let key_type = if name.contains("ed25519") {
-                "ed25519"
-            } else if name.contains("ecdsa") {
-                "ecdsa"
-            } else {
-                "rsa"
-            }.to_string();
+            let info = get_key_info(&public_key)?;
 
             keys.push(SshKey {
                 id: uuid::Uuid::new_v4().to_string(),
                 name,
-                key_type,
+                key_type: info.key_type,
                 public_key,
                 private_key_path: private_key_path.to_string_lossy().to_string(),
                 created_at,
+                fingerprint: info.fingerprint,
             });
         }
     }
@@ -254,17 +322,18 @@ pub async fn delete_local_key(_id: String, name: String) -> Result<bool> {
 pub async fn get_remote_authorized_keys(
     state: State<'_, AppState>,
     profile: SshProfile,
-) -> Result<Vec<String>> {
+) -> Result<Vec<RemoteKey>> {
     let store = state.profile_store.lock().unwrap();
     let secret = store.get_profile_secret(&profile.id)?;
 
     let output = exec_on_remote(&profile, secret.as_deref(), "cat ~/.ssh/authorized_keys 2>/dev/null || echo ''")?;
     
-    let keys: Vec<String> = output
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .map(|s| s.to_string())
-        .collect();
+    let mut keys = Vec::new();
+    for line in output.lines().filter(|line| !line.trim().is_empty()) {
+        if let Ok(info) = get_key_info(line) {
+            keys.push(info);
+        }
+    }
 
     Ok(keys)
 }

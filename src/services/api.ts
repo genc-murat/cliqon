@@ -241,8 +241,8 @@ export const api = {
         return await invoke<boolean>('delete_local_key', { id, name });
     },
 
-    getRemoteAuthorizedKeys: async (profile: SshProfile): Promise<string[]> => {
-        return await invoke<string[]>('get_remote_authorized_keys', { profile });
+    getRemoteAuthorizedKeys: async (profile: SshProfile): Promise<any[]> => {
+        return await invoke<any[]>('get_remote_authorized_keys', { profile });
     },
 
     addRemoteAuthorizedKey: async (profile: SshProfile, publicKey: string): Promise<boolean> => {

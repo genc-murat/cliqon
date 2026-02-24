@@ -19,7 +19,7 @@ While there are many SSH clients, Cliqon is built for the **modern developer wor
 - **Performance First:** Native performance with a Rust backend (Tauri 2) and WebGL-accelerated terminal.
 - **Seamless Collaboration:** Zero-config, P2P network sharing to securely send profiles to teammates.
 - **Intelligence:** ML-powered autocomplete that learns your habits locally and privately.
-- **Integrated Toolbox:** Docker management, server health monitoring and 15+ network diagnostic tools built-in.
+- **Integrated Toolbox:** Docker management, server health monitoring and 30+ network diagnostic tools built-in.
 - **Deep Customization:** 39+ premium themes and fine-grained UI control.
 
 ---
@@ -229,29 +229,33 @@ Easily manage repeating tasks on your remote servers:
 - **System Services Manager** — Manage `systemctl` units directly; list, search, start, stop, and restart services without typing commands; integrated as a tab within the Monitor panel.
 
 ### Network Tools
-A comprehensive suite of **15 on-demand diagnostic tools** executed directly from the connected server via SSH:
-- **Core Connectivity**:
-  - **Ping** — Remote ICMP ping with latency sparklines and Min/Avg/Max summary.
-  - **Traceroute** — Visualize network hops with Host, IP, and RTT tracking.
-  - **DNS Lookup** — Query records with color-coded type badges (A, AAAA, CNAME, MX).
-- **Security & Auditing**:
-  - **Port Scan** — Scan common service ports on any remote host.
-  - **SSL Info** — Detailed certificate info (Validity, Issuer, SANs) for secure hosts.
-  - **Firewall** — Instant status check for `ufw` or `iptables` rules.
-- **Service Monitoring**:
+A comprehensive suite of **30+ on-demand diagnostic tools** executed directly from the connected server via SSH, now organized into a logical two-pane layout:
+- **Diagnostics**:
+  - **Ping & Traceroute** — Latency sparklines, min/avg/max stats, and hop visualization.
+  - **DNS & Nslookup** — Query records with color-coded type badges.
+  - **MTR & Tracepath** — Advanced path and performance analysis.
+  - **Curl Timing** — Detailed latency breakdown (DNS, Connect, App Connect, Transfer) for any URL.
+- **Status & Monitoring**:
+  - **Active Connections** — Real-time list of TCP/UDP connections.
   - **Listening Ports** — Audit all ports the server is currently listening on.
-  - **Connections** — Real-time list of active TCP/UDP connections.
-  - **HTTP Check** — Audit HTTP/S status and response headers for any URL.
+  - **System Metrics** — Instant check for **Uptime**, **Disk Usage**, **Memory**, and **Hostname** info.
+  - **Netstat** — View kernel routing tables and interface statistics.
 - **Server Infrastructure**:
   - **Interfaces** — View local network interfaces and assigned IP addresses.
-  - **Public IP** — Quickly identify the server's external presence.
-  - **Socket Stats** — High-level summary of TCP, UDP, and Raw socket counts.
-- **Routing & Performance**:
-  - **Routes** — View the server's routing table (`ip route`).
-  - **ARP Neighbors** — Display local network neighbors (ARP cache).
-  - **Bandwidth** — Real-time RX/TX traffic counters per interface in MB.
+  - **DNS Config** — Quickly inspect `/etc/resolv.conf`.
+  - **Hosts File** — View the server's local host mappings.
+  - **Public IP** — Identify the server's external presence.
+- **Security & Auditing**:
+  - **Port Scan & Nmap** — Scan remote hosts for common services and advanced auditing.
+  - **SSL Info** — Detailed certificate info (Validity, Issuer, SANs) for secure hosts.
+  - **Fail2Ban** — Monitor intrusion prevention status and banned IPs.
+  - **Firewall** — Instant status check for `ufw` or `iptables` rules.
+  - **Last Logins** — Audit recent access history.
+- **Advanced Tools**:
+  - **Active Users** — See who else is currently logged into the server.
+  - **Open Files** — List open files and network sockets via `lsof`.
 - **Power-User Ready**:
-  - **Context-Aware** — Input is automatically disabled for server-local diagnostics.
+  - **Categorized UI** — Left-sidebar navigation for quick switching between tool groups.
   - **Structured Output** — Raw shell data is parsed into clean, interactive tables and cards.
   - **Copy Raw** — One-click clipboard copy of raw command output.
 

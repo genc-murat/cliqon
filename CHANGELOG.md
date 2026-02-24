@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 ## [0.6.0] - 2026-02-24
 
 ### Added
+- **Network Tools Revamp**:
+  - **Categorized UI**: Completely refactored the Network Tools panel into a modern two-pane layout with a category-based sidebar.
+  - **Expanded Tool Suite**: Added 16 new diagnostic and system tools, bringing the total to 32 integrated commands:
+    - **Diagnostics**: `mtr`, `tracepath`, `nslookup`, `curl_timing`.
+    - **Status**: `netstat`, `hostname_info`, `uptime`, `disk_usage`, `memory_usage`.
+    - **Security**: `nmap`, `whois`, `fail2ban_status`, `last_logins`.
+    - **Infrastructure**: `dns_config` (`resolv.conf`), `hosts_file`.
+    - **Advanced**: `active_users`, `open_files` (`lsof`).
+  - **Intelligent Execution**: Support for "Auto-run" tools that execute immediately upon selection without requiring target input (e.g., `uptime`, `netstat`).
+  - **Improved Port Scanning**: Enhanced the built-in port scanner to cover a broader range of common service ports by default.
+  - **Raw Output Rendering**: Implemented a generic fallback renderer for tools that provide complex text-based output.
 - **SSH Key Manager**:
   - **Local Key Management**: Completely revamped local key store with dedicated management view.
   - **Key Fingerprinting**: Robust SHA256 fingerprinting for all local and remote keys using `ssh-keygen`.
@@ -19,11 +30,16 @@ All notable changes to this project will be documented in this file.
   - View cron history and logs in real-time.
 
 ### Changed
+- **Network Tools UI**: Extracted the tool list into a sidebar to resolve horizontal overcrowding in the Management Panel.
+- **Backend Validation**: Relaxed target sanitization to permit parameterless system commands like `uptime`.
 - **UI Organization**: Removed the dedicated SSH Key button from the Sidebar to declutter the interface.
 - **Modal Standardization**: Improved modal z-index handling and overlay interactions across all system-level modals.
 - **API Resilience**: Updated key management backend to return structured metadata instead of raw strings.
 
 ### Technical
+- Refactored `NetworkTools.tsx` with dynamic category-based sub-tab rendering.
+- Updated `NetToolManager` in Rust to handle expanded command mapping and shell-escaped paths.
+- Fixed TypeScript build errors (TS6133) by removing unused imports in the terminal components.
 - Implemented `get_key_info` backend utility for piping key data to `ssh-keygen` for secure parsing.
 - Refactored `get_remote_authorized_keys` to provide comprehensive `RemoteKey` metadata.
 - Improved shell command escaping for remote `authorized_keys` modification.

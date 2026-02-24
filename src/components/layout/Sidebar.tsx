@@ -59,11 +59,12 @@ interface CardProps {
     onToggleFavorite: (e: React.MouseEvent) => void;
     onToggleMenu: (e: React.MouseEvent) => void;
     onCloseMenu: () => void;
+    onContextMenu: (e: React.MouseEvent) => void;
 }
 
 const ConnectionCard: React.FC<CardProps> = ({
     profile, query, isMenuOpen,
-    onConnect, onEdit, onDelete, onToggleFavorite, onToggleMenu, onCloseMenu,
+    onConnect, onEdit, onDelete, onToggleFavorite, onToggleMenu, onCloseMenu, onContextMenu
 }) => {
     const auth = AUTH_META[profile.auth_method] ?? AUTH_META.Password;
     const hostStr = `${profile.username}@${profile.host}:${profile.port}`;
@@ -73,6 +74,7 @@ const ConnectionCard: React.FC<CardProps> = ({
             className="connection-card"
             style={{ '--card-accent': profile.color || undefined } as React.CSSProperties}
             onClick={onConnect}
+            onContextMenu={onContextMenu}
         >
             {/* Row 1: Name + Favorite */}
             <div className="flex items-center justify-between gap-1">
@@ -163,11 +165,12 @@ interface CompactRowProps {
     onDelete: (e: React.MouseEvent) => void;
     onToggleMenu: (e: React.MouseEvent) => void;
     onCloseMenu: () => void;
+    onContextMenu: (e: React.MouseEvent) => void;
 }
 
 const CompactRow: React.FC<CompactRowProps> = ({
     profile, query, isMenuOpen,
-    onConnect, onEdit, onDelete, onToggleMenu, onCloseMenu,
+    onConnect, onEdit, onDelete, onToggleMenu, onCloseMenu, onContextMenu
 }) => {
     const auth = AUTH_META[profile.auth_method] ?? AUTH_META.Password;
 
@@ -178,6 +181,7 @@ const CompactRow: React.FC<CompactRowProps> = ({
                 borderLeftColor: profile.color || 'transparent',
             }}
             onClick={onConnect}
+            onContextMenu={onContextMenu}
         >
             {profile.is_favorite
                 ? <Star size={14} className="shrink-0 fill-amber-400 text-amber-400" />
@@ -242,6 +246,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
     const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
         try { return JSON.parse(localStorage.getItem('sidebar-groups-collapsed') ?? '{}'); } catch { return {}; }
     });
+    const [contextMenu, setContextMenu] = useState<{
+        x: number;
+        y: number;
+        profile?: SshProfile;
+    } | null>(null);
     const searchRef = useRef<HTMLInputElement>(null);
 
     const existingGroups = Array.from(
@@ -342,6 +351,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
         await saveProfile({ ...profile, is_favorite: !profile.is_favorite });
     };
 
+    const handleContextMenu = (e: React.MouseEvent, profile?: SshProfile) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenu({ x: e.clientX, y: e.clientY, profile });
+    };
+
+    const closeContextMenu = () => setContextMenu(null);
+
     /* ── Render helpers ───────────────────────────────────────── */
 
     const renderItem = (profile: SshProfile) => {
@@ -358,6 +375,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                 setActiveMenuId(activeMenuId === profile.id ? null : profile.id);
             },
             onCloseMenu: () => setActiveMenuId(null),
+            onContextMenu: (e: React.MouseEvent) => handleContextMenu(e, profile),
         };
 
         if (viewMode === 'cards') {
@@ -375,6 +393,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
         <div
             style={{ width: isCollapsed ? '52px' : `${width}px` }}
             className={`h-full bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] flex flex-col justify-between transition-all duration-200 shrink-0 relative ${isResizing ? 'select-none pointer-events-none' : ''}`}
+            onClick={closeContextMenu}
+            onContextMenu={(e) => handleContextMenu(e)}
         >
             {/* Collapse Toggle */}
             <button
@@ -603,6 +623,65 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
             {/* Click outside context menu */}
             {activeMenuId && (
                 <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)} />
+            )}
+
+            {/* Context Menu */}
+            {contextMenu && (
+                <>
+                    <div
+                        className="fixed inset-0 z-[90]"
+                        onClick={closeContextMenu}
+                        onContextMenu={(e) => { e.preventDefault(); closeContextMenu(); }}
+                    />
+                    <div
+                        className="fixed z-[100] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg shadow-xl py-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
+                        style={{ top: contextMenu.y, left: contextMenu.x }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {contextMenu.profile ? (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        onConnect?.(contextMenu.profile!);
+                                        closeContextMenu();
+                                    }}
+                                    className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] flex items-center gap-2"
+                                >
+                                    <TerminalSquare size={12} /> Connect
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        handleEdit(contextMenu.profile!, e);
+                                        closeContextMenu();
+                                    }}
+                                    className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] flex items-center gap-2"
+                                >
+                                    <Edit2 size={12} /> Edit
+                                </button>
+                                <div className="border-t border-[var(--border-color)] my-1" />
+                                <button
+                                    onClick={(e) => {
+                                        handleDelete(contextMenu.profile!.id, e);
+                                        closeContextMenu();
+                                    }}
+                                    className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10 flex items-center gap-2"
+                                >
+                                    <Trash2 size={12} /> Delete
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                onClick={() => {
+                                    handleAdd();
+                                    closeContextMenu();
+                                }}
+                                className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] flex items-center gap-2"
+                            >
+                                <Plus size={12} /> New Connection
+                            </button>
+                        )}
+                    </div>
+                </>
             )}
 
             {/* Resize Handle */}

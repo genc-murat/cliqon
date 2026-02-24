@@ -161,3 +161,40 @@ pub async fn get_docker_volume_files(
         .docker_manager
         .get_volume_files(&profile, secret.as_deref(), &volume_name, &inner_path)
 }
+
+#[tauri::command]
+pub async fn inspect_docker_container(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    container_id: String,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .inspect_container(&profile, secret.as_deref(), &container_id)
+}
+
+#[tauri::command]
+pub async fn get_docker_container_logs(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    container_id: String,
+    tail: Option<u32>,
+) -> Result<String> {
+    let secret = state
+        .profile_store
+        .lock()
+        .unwrap()
+        .get_profile_secret(&profile.id)
+        .unwrap_or(None);
+
+    state
+        .docker_manager
+        .get_container_logs(&profile, secret.as_deref(), &container_id, tail)
+}

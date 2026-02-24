@@ -262,7 +262,10 @@ A comprehensive suite of **30+ on-demand diagnostic tools** executed directly fr
 ### Docker Architecture & Container Manager
 Manage your Docker infrastructure directly through the SSH connection:
 - **Container List** — Real-time view of all containers (Running, Stopped, Exited).
+- **Search & Filter** — Search containers by name, image, or ID. Filter by state (All/Running/Stopped).
 - **Live Performance Stats** — Monitor real-time CPU and Memory (RAM) usage directly in the container list.
+- **Container Inspect** — View detailed container information including environment variables, mounts, and network settings.
+- **Log Viewer** — Dedicated Logs tab with search (including regex), line count selection, auto-scroll, and color-coded output.
 - **Interactive Shell (Exec)** — Drop into a running container's shell (`bash` or `sh`) with a single click, right inside your active terminal.
 - **System Prune** — One-click cleanup of unused containers, networks, and images to free up server disk space.
 - **Bulk Actions** — Select multiple containers at once to perform concurrent Start, Stop, Kill, and Restart operations.

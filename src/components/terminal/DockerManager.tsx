@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Play, Square, RotateCw, Terminal, Box, RefreshCw, X, Trash2, ChevronRight } from 'lucide-react';
+import { Play, Square, RotateCw, Terminal, Box, RefreshCw, X, Trash2, ChevronRight, Search, Info, Filter } from 'lucide-react';
 import { SshProfile } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
@@ -7,6 +7,8 @@ import { DockerVolumes } from './DockerVolumes';
 import { DockerVolumeBrowser } from './DockerVolumeBrowser';
 import { DockerPortForwards } from './DockerPortForwards';
 import { useConfirm } from '../../hooks/useConfirm';
+import { DockerInspectModal } from './DockerInspectModal';
+import { DockerLogsViewer } from './DockerLogsViewer';
 interface DockerContainer {
     ID: string;
     Names: string;
@@ -47,9 +49,12 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
     );
     const confirmCustom = useConfirm();
 
-    const [activeTab, setActiveTab] = useState<'containers' | 'volumes' | 'ports'>('containers');
+    const [activeTab, setActiveTab] = useState<'containers' | 'volumes' | 'ports' | 'logs'>('containers');
     const [selectedContainers, setSelectedContainers] = useState<Set<string>>(new Set());
     const [browsingVolume, setBrowsingVolume] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [stateFilter, setStateFilter] = useState<'all' | 'running' | 'stopped'>('all');
+    const [inspectingContainer, setInspectingContainer] = useState<string | null>(null);
 
     const [containers, setContainers] = useState<DockerContainer[]>([]);
     const [stats, setStats] = useState<Record<string, DockerStat>>({});
@@ -186,12 +191,25 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
     };
 
     const toggleSelectAll = () => {
-        if (selectedContainers.size === containers.length) {
+        if (selectedContainers.size === filteredContainers.length) {
             setSelectedContainers(new Set());
         } else {
-            setSelectedContainers(new Set(containers.map(c => c.ID)));
+            setSelectedContainers(new Set(filteredContainers.map(c => c.ID)));
         }
     };
+
+    const filteredContainers = containers.filter(c => {
+        const matchesSearch = searchQuery === '' ||
+            c.Names.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.Image.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.ID.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        const matchesState = stateFilter === 'all' ||
+            (stateFilter === 'running' && c.State === 'running') ||
+            (stateFilter === 'stopped' && c.State !== 'running');
+        
+        return matchesSearch && matchesState;
+    });
 
     return (
         <div
@@ -242,6 +260,12 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                             >
                                 Ports
                             </button>
+                            <button
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'logs' ? 'bg-[var(--accent-color)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                                onClick={() => { setActiveTab('logs'); setBrowsingVolume(null); }}
+                            >
+                                Logs
+                            </button>
                         </div>
                     </div>
                     <button
@@ -262,6 +286,29 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                         >
                             <RefreshCw size={12} />
                         </button>
+                        <div className="w-px h-3 bg-[var(--border-color)] mx-1" />
+                        <div className="flex items-center gap-1 relative">
+                            <Search size={12} className="text-[var(--text-muted)] absolute left-2" />
+                            <input
+                                type="text"
+                                placeholder="Search containers..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-7 pr-2 py-1 text-xs bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-color)] w-40"
+                            />
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <Filter size={12} className="text-[var(--text-muted)]" />
+                            <select
+                                value={stateFilter}
+                                onChange={(e) => setStateFilter(e.target.value as 'all' | 'running' | 'stopped')}
+                                className="text-xs bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] px-2 py-1 focus:outline-none focus:border-[var(--accent-color)]"
+                            >
+                                <option value="all">All States</option>
+                                <option value="running">Running</option>
+                                <option value="stopped">Stopped</option>
+                            </select>
+                        </div>
                         <div className="w-px h-3 bg-[var(--border-color)] mx-1" />
                         <button
                             onClick={handlePrune}
@@ -298,6 +345,8 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
             <div className="flex-1 overflow-hidden relative flex flex-col">
                 {activeTab === 'ports' ? (
                     <DockerPortForwards containers={containers} host={profile.host} />
+                ) : activeTab === 'logs' ? (
+                    <DockerLogsViewer containers={containers} profile={profile} />
                 ) : activeTab === 'volumes' ? (
                     browsingVolume ? (
                         <DockerVolumeBrowser
@@ -320,10 +369,10 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                                 <RefreshCw size={16} className="animate-spin" />
                                 <span className="text-sm">Fetching containers...</span>
                             </div>
-                        ) : containers.length === 0 ? (
+                        ) : filteredContainers.length === 0 ? (
                             <div className="flex flex-col items-center justify-center gap-3 py-10 opacity-50">
                                 <Box size={48} className="text-[var(--text-muted)]" />
-                                <span className="text-sm text-[var(--text-main)]">No containers found</span>
+                                <span className="text-sm text-[var(--text-main)]">{searchQuery || stateFilter !== 'all' ? 'No containers match your filter' : 'No containers found'}</span>
                             </div>
                         ) : (
                             <div className="overflow-x-auto border border-[var(--border-color)] rounded-lg bg-[var(--bg-primary)]">
@@ -333,7 +382,7 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                                             <th className="px-4 py-3 w-8">
                                                 <input
                                                     type="checkbox"
-                                                    checked={containers.length > 0 && selectedContainers.size === containers.length}
+                                                    checked={filteredContainers.length > 0 && selectedContainers.size === filteredContainers.length}
                                                     onChange={toggleSelectAll}
                                                     className="rounded bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--accent-color)]"
                                                 />
@@ -348,7 +397,7 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-[var(--border-color)]">
-                                        {containers.map(c => {
+                                        {filteredContainers.map(c => {
                                             const isRunning = c.State === 'running';
                                             const isBusy = actionLoading === c.ID;
 
@@ -444,6 +493,13 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                                                             >
                                                                 <ChevronRight size={14} />
                                                             </button>
+                                                            <button
+                                                                onClick={() => setInspectingContainer(c.ID)}
+                                                                className="p-1.5 hover:bg-purple-500/20 hover:text-purple-400 rounded transition-colors text-[var(--text-main)]"
+                                                                title="Inspect Container"
+                                                            >
+                                                                <Info size={14} />
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -456,6 +512,14 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
                     </div>
                 )}
             </div>
+
+            {inspectingContainer && (
+                <DockerInspectModal
+                    profile={profile}
+                    containerId={inspectingContainer}
+                    onClose={() => setInspectingContainer(null)}
+                />
+            )}
         </div>
     );
 };

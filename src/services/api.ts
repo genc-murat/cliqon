@@ -163,6 +163,14 @@ export const api = {
         return await invoke<string>('get_docker_volume_files', { profile, volumeName, innerPath });
     },
 
+    inspectDockerContainer: async (profile: SshProfile, containerId: string): Promise<string> => {
+        return await invoke<string>('inspect_docker_container', { profile, containerId });
+    },
+
+    getDockerContainerLogs: async (profile: SshProfile, containerId: string, tail?: number): Promise<string> => {
+        return await invoke<string>('get_docker_container_logs', { profile, containerId, tail });
+    },
+
     getSystemServices: async (profile: SshProfile): Promise<string> => {
         return await invoke<string>('get_system_services', { profile });
     },

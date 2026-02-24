@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 ## [0.6.0] - 2026-02-24
 
 ### Added
+- **Docker Manager Enhancements**:
+  - **Container Search & Filter**: Search containers by name, image, or ID with real-time filtering.
+  - **State Filter**: Filter containers by state (All/Running/Stopped).
+  - **Container Inspect**: New inspect modal to view detailed container information including:
+    - Basic info (ID, name, image, created date, status, PID).
+    - Environment variables (with copy functionality).
+    - Mounts (type, source, destination).
+    - Network settings (IP, gateway, MAC).
+    - Full JSON export with one-click copy.
+  - **Log Search/Filter**: New Logs tab with:
+    - Container selection dropdown.
+    - Search with regex support.
+    - Line count selection (100/500/1000/2000).
+    - Auto-scroll toggle.
+    - Color-coded output (errors=red, warnings=yellow, info=blue).
+    - Real-time statistics (total lines, errors, warnings, info).
+
 - **Network Tools Revamp**:
   - **Categorized UI**: Completely refactored the Network Tools panel into a modern two-pane layout with a category-based sidebar.
   - **Expanded Tool Suite**: Added 16 new diagnostic and system tools, bringing the total to 32 integrated commands:

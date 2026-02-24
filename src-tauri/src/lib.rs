@@ -82,6 +82,8 @@ pub fn run() {
             read_docker_compose,
             get_docker_volumes,
             get_docker_volume_files,
+            inspect_docker_container,
+            get_docker_container_logs,
             get_system_services,
             manage_service,
             start_log_tail,

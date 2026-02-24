@@ -156,4 +156,34 @@ impl DockerManager {
         );
         self.exec_command(&session, &cmd)
     }
+
+    pub fn inspect_container(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        container_id: &str,
+    ) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        if container_id.contains(';') || container_id.contains('&') || container_id.contains('|') {
+            return Err(AppError::Custom("Invalid container ID".to_string()));
+        }
+        let cmd = format!("docker inspect {}", container_id);
+        self.exec_command(&session, &cmd)
+    }
+
+    pub fn get_container_logs(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        container_id: &str,
+        tail: Option<u32>,
+    ) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        if container_id.contains(';') || container_id.contains('&') || container_id.contains('|') {
+            return Err(AppError::Custom("Invalid container ID".to_string()));
+        }
+        let tail_lines = tail.unwrap_or(500);
+        let cmd = format!("docker logs --tail {} {}", tail_lines, container_id);
+        self.exec_command(&session, &cmd)
+    }
 }

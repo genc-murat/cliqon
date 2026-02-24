@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2026-02-24
+
+### Added
+- **FileBrowser Enhancements**:
+  - **Hidden Files Toggle**: Show/hide hidden files (starting with `.`) via toolbar button.
+  - **Sorting**: Sort files by name, size, or date (ascending/descending). Folders always listed first.
+  - **Create New File/Folder**: Toolbar buttons to create new files and folders directly.
+  - **Copy/Cut/Paste**: Clipboard support for files - Copy and Cut via context menu or keyboard (Ctrl+C/X), Paste via toolbar or Ctrl+V.
+  - **Keyboard Navigation**: Arrow keys for navigation, Enter to open, F2 to rename, Delete to remove, Ctrl+A to select all.
+- **New SFTP Backend Commands**:
+  - `create_sftp_dir`: Create new directory on remote server.
+  - `create_sftp_file`: Create new empty file on remote server.
+  - `copy_sftp_file`: Copy file to new location on remote server.
+  - `move_sftp_file`: Move/rename file on remote server.
+
 ## [0.4.5] - 2026-02-23
 
 ### Added

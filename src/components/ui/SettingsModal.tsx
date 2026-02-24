@@ -624,7 +624,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 </div>
                                 <div className="space-y-2 pt-4">
                                     <div className="px-4 py-2 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-full text-xs font-bold text-[var(--text-main)] shadow-sm">
-                                        Version 0.4.5
+                                        Version 0.5.0
                                     </div>
                                     <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Made with ❤️ for developers</p>
                                 </div>

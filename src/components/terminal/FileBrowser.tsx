@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
-import { Folder, Download, RefreshCw, ChevronLeft, ChevronRight, Edit2, Trash2, Copy, FileText, Network, ShieldAlert, Activity, ArrowUpCircle, Star, Bookmark, X as XIcon, File as FileIcon, TerminalSquare, Settings, Eye, EyeOff, Archive, Check } from 'lucide-react';
+import { Folder, Download, RefreshCw, ChevronLeft, ChevronRight, Edit2, Trash2, Copy, FileText, Network, ShieldAlert, Activity, ArrowUpCircle, Star, Bookmark, X as XIcon, File as FileIcon, TerminalSquare, Settings, Eye, EyeOff, Archive, Check, SortAsc, FilePlus, Clipboard, Scissors } from 'lucide-react';
 import { SshProfile, FileNode } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
@@ -24,6 +24,14 @@ interface ContextMenu {
     file: FileNode;
 }
 
+type SortBy = 'name' | 'size' | 'date';
+type SortDir = 'asc' | 'desc';
+
+interface ClipboardState {
+    files: FileNode[];
+    action: 'copy' | 'cut';
+}
+
 export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, isActive }) => {
     const [connected, setConnected] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -43,6 +51,17 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     const [bookmarksOpen, setBookmarksOpen] = useState(false);
     const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
     const [isWatching, setIsWatching] = useState(false);
+    const [showHiddenFiles, setShowHiddenFiles] = useState(() => localStorage.getItem('cliqon-sftp-show-hidden') === 'true');
+    const [sortBy, setSortBy] = useState<SortBy>('name');
+    const [sortDir, setSortDir] = useState<SortDir>('asc');
+    const [clipboard, setClipboard] = useState<ClipboardState | null>(null);
+    const [selectedIndex, setSelectedIndex] = useState(-1);
+    const [createModal, setCreateModal] = useState<{
+        isOpen: boolean;
+        type: 'file' | 'folder';
+        onSubmit: (name: string) => void;
+        onCancel: () => void;
+    } | null>(null);
     const [promptModal, setPromptModal] = useState<{
         isOpen: boolean;
         title: string;
@@ -61,6 +80,21 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
         setIsCollapsed(next);
         localStorage.setItem('cliqon-sftp-collapsed', String(next));
         setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
+    };
+
+    const toggleHiddenFiles = () => {
+        const next = !showHiddenFiles;
+        setShowHiddenFiles(next);
+        localStorage.setItem('cliqon-sftp-show-hidden', String(next));
+    };
+
+    const toggleSortBy = (newSortBy: SortBy) => {
+        if (sortBy === newSortBy) {
+            setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(newSortBy);
+            setSortDir('asc');
+        }
     };
 
     // Ctrl+B global shortcut → toggle this SFTP panel (only for active tab)
@@ -95,11 +129,19 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
         let unlistenDeleteErr: UnlistenFn | null = null;
         let unlistenRenameErr: UnlistenFn | null = null;
         let unlistenWatch: UnlistenFn | null = null;
+        let unlistenCreateDirDone: UnlistenFn | null = null;
+        let unlistenCreateDirErr: UnlistenFn | null = null;
+        let unlistenCreateFileDone: UnlistenFn | null = null;
+        let unlistenCreateFileErr: UnlistenFn | null = null;
+        let unlistenCopyDone: UnlistenFn | null = null;
+        let unlistenCopyErr: UnlistenFn | null = null;
+        let unlistenMoveDone: UnlistenFn | null = null;
+        let unlistenMoveErr: UnlistenFn | null = null;
 
         const setupSftp = async () => {
             try {
                 unlistenRx = await listen<FileNode[]>(`sftp_dir_rx_${sessionId}`, (event) => {
-                    if (isMounted) { setFiles(event.payload); setIsLoading(false); }
+                    if (isMounted) { setFiles(event.payload); setIsLoading(false); setSelectedIndex(-1); }
                 });
                 unlistenTransferDone = await listen<string>(`sftp_transfer_done_${sessionId}`, () => {
                     if (isMounted) fetchDirectory(currentPath);
@@ -121,6 +163,34 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                     if (isMounted && e.payload === currentPath) fetchDirectory(currentPath);
                 });
 
+                unlistenCreateDirDone = await listen<string>(`sftp_createdir_done_${sessionId}`, () => {
+                    if (isMounted) { fetchDirectory(currentPath); showStatus('✅ Folder created'); }
+                });
+                unlistenCreateDirErr = await listen<string>(`sftp_createdir_error_${sessionId}`, (e) => {
+                    if (isMounted) showStatus(`❌ Create folder failed: ${e.payload} `);
+                });
+
+                unlistenCreateFileDone = await listen<string>(`sftp_createfile_done_${sessionId}`, () => {
+                    if (isMounted) { fetchDirectory(currentPath); showStatus('✅ File created'); }
+                });
+                unlistenCreateFileErr = await listen<string>(`sftp_createfile_error_${sessionId}`, (e) => {
+                    if (isMounted) showStatus(`❌ Create file failed: ${e.payload} `);
+                });
+
+                unlistenCopyDone = await listen<{ source: string; dest: string }>(`sftp_copy_done_${sessionId}`, () => {
+                    if (isMounted) { fetchDirectory(currentPath); showStatus('✅ Copied'); }
+                });
+                unlistenCopyErr = await listen<string>(`sftp_copy_error_${sessionId}`, (e) => {
+                    if (isMounted) showStatus(`❌ Copy failed: ${e.payload} `);
+                });
+
+                unlistenMoveDone = await listen<{ source: string; dest: string }>(`sftp_move_done_${sessionId}`, () => {
+                    if (isMounted) { fetchDirectory(currentPath); setClipboard(null); showStatus('✅ Moved'); }
+                });
+                unlistenMoveErr = await listen<string>(`sftp_move_error_${sessionId}`, (e) => {
+                    if (isMounted) showStatus(`❌ Move failed: ${e.payload} `);
+                });
+
                 await api.connectSftp(profile, sessionId);
                 if (isMounted) { setConnected(true); fetchDirectory(currentPath); }
             } catch (err: any) {
@@ -133,7 +203,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
         return () => {
             isMounted = false;
             [unlistenRx, unlistenTransferDone, unlistenRenameDone, unlistenRenameErr,
-                unlistenDeleteDone, unlistenDeleteErr, unlistenWatch].forEach(u => u?.());
+                unlistenDeleteDone, unlistenDeleteErr, unlistenWatch, unlistenCreateDirDone,
+                unlistenCreateDirErr, unlistenCreateFileDone, unlistenCreateFileErr,
+                unlistenCopyDone, unlistenCopyErr, unlistenMoveDone, unlistenMoveErr].forEach(u => u?.());
             api.closeSftp(sessionId).catch((err) => {
                 console.error('Failed to close SFTP:', err);
             });
@@ -168,6 +240,28 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
             return next;
         });
     };
+
+    const filteredFiles = useMemo(() => {
+        let result = showHiddenFiles
+            ? files
+            : files.filter(f => !f.name.startsWith('.'));
+        
+        result.sort((a, b) => {
+            if (sortBy === 'name') {
+                const cmp = a.name.localeCompare(b.name);
+                return sortDir === 'asc' ? cmp : -cmp;
+            } else if (sortBy === 'size') {
+                const cmp = a.size - b.size;
+                return sortDir === 'asc' ? cmp : -cmp;
+            } else if (sortBy === 'date') {
+                const cmp = a.modified_at - b.modified_at;
+                return sortDir === 'asc' ? cmp : -cmp;
+            }
+            return a.name.localeCompare(b.name);
+        });
+
+        return result;
+    }, [files, showHiddenFiles, sortBy, sortDir]);
 
     useEffect(() => {
         if (!connected) return;
@@ -237,6 +331,131 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
         if (!isConfirmed) return;
         await api.deleteSftp(sessionId, file.path, file.is_dir);
     };
+
+    const handleCopy = (file: FileNode) => {
+        closeContextMenu();
+        setClipboard({ files: [file], action: 'copy' });
+        showStatus('📋 Copied to clipboard');
+    };
+
+    const handleCut = (file: FileNode) => {
+        closeContextMenu();
+        setClipboard({ files: [file], action: 'cut' });
+        showStatus('✂️ Cut to clipboard');
+    };
+
+    const handleCopySelected = () => {
+        if (selectedFiles.size === 0) return;
+        const selectedNodes = files.filter(f => selectedFiles.has(f.path));
+        setClipboard({ files: selectedNodes, action: 'copy' });
+        showStatus(`📋 ${selectedNodes.length} files copied`);
+    };
+
+    const handleCutSelected = () => {
+        if (selectedFiles.size === 0) return;
+        const selectedNodes = files.filter(f => selectedFiles.has(f.path));
+        setClipboard({ files: selectedNodes, action: 'cut' });
+        showStatus(`✂️ ${selectedNodes.length} files cut`);
+    };
+
+    const handlePaste = (destPath?: string) => {
+        if (!clipboard) return;
+        const targetPath = destPath || currentPath;
+        closeContextMenu();
+        
+        if (clipboard.action === 'copy') {
+            clipboard.files.forEach(async (file) => {
+                const fileName = file.name;
+                const dest = `${targetPath === '/' ? '' : targetPath}/${fileName}`;
+                await api.copySftpFile(sessionId, file.path, dest);
+            });
+        } else {
+            clipboard.files.forEach(async (file) => {
+                const fileName = file.name;
+                const dest = `${targetPath === '/' ? '' : targetPath}/${fileName}`;
+                await api.moveSftpFile(sessionId, file.path, dest);
+            });
+        }
+    };
+
+    const handleCreateFile = () => {
+        setCreateModal({
+            isOpen: true,
+            type: 'file',
+            onSubmit: async (name) => {
+                if (!name.trim()) return;
+                const newPath = `${currentPath === '/' ? '' : currentPath}/${name.trim()}`;
+                await api.createSftpFile(sessionId, newPath, '');
+                setCreateModal(null);
+            },
+            onCancel: () => setCreateModal(null)
+        });
+    };
+
+    const handleCreateFolder = () => {
+        setCreateModal({
+            isOpen: true,
+            type: 'folder',
+            onSubmit: async (name) => {
+                if (!name.trim()) return;
+                const newPath = `${currentPath === '/' ? '' : currentPath}/${name.trim()}`;
+                await api.createSftpDir(sessionId, newPath);
+                setCreateModal(null);
+            },
+            onCancel: () => setCreateModal(null)
+        });
+    };
+
+    const handleSelectAll = () => {
+        setSelectedFiles(new Set(filteredFiles.map(f => f.path)));
+    };
+
+    useEffect(() => {
+        if (!isActive || !connected || isCollapsed) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (renamingFile) return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setSelectedIndex(prev => Math.min(prev + 1, filteredFiles.length - 1));
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSelectedIndex(prev => Math.max(prev - 1, 0));
+            } else if (e.key === 'Enter' && selectedIndex >= 0) {
+                e.preventDefault();
+                handleNavigate(filteredFiles[selectedIndex]);
+            } else if (e.key === 'F2' && selectedIndex >= 0) {
+                e.preventDefault();
+                handleStartRename(filteredFiles[selectedIndex]);
+            } else if (e.key === 'Delete' && selectedIndex >= 0) {
+                e.preventDefault();
+                handleDelete(filteredFiles[selectedIndex]);
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+                e.preventDefault();
+                handleSelectAll();
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+                if (selectedFiles.size > 0) {
+                    handleCopySelected();
+                } else if (selectedIndex >= 0) {
+                    handleCopy(filteredFiles[selectedIndex]);
+                }
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
+                if (selectedFiles.size > 0) {
+                    handleCutSelected();
+                } else if (selectedIndex >= 0) {
+                    handleCut(filteredFiles[selectedIndex]);
+                }
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                e.preventDefault();
+                if (clipboard) handlePaste();
+            } else if (e.key === 'Escape') {
+                setSelectedFiles(new Set());
+                setSelectedIndex(-1);
+                closeContextMenu();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isActive, connected, isCollapsed, renamingFile, selectedIndex, filteredFiles, selectedFiles, clipboard]);
 
     const handleStartRename = (file: FileNode) => {
         closeContextMenu();
@@ -324,8 +543,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                     </div>
                 ) : (
                     <>
-                        {/* Header */}
-                        <div className="p-3 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-primary)]">
+                        {/* Header - Row 1: Navigation + Main actions */}
+                        <div className="p-2 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-primary)]">
                             <div className="flex items-center gap-1 overflow-hidden">
                                 <button
                                     onClick={handleUpDirectory}
@@ -339,61 +558,65 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                                     {currentPath}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                                {/* Star bookmark button */}
-                                <button
-                                    onClick={() => isBookmarked(currentPath) ? removeBookmark(currentPath) : addBookmark(currentPath)}
-                                    className={`p-1 rounded transition-colors ${isBookmarked(currentPath) ? 'text-amber-400 hover:text-amber-300' : 'text-[var(--text-muted)] hover:text-amber-400'}`}
-                                    title={isBookmarked(currentPath) ? 'Remove bookmark' : 'Bookmark this path'}
-                                >
-                                    <Star size={14} fill={isBookmarked(currentPath) ? 'currentColor' : 'none'} />
-                                </button>
-                                {/* Bookmarks dropdown toggle */}
-                                <button
-                                    onClick={() => setBookmarksOpen(p => !p)}
-                                    className={`p-1 rounded transition-colors ${bookmarksOpen ? 'text-[var(--accent-color)] bg-[var(--hover-color)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)]'}`}
-                                    title="Bookmarks"
-                                    disabled={bookmarks.length === 0}
-                                >
-                                    <Bookmark size={14} fill={bookmarksOpen ? 'currentColor' : 'none'} />
-                                </button>
-                                <button
-                                    onClick={() => fetchDirectory(currentPath)}
-                                    className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded"
-                                    title="Refresh"
-                                >
+                            <div className="flex items-center gap-0.5 shrink-0">
+                                <button onClick={() => fetchDirectory(currentPath)} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded" title="Refresh">
                                     <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
                                 </button>
-                                <div className="w-px h-4 bg-[var(--border-color)] mx-0.5"></div>
-                                <button
-                                    onClick={() => setIsWatching(!isWatching)}
-                                    className={`p-1 rounded transition-colors ${isWatching ? 'text-green-400 bg-green-400/10' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)]'}`}
-                                    title={isWatching ? 'Stop watching directory' : 'Watch directory for changes'}
-                                >
-                                    {isWatching ? <Eye size={14} /> : <EyeOff size={14} />}
+                                <button onClick={handleCreateFile} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded" title="New file">
+                                    <FilePlus size={14} />
+                                </button>
+                                <button onClick={handleCreateFolder} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded" title="New folder">
+                                    <Folder size={14} />
+                                </button>
+                                <button onClick={() => isBookmarked(currentPath) ? removeBookmark(currentPath) : addBookmark(currentPath)} className={`p-1 rounded ${isBookmarked(currentPath) ? 'text-amber-400' : 'text-[var(--text-muted)] hover:text-amber-400'}`} title={isBookmarked(currentPath) ? 'Remove bookmark' : 'Add bookmark'}>
+                                    <Star size={14} fill={isBookmarked(currentPath) ? 'currentColor' : 'none'} />
+                                </button>
+                                <button onClick={() => setBookmarksOpen(p => !p)} className={`p-1 rounded ${bookmarksOpen ? 'text-[var(--accent-color)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`} title="Bookmarks">
+                                    <Bookmark size={14} />
                                 </button>
                             </div>
                         </div>
 
-                        {/* Bookmarks dropdown panel */}
+                        {/* Header - Row 2: View options */}
+                        <div className="px-2 py-1.5 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-primary)]">
+                            <div className="flex items-center gap-0.5">
+                                <button onClick={toggleHiddenFiles} className={`p-1 rounded ${showHiddenFiles ? 'text-amber-400' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`} title={showHiddenFiles ? 'Hide hidden' : 'Show hidden'}>
+                                    {showHiddenFiles ? <Eye size={13} /> : <EyeOff size={13} />}
+                                </button>
+                                <div className="w-px h-4 bg-[var(--border-color)] mx-0.5"></div>
+                                <button onClick={() => toggleSortBy('name')} className={`p-1 rounded ${sortBy === 'name' ? 'text-[var(--accent-color)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`} title="Sort by name">
+                                    <SortAsc size={13} />
+                                </button>
+                                <button onClick={() => toggleSortBy('size')} className={`p-1 rounded ${sortBy === 'size' ? 'text-[var(--accent-color)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`} title="Sort by size">
+                                    <span className="text-[10px] font-bold">Sz</span>
+                                </button>
+                                <button onClick={() => toggleSortBy('date')} className={`p-1 rounded ${sortBy === 'date' ? 'text-[var(--accent-color)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`} title="Sort by date">
+                                    <span className="text-[10px] font-bold">Dt</span>
+                                </button>
+                            </div>
+                            <div className="flex items-center gap-0.5">
+                                {clipboard && (
+                                    <button onClick={() => handlePaste()} className="p-1 text-green-400 hover:text-green-300 rounded" title="Paste">
+                                        <Clipboard size={13} />
+                                    </button>
+                                )}
+                                <button onClick={() => setIsWatching(!isWatching)} className={`p-1 rounded ${isWatching ? 'text-green-400' : 'text-[var(--text-muted)]'}`} title={isWatching ? 'Stop watching' : 'Watch directory'}>
+                                    <Activity size={13} className={isWatching ? '' : 'opacity-50'} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Bookmarks panel */}
                         {bookmarksOpen && bookmarks.length > 0 && (
                             <div className="border-b border-[var(--border-color)] bg-[var(--bg-sidebar)] px-2 py-1.5 space-y-0.5 max-h-40 overflow-y-auto">
                                 <div className="text-[9px] uppercase font-semibold tracking-wider text-[var(--text-muted)] px-1 pb-1">Bookmarks</div>
                                 {bookmarks.map((bm) => (
                                     <div key={bm.path} className="flex items-center gap-1 group/bm">
-                                        <button
-                                            onClick={() => { fetchDirectory(bm.path); setCurrentPath(bm.path); setBookmarksOpen(false); }}
-                                            className="flex-1 text-left flex items-center gap-1.5 px-1.5 py-1 rounded text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] truncate"
-                                            title={bm.path}
-                                        >
+                                        <button onClick={() => { fetchDirectory(bm.path); setCurrentPath(bm.path); }} className="flex-1 text-left flex items-center gap-1.5 px-1.5 py-1 rounded text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] truncate" title={bm.path}>
                                             <Bookmark size={11} className="text-amber-400 shrink-0" fill="currentColor" />
                                             <span className="truncate font-mono">{bm.path}</span>
                                         </button>
-                                        <button
-                                            onClick={() => removeBookmark(bm.path)}
-                                            className="opacity-0 group-hover/bm:opacity-100 p-1 text-[var(--text-muted)] hover:text-red-400 rounded transition-all"
-                                            title="Remove bookmark"
-                                        >
+                                        <button onClick={() => removeBookmark(bm.path)} className="opacity-0 group-hover/bm:opacity-100 p-1 text-[var(--text-muted)] hover:text-red-400 rounded transition-all" title="Remove">
                                             <XIcon size={10} />
                                         </button>
                                     </div>
@@ -487,7 +710,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                             ) : files.length === 0 && !isLoading ? (
                                 <div className="text-xs text-[var(--text-muted)] text-center mt-4">Empty folder</div>
                             ) : (
-                                files.map((file) => (
+                                filteredFiles.map((file, idx) => (
                                     <div
                                         key={file.path}
                                         onClick={(e) => {
@@ -495,7 +718,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                                         }}
                                         onDoubleClick={() => handleNavigate(file)}
                                         onContextMenu={(e) => handleContextMenu(e, file)}
-                                        className={`flex items-center gap-2 p-1.5 rounded cursor-pointer group select-none ${selectedFiles.has(file.path) ? 'bg-[var(--hover-color)]/80 ring-1 ring-[var(--accent-color)]/30' : 'hover:bg-[var(--hover-color)]'}`}
+                                        className={`flex items-center gap-2 p-1.5 rounded cursor-pointer group select-none ${selectedFiles.has(file.path) ? 'bg-[var(--hover-color)]/80 ring-1 ring-[var(--accent-color)]/30' : selectedIndex === idx ? 'bg-[var(--hover-color)]' : 'hover:bg-[var(--hover-color)]'}`}
                                     >
                                         <div
                                             onClick={(e) => toggleSelection(e, file)}
@@ -627,6 +850,18 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                         >
                             <Copy size={14} /> Copy Path
                         </button>
+                        <button
+                            onClick={() => handleCopy(contextMenu.file)}
+                            className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-main)] hover:bg-[var(--hover-color)]"
+                        >
+                            <Clipboard size={14} /> Copy
+                        </button>
+                        <button
+                            onClick={() => handleCut(contextMenu.file)}
+                            className="w-full text-left px-3 py-2 flex items-center gap-2 text-[var(--text-main)] hover:bg-[var(--hover-color)]"
+                        >
+                            <Scissors size={14} /> Cut
+                        </button>
                         {contextMenu.file.is_dir && (
                             <button
                                 onClick={() => handleCopyToTerminal(contextMenu.file)}
@@ -691,6 +926,51 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                     initialPath={visualizeComposeFile.path}
                     onClose={() => setVisualizeComposeFile(null)}
                 />
+            )}
+
+            {/* Create Modal */}
+            {createModal && createModal.isOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50" onClick={createModal.onCancel}>
+                    <div
+                        className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded shadow-xl w-80 p-4 flex flex-col"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="text-sm font-medium text-[var(--text-main)] mb-3">
+                            {createModal.type === 'folder' ? 'Create New Folder' : 'Create New File'}
+                        </div>
+                        <input
+                            type="text"
+                            autoFocus
+                            placeholder={createModal.type === 'folder' ? 'Folder name' : 'File name'}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    const val = e.currentTarget.value.trim();
+                                    if (val) createModal.onSubmit(val);
+                                }
+                                if (e.key === 'Escape') createModal.onCancel();
+                            }}
+                            className="w-full text-sm bg-[var(--bg-sidebar)] border border-[var(--border-color)] focus:border-[var(--accent-color)] rounded px-2 py-1.5 text-[var(--text-main)] mb-4 outline-none transition-colors"
+                        />
+                        <div className="flex justify-end gap-2 text-xs">
+                            <button
+                                onClick={createModal.onCancel}
+                                className="px-3 py-1.5 rounded bg-[var(--hover-color)] text-[var(--text-main)] hover:bg-[var(--border-color)] transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    const input = e.currentTarget.parentElement?.previousElementSibling as HTMLInputElement;
+                                    const val = input.value.trim();
+                                    if (val) createModal.onSubmit(val);
+                                }}
+                                className="px-3 py-1.5 rounded bg-[var(--accent-color)] text-white hover:opacity-90 transition-opacity"
+                            >
+                                Create
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Prompt Modal */}

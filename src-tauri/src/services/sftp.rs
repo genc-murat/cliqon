@@ -27,6 +27,10 @@ pub enum SftpCommand {
     DownloadMultiZip(Vec<String>, String), // (remote_paths, local_zip_path)
     WatchDir(String),                      // (path)
     StopWatch,
+    CreateDir(String),          // (path)
+    CreateFile(String, String), // (path, content)
+    Copy(String, String),       // (source_path, dest_path)
+    Move(String, String),       // (source_path, dest_path)
     Close,
 }
 
@@ -434,6 +438,63 @@ impl SftpManager {
                             }
                         }
 
+                        SftpCommand::CreateDir(path) => {
+                            let res = sftp.mkdir(Path::new(&path), 0o755);
+                            if res.is_ok() {
+                                let _ = app.emit(&format!("sftp_createdir_done_{}", sid), &path);
+                            } else {
+                                let err = res.unwrap_err().to_string();
+                                let _ = app.emit(&format!("sftp_createdir_error_{}", sid), err);
+                            }
+                        }
+
+                        SftpCommand::CreateFile(path, _content) => {
+                            let res = (|| -> Result<()> {
+                                let mut f = sftp.create(Path::new(&path))?;
+                                f.write_all(b"")?;
+                                Ok(())
+                            })();
+                            if res.is_ok() {
+                                let _ = app.emit(&format!("sftp_createfile_done_{}", sid), &path);
+                            } else {
+                                let err = res.unwrap_err().to_string();
+                                let _ = app.emit(&format!("sftp_createfile_error_{}", sid), err);
+                            }
+                        }
+
+                        SftpCommand::Copy(source, dest) => {
+                            let res = (|| -> Result<()> {
+                                let mut src = sftp.open(Path::new(&source))?;
+                                let mut content = Vec::new();
+                                src.read_to_end(&mut content)?;
+                                let mut dst = sftp.create(Path::new(&dest))?;
+                                dst.write_all(&content)?;
+                                Ok(())
+                            })();
+                            if res.is_ok() {
+                                let _ = app.emit(
+                                    &format!("sftp_copy_done_{}", sid),
+                                    serde_json::json!({ "source": source, "dest": dest }),
+                                );
+                            } else {
+                                let err = res.unwrap_err().to_string();
+                                let _ = app.emit(&format!("sftp_copy_error_{}", sid), err);
+                            }
+                        }
+
+                        SftpCommand::Move(source, dest) => {
+                            let res = sftp.rename(Path::new(&source), Path::new(&dest), None);
+                            if res.is_ok() {
+                                let _ = app.emit(
+                                    &format!("sftp_move_done_{}", sid),
+                                    serde_json::json!({ "source": source, "dest": dest }),
+                                );
+                            } else {
+                                let err = res.unwrap_err().to_string();
+                                let _ = app.emit(&format!("sftp_move_error_{}", sid), err);
+                            }
+                        }
+
                         SftpCommand::Close => {
                             break;
                         }
@@ -516,6 +577,22 @@ impl SftpManager {
 
     pub fn write_file(&self, session_id: &str, path: String, content: String) -> Result<()> {
         self.send(session_id, SftpCommand::WriteFile(path, content))
+    }
+
+    pub fn create_dir(&self, session_id: &str, path: String) -> Result<()> {
+        self.send(session_id, SftpCommand::CreateDir(path))
+    }
+
+    pub fn create_file(&self, session_id: &str, path: String, content: String) -> Result<()> {
+        self.send(session_id, SftpCommand::CreateFile(path, content))
+    }
+
+    pub fn copy(&self, session_id: &str, source: String, dest: String) -> Result<()> {
+        self.send(session_id, SftpCommand::Copy(source, dest))
+    }
+
+    pub fn move_file(&self, session_id: &str, source: String, dest: String) -> Result<()> {
+        self.send(session_id, SftpCommand::Move(source, dest))
     }
 
     pub fn close_session(&self, session_id: &str) {

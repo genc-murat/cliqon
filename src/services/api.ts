@@ -87,6 +87,22 @@ export const api = {
         return await invoke('sudo_write_file', { profile, path, content });
     },
 
+    createSftpDir: async (sessionId: string, path: string): Promise<void> => {
+        return await invoke('create_sftp_dir', { sessionId, path });
+    },
+
+    createSftpFile: async (sessionId: string, path: string, content: string): Promise<void> => {
+        return await invoke('create_sftp_file', { sessionId, path, content });
+    },
+
+    copySftpFile: async (sessionId: string, sourcePath: string, destPath: string): Promise<void> => {
+        return await invoke('copy_sftp_file', { sessionId, sourcePath, destPath });
+    },
+
+    moveSftpFile: async (sessionId: string, sourcePath: string, destPath: string): Promise<void> => {
+        return await invoke('move_sftp_file', { sessionId, sourcePath, destPath });
+    },
+
     closeSftp: async (sessionId: string): Promise<void> => {
         return await invoke('close_sftp', { sessionId });
     },

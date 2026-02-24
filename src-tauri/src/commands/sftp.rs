@@ -186,3 +186,46 @@ pub async fn sudo_write_file(
     
     state.sftp_manager.sudo_write_file(&profile, secret.as_deref(), &path, &content)
 }
+
+#[tauri::command]
+pub async fn create_sftp_dir(
+    state: State<'_, AppState>,
+    session_id: String,
+    path: String,
+) -> Result<()> {
+    state.sftp_manager.create_dir(&session_id, path)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn create_sftp_file(
+    state: State<'_, AppState>,
+    session_id: String,
+    path: String,
+    content: String,
+) -> Result<()> {
+    state.sftp_manager.create_file(&session_id, path, content)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn copy_sftp_file(
+    state: State<'_, AppState>,
+    session_id: String,
+    source_path: String,
+    dest_path: String,
+) -> Result<()> {
+    state.sftp_manager.copy(&session_id, source_path, dest_path)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn move_sftp_file(
+    state: State<'_, AppState>,
+    session_id: String,
+    source_path: String,
+    dest_path: String,
+) -> Result<()> {
+    state.sftp_manager.move_file(&session_id, source_path, dest_path)?;
+    Ok(())
+}

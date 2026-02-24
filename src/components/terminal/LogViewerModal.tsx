@@ -124,8 +124,11 @@ export const LogViewerModal: React.FC<LogViewerModalProps> = ({
     }, [logs, searchQuery]);
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-            <div className="bg-[#1e1e1e] border border-[var(--border-color)] rounded-xl shadow-2xl flex flex-col w-full max-w-6xl h-[85vh] overflow-hidden">
+        <div className="modal-overlay" onClick={onClose}>
+            <div
+                className="bg-[#1e1e1e] border border-[var(--border-color)] rounded-xl shadow-2xl flex flex-col w-full max-w-6xl h-[85vh] overflow-hidden"
+                onClick={e => e.stopPropagation()}
+            >
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-color)] bg-[#252526] shrink-0">
                     <div className="flex items-center gap-3 min-w-0 flex-1">

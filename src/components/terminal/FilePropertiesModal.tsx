@@ -84,8 +84,11 @@ export const FilePropertiesModal: React.FC<FilePropertiesModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]">
-            <div className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="modal-overlay" onClick={onClose}>
+            <div
+                className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+                onClick={e => e.stopPropagation()}
+            >
                 {/* Header */}
                 <div className="flex justify-between items-center px-5 py-4 border-b border-[var(--border-color)] bg-[var(--bg-sidebar)]">
                     <div className="flex items-center gap-2 text-[var(--text-main)]">

@@ -71,8 +71,11 @@ export const TunnelConfigModal: React.FC<TunnelConfigModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="modal-overlay" onClick={onClose}>
+            <div
+                className="bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+                onClick={e => e.stopPropagation()}
+            >
                 <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)] bg-[var(--bg-primary)]">
                     <div className="flex items-center gap-2 text-[var(--text-main)] font-semibold">
                         <Shield className="text-[var(--accent-color)]" size={18} />

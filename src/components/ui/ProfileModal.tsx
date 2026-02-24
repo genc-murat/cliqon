@@ -75,8 +75,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100]">
-            <div className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg w-full max-w-md shadow-2xl p-6 transition-colors duration-200">
+        <div className="modal-overlay" onClick={onClose}>
+            <div
+                className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg w-full max-w-md shadow-2xl p-6 transition-colors duration-200"
+                onClick={e => e.stopPropagation()}
+            >
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-semibold text-[var(--text-main)] flex items-center gap-2">
                         {existingProfile ? <Shield size={20} /> : <FilePlus size={20} />}

@@ -99,8 +99,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     ];
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 transition-all duration-300">
-            <div className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full max-w-4xl h-[600px] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+        <div className="modal-overlay" onClick={onClose}>
+            <div
+                className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full max-w-4xl h-[600px] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200"
+                onClick={e => e.stopPropagation()}
+            >
 
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-[var(--border-color)] flex justify-between items-center bg-[var(--bg-sidebar)] shrink-0">
@@ -417,11 +420,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                                     <button
                                                         key={mode}
                                                         onClick={() => setTerminalPerformance({ rendererMode: mode })}
-                                                        className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all ${
-                                                            terminalPerformance.rendererMode === mode
+                                                        className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all ${terminalPerformance.rendererMode === mode
                                                                 ? 'bg-[var(--accent-color)] text-white'
                                                                 : 'bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {mode.charAt(0).toUpperCase() + mode.slice(1)}
                                                     </button>
@@ -439,13 +441,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                             </div>
                                             <button
                                                 onClick={() => setTerminalPerformance({ showFpsCounter: !terminalPerformance.showFpsCounter })}
-                                                className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
-                                                    terminalPerformance.showFpsCounter ? 'bg-[var(--accent-color)]' : 'bg-[var(--hover-color)]'
-                                                }`}
+                                                className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${terminalPerformance.showFpsCounter ? 'bg-[var(--accent-color)]' : 'bg-[var(--hover-color)]'
+                                                    }`}
                                             >
-                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
-                                                    terminalPerformance.showFpsCounter ? 'translate-x-6' : 'translate-x-0'
-                                                }`} />
+                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${terminalPerformance.showFpsCounter ? 'translate-x-6' : 'translate-x-0'
+                                                    }`} />
                                             </button>
                                         </div>
                                     </div>
@@ -470,7 +470,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                             <div className="p-3 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-xl">
                                                 <div className="text-xs text-[var(--text-muted)]">Estimated Size</div>
                                                 <div className="text-lg font-bold text-[var(--text-main)]">
-                                                    {dbStats.estimatedSize > 1024 * 1024 
+                                                    {dbStats.estimatedSize > 1024 * 1024
                                                         ? `${(dbStats.estimatedSize / 1024 / 1024).toFixed(1)} MB`
                                                         : `${(dbStats.estimatedSize / 1024).toFixed(1)} KB`}
                                                 </div>

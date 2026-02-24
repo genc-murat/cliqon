@@ -132,10 +132,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
             isMounted = false;
             [unlistenRx, unlistenTransferDone, unlistenRenameDone, unlistenRenameErr,
                 unlistenDeleteDone, unlistenDeleteErr, unlistenWatch].forEach(u => u?.());
-            api.closeSftp(sessionId).catch(console.error);
+            api.closeSftp(sessionId).catch((err) => {
+                console.error('Failed to close SFTP:', err);
+            });
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profile, sessionId]);
+    }, [profile, sessionId, currentPath, fetchDirectory]);
 
     const handleNavigate = (node: FileNode) => {
         if (node.is_dir) {
@@ -147,7 +148,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
 
     const handleUpDirectory = () => {
         if (currentPath === '.' || currentPath === '/') return;
-        const parts = currentPath.split('/').filter(Boolean);
+        const normalizedPath = currentPath.startsWith('/') ? currentPath : '/' + currentPath;
+        const parts = normalizedPath.split('/').filter(Boolean);
         parts.pop();
         const newPath = parts.length === 0 ? '/' : '/' + parts.join('/');
         setSelectedFiles(new Set());
@@ -177,11 +179,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
 
     // Drag-and-drop upload
     useEffect(() => {
-        if (!isActive) return;
+        if (!isActive || !connected) return;
         let unlistenDrop: UnlistenFn | null = null;
-        let isSubscribed = true;
+
         const setupDrop = async () => {
-            const unlisten = await listen<{ paths: string[] }>('tauri://drop', (event) => {
+            unlistenDrop = await listen<{ paths: string[] }>('tauri://drop', (event) => {
                 if (!isActive || !connected) return;
                 for (const localPath of event.payload.paths) {
                     const filename = localPath.split(/[/\\]/).pop();
@@ -191,10 +193,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                     }
                 }
             });
-            if (isSubscribed) unlistenDrop = unlisten; else unlisten();
         };
+
         setupDrop();
-        return () => { isSubscribed = false; unlistenDrop?.(); };
+        return () => { unlistenDrop?.(); };
     }, [isActive, connected, currentPath, sessionId]);
 
     const handleContextMenu = (e: React.MouseEvent, file: FileNode) => {
@@ -249,7 +251,11 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
         const dir = renamingFile.path.substring(0, renamingFile.path.lastIndexOf('/') + 1);
         const newPath = dir + renameValue.trim();
         setRenamingFile(null);
-        await api.renameSftp(sessionId, renamingFile.path, newPath);
+        try {
+            await api.renameSftp(sessionId, renamingFile.path, newPath);
+        } catch (err: any) {
+            showStatus(`❌ Rename failed: ${err}`);
+        }
     };
 
     const handleCopyPath = (file: FileNode) => {
@@ -287,10 +293,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     };
 
     const formatSize = (bytes: number) => {
-        if (bytes === 0) return '0 B';
+        if (bytes <= 0) return '0 B';
         const k = 1024;
         const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     };
 
@@ -435,11 +441,25 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                                                 isDestructive: true
                                             });
                                             if (isConfirmed) {
-                                                for (const path of selectedFiles) {
+                                                const paths = Array.from(selectedFiles);
+                                                let successCount = 0;
+                                                let failCount = 0;
+                                                for (let i = 0; i < paths.length; i++) {
+                                                    const path = paths[i];
                                                     const isDir = files.find(f => f.path === path)?.is_dir || false;
-                                                    await api.deleteSftp(sessionId, path, isDir);
+                                                    try {
+                                                        await api.deleteSftp(sessionId, path, isDir);
+                                                        successCount++;
+                                                    } catch {
+                                                        failCount++;
+                                                    }
                                                 }
                                                 setSelectedFiles(new Set());
+                                                if (failCount > 0) {
+                                                    showStatus(`⚠️ Deleted ${successCount}, failed ${failCount}`);
+                                                } else {
+                                                    showStatus(`✅ Deleted ${successCount} files`);
+                                                }
                                             }
                                         }}
                                         className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
@@ -465,9 +485,9 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                             ) : files.length === 0 && !isLoading ? (
                                 <div className="text-xs text-[var(--text-muted)] text-center mt-4">Empty folder</div>
                             ) : (
-                                files.map((file, i) => (
+                                files.map((file) => (
                                     <div
-                                        key={i}
+                                        key={file.path}
                                         onClick={(e) => {
                                             if (e.ctrlKey || e.metaKey || e.shiftKey) toggleSelection(e, file);
                                         }}
@@ -684,7 +704,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                             autoFocus
                             defaultValue={promptModal.defaultValue}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') promptModal.onSubmit(e.currentTarget.value);
+                                if (e.key === 'Enter') {
+                                    const val = e.currentTarget.value.trim();
+                                    if (val) promptModal.onSubmit(val);
+                                }
                                 if (e.key === 'Escape') promptModal.onCancel();
                             }}
                             className="w-full text-sm bg-[var(--bg-sidebar)] border border-[var(--border-color)] focus:border-[var(--accent-color)] rounded px-2 py-1.5 text-[var(--text-main)] mb-4 outline-none transition-colors"
@@ -699,7 +722,8 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
                             <button
                                 onClick={(e) => {
                                     const input = e.currentTarget.parentElement?.previousElementSibling as HTMLInputElement;
-                                    promptModal.onSubmit(input.value);
+                                    const val = input.value.trim();
+                                    if (val) promptModal.onSubmit(val);
                                 }}
                                 className="px-3 py-1.5 rounded bg-[var(--accent-color)] text-white hover:opacity-90 transition-opacity"
                             >

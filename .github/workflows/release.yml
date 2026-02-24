@@ -47,14 +47,27 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
+      - name: Verify Secrets (Diagnostic)
+        run: |
+          if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY is MISSING! Updater metadata will NOT be generated."
+          else
+            echo "TAURI_SIGNING_PRIVATE_KEY is present."
+          fi
+          if [ -z "${{ secrets.TAURI_SIGNING_PASSWORD }}" ]; then
+            echo "Note: TAURI_SIGNING_PASSWORD is not set."
+          fi
+
       - name: Build Tauri app
         run: npm run tauri build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PASSWORD: ${{ secrets.TAURI_SIGNING_PASSWORD }}
 
-      - name: List bundles (Debug)
-        run: ls -R src-tauri/target/release/bundle
+      - name: List all artifacts recursively (Debug)
+        run: |
+          echo "Listing all files in src-tauri/target/release/bundle:"
+          find src-tauri/target/release/bundle -maxdepth 10 -not -path '*/.*'
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -87,8 +100,8 @@ jobs:
         with:
           path: artifacts
 
-      - name: Show artifact structure
-        run: ls -R artifacts
+      - name: Show downloaded artifacts structure
+        run: find artifacts -maxdepth 10
 
       - name: Prepare Updater latest.json
         run: |
@@ -98,22 +111,27 @@ jobs:
           import json, os, glob, sys
           merged = {'version': '', 'notes': '', 'pub_date': '', 'platforms': {}}
           found = False
-          print('Searching for latest.json files in /artifacts...')
+          print('Searching for latest.json (or any .json) files in /artifacts...')
           for root, dirs, files in os.walk('artifacts'):
               for file in files:
-                  if file == 'latest.json':
-                      found = True
+                  if file.endswith('.json'):
                       f = os.path.join(root, file)
-                      print(f'Found: {f}')
+                      print(f'Checking: {f}')
                       with open(f) as j:
-                          data = json.load(j)
-                          merged['version'] = data.get('version', merged['version'])
-                          merged['notes'] = data.get('notes', merged['notes'])
-                          merged['pub_date'] = data.get('pub_date', merged['pub_date'])
-                          merged['platforms'].update(data.get('platforms', {}))
+                          try:
+                              data = json.load(j)
+                              if 'version' in data and 'platforms' in data:
+                                  found = True
+                                  print(f'Using valid updater metadata from: {f}')
+                                  merged['version'] = data.get('version', merged['version'])
+                                  merged['notes'] = data.get('notes', merged['notes'])
+                                  merged['pub_date'] = data.get('pub_date', merged['pub_date'])
+                                  merged['platforms'].update(data.get('platforms', {}))
+                          except Exception as e:
+                              print(f'Skipping invalid JSON: {f} ({e})')
           
           if not found:
-              print('ERROR: No latest.json files found! Build will fail.')
+              print('ERROR: No valid updater metadata (.json) files found! Build will fail.')
               sys.exit(1)
           
           if not merged['version']:

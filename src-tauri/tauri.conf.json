@@ -34,5 +34,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDBCOUUyMDA2QzYwQUQ5MzIKUldReTJRckdCaUNlQ3hNc2FiTFJmUG5Jb0l1cUl5M3pSbTIwcHV2Sks3STc0OVpMOUZJVWp2ZHkK",
+      "endpoints": [
+        "https://github.com/genc-murat/cliqon/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

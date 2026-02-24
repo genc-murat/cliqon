@@ -13,6 +13,7 @@ import { SessionTimeoutOverlay } from './components/ui/SessionTimeoutOverlay';
 import { ConfirmProvider } from './hooks/useConfirm';
 import { SharingPanel } from './components/ui/SharingPanel';
 import { useConnections } from './hooks/useConnections';
+import { useUpdater } from './hooks/useUpdater';
 
 interface SessionTab extends TabData {
   profile: SshProfile;
@@ -33,6 +34,11 @@ function App() {
   const { autoOpenMonitor, sessionTimeout } = useTheme();
 
   const { isTimedOut, resetTimeout } = useSessionTimeout(tabs.length > 0 ? sessionTimeout : 0);
+  const { checkForUpdates } = useUpdater();
+
+  useEffect(() => {
+    checkForUpdates(true);
+  }, [checkForUpdates]);
 
   const handleConnect = (profile: SshProfile) => {
     const sessionId = crypto.randomUUID();

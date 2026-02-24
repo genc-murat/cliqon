@@ -5,6 +5,7 @@ import { KeyStore } from '../settings/KeyStore';
 import { useTheme } from '../../hooks/useTheme';
 import { terminalFontFamilies } from '../../lib/themes';
 import { exportAllData, importData as importDataFn, ExportData, getDatabaseStats } from '../../lib/db';
+import { useUpdater } from '../../hooks/useUpdater';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -33,6 +34,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         sessionTimeout, setSessionTimeout,
         terminalPerformance, setTerminalPerformance
     } = useTheme();
+
+    const { status: updateStatus, checkForUpdates, installUpdate, manifest, error: updateError } = useUpdater();
 
     const [activeSection, setActiveSection] = useState<SettingsSection>('appearance');
     const [dbStats, setDbStats] = useState<DbStats | null>(null);
@@ -622,6 +625,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                     <div className="px-4 py-2 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-full text-xs font-bold text-[var(--text-main)] shadow-sm">
                                         Version 0.6.0
                                     </div>
+
+                                    <div className="pt-4 flex flex-col items-center gap-3">
+                                        {updateStatus === 'available' ? (
+                                            <div className="flex flex-col items-center gap-2">
+                                                <p className="text-xs font-bold text-[var(--accent-color)] animate-bounce">
+                                                    New version {manifest?.version} is available!
+                                                </p>
+                                                <button
+                                                    onClick={installUpdate}
+                                                    className="px-6 py-2 rounded-xl bg-[var(--accent-color)] text-white text-sm font-bold shadow-lg shadow-[var(--accent-color)]/20 hover:opacity-90 transition-all active:scale-95"
+                                                >
+                                                    Install Update & Restart
+                                                </button>
+                                            </div>
+                                        ) : updateStatus === 'downloading' ? (
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="w-8 h-8 border-4 border-[var(--accent-color)] border-t-transparent rounded-full animate-spin"></div>
+                                                <p className="text-xs text-[var(--text-muted)]">Downloading update...</p>
+                                            </div>
+                                        ) : updateStatus === 'checking' ? (
+                                            <p className="text-xs text-[var(--text-muted)] animate-pulse">Checking for updates...</p>
+                                        ) : (
+                                            <button
+                                                onClick={() => checkForUpdates()}
+                                                className="text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors underline underline-offset-4"
+                                            >
+                                                Check for updates
+                                            </button>
+                                        )}
+                                        {updateStatus === 'up-to-date' && (
+                                            <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">You are on the latest version</p>
+                                        )}
+                                        {updateStatus === 'error' && (
+                                            <p className="text-[10px] text-red-500 font-bold uppercase tracking-wider">Update check failed: {updateError}</p>
+                                        )}
+                                    </div>
+
                                     <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Made with ❤️ for developers</p>
                                 </div>
                             </section>

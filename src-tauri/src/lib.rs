@@ -35,6 +35,9 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            #[cfg(debug_assertions)]
+            app.handle().plugin(tauri_plugin_devtools::init())?;
+
             let app_state = AppState::new(app.handle());
             app.manage(app_state);
             app.manage(std::sync::Arc::new(SystemService::new()));

@@ -4,6 +4,7 @@ import App from "./App";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { SharingProvider } from "./contexts/SharingContext";
 import { ConnectionsProvider } from "./contexts/ConnectionsContext";
+import { ConfirmProvider } from "./hooks/useConfirm";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
@@ -11,7 +12,9 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <ThemeProvider>
       <ConnectionsProvider>
         <SharingProvider>
-          <App />
+          <ConfirmProvider>
+            <App />
+          </ConfirmProvider>
         </SharingProvider>
       </ConnectionsProvider>
     </ThemeProvider>

@@ -8,6 +8,7 @@ import {
 import { useConnections } from '../../hooks/useConnections';
 import { ProfileModal } from '../ui/ProfileModal';
 import { SettingsModal } from '../ui/SettingsModal';
+import { useUpdater } from '../../hooks/useUpdater';
 import { SshProfile, AuthMethod } from '../../types/connection';
 import { useResizable } from '../../hooks/useResizable';
 import { Logo } from './Logo';
@@ -236,6 +237,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const { status: updateStatus } = useUpdater();
     const { togglePanel, isPanelOpen } = useSharing();
     const [editingProfile, setEditingProfile] = useState<SshProfile | null>(null);
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -271,6 +273,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
     }, []);
 
     useEffect(() => {
+        const handleOpenSettings = () => setIsSettingsOpen(true);
+        window.addEventListener('cliqon:open-settings', handleOpenSettings);
+
         if (openAddModalRef) openAddModalRef.current = handleAdd;
         if (focusSearchRef) focusSearchRef.current = () => {
             if (isCollapsed) {
@@ -281,6 +286,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                 searchRef.current?.focus();
             }
         };
+        return () => window.removeEventListener('cliqon:open-settings', handleOpenSettings);
     });
 
     const toggleCollapse = () => {
@@ -414,10 +420,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                         <div className="w-full border-t border-[var(--border-color)]" />
                         <button
                             onClick={() => setIsSettingsOpen(true)}
-                            className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-2 rounded-md transition-colors"
+                            className="relative text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-2 rounded-md transition-colors"
                             title="Settings"
                         >
                             <Settings size={16} />
+                            {updateStatus === 'available' && (
+                                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-[var(--bg-sidebar)]" />
+                            )}
                         </button>
                         <button
                             onClick={handleAdd}
@@ -464,10 +473,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                             </div>
                             <button
                                 onClick={() => setIsSettingsOpen(true)}
-                                className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-1.5 rounded-md transition-colors"
+                                className="relative text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-1.5 rounded-md transition-colors"
                                 title="Settings"
                             >
                                 <Settings size={16} />
+                                {updateStatus === 'available' && (
+                                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-[var(--bg-sidebar)]" />
+                                )}
                             </button>
                         </div>
 

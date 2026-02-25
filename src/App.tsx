@@ -10,7 +10,7 @@ import { SshProfile } from "./types/connection";
 import { api } from "./services/api";
 import { useSessionTimeout } from './hooks/useSessionTimeout';
 import { SessionTimeoutOverlay } from './components/ui/SessionTimeoutOverlay';
-import { ConfirmProvider } from './hooks/useConfirm';
+import { ConfirmProvider, useConfirm } from './hooks/useConfirm';
 import { SharingPanel } from './components/ui/SharingPanel';
 import { useConnections } from './hooks/useConnections';
 import { useUpdater } from './hooks/useUpdater';
@@ -34,11 +34,42 @@ function App() {
   const { autoOpenMonitor, sessionTimeout } = useTheme();
 
   const { isTimedOut, resetTimeout } = useSessionTimeout(tabs.length > 0 ? sessionTimeout : 0);
-  const { checkForUpdates } = useUpdater();
+  const { checkForUpdates, status: updateStatus, manifest: updateManifest } = useUpdater();
+  const [hasNotifiedUpdate, setHasNotifiedUpdate] = useState(false);
+  const confirm = useConfirm();
 
   useEffect(() => {
+    // Initial check on startup
     checkForUpdates(true);
+
+    // Periodic check every 6 hours
+    const interval = setInterval(() => {
+      checkForUpdates(true);
+    }, 6 * 60 * 60 * 1000);
+
+    return () => clearInterval(interval);
   }, [checkForUpdates]);
+
+  // Notify user when an update is available
+  useEffect(() => {
+    if (updateStatus === 'available' && updateManifest && !hasNotifiedUpdate) {
+      setHasNotifiedUpdate(true);
+      confirm({
+        title: 'Update Available',
+        message: `A new version (${updateManifest.version}) of Cliqon is available. Would you like to go to settings to install it?`,
+        confirmLabel: 'Go to Settings',
+        cancelLabel: 'Later'
+      }).then((confirmed: boolean) => {
+        if (confirmed) {
+          // Find settings icon or just open settings modal?
+          // SettingsModal is in Sidebar.tsx, which we don't control here directly.
+          // But we can dispatch an event or just let them see the badge.
+          // For now, let's just trigger the settings modal via a global event if we can.
+          window.dispatchEvent(new CustomEvent('cliqon:open-settings'));
+        }
+      });
+    }
+  }, [updateStatus, updateManifest, hasNotifiedUpdate, confirm]);
 
   const handleConnect = (profile: SshProfile) => {
     const sessionId = crypto.randomUUID();

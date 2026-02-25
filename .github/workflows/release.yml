@@ -48,6 +48,7 @@ jobs:
         run: npm install
 
       - name: Verify Secrets (Diagnostic)
+        shell: bash
         run: |
           if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
             echo "::error::TAURI_SIGNING_PRIVATE_KEY is MISSING! Updater metadata will NOT be generated."
@@ -65,6 +66,7 @@ jobs:
           TAURI_SIGNING_PASSWORD: ${{ secrets.TAURI_SIGNING_PASSWORD }}
 
       - name: List all artifacts recursively (Debug)
+        shell: bash
         run: |
           echo "Listing all files in src-tauri/target/release/bundle:"
           find src-tauri/target/release/bundle -maxdepth 10 -not -path '*/.*'

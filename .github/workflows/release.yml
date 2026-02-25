@@ -120,46 +120,84 @@ jobs:
       - name: Prepare Updater latest.json
         run: |
           mkdir -p release_assets
-          # Merge all platform JSONs into one
+          # Build latest.json from artifacts and signatures
           python3 -c "
-          import json, os, glob, sys
-          merged = {'version': '', 'notes': '', 'pub_date': '', 'platforms': {}}
-          found = False
-          print('Searching for .json files in artifacts directory...')
-          for root, dirs, files in os.walk('artifacts'):
+          import json, os, glob, sys, re
+          
+          def get_version():
+              try:
+                  with open('src-tauri/tauri.conf.json') as f:
+                      return json.load(f).get('version')
+              except:
+                  return None
+
+          version = get_version()
+          if not version:
+              print('ERROR: Could not determine version from tauri.conf.json')
+              sys.exit(1)
+
+          latest = {
+              'version': f'v{version}',
+              'notes': f'Release v{version}',
+              'pub_date': '',
+              'platforms': {}
+          }
+
+          # Mapping of file patterns to Tauri platform keys
+          # Tauri 2.0 platform keys: 
+          # linux-x86_64, windows-x86_64, darwin-x86_64 (intel), darwin-aarch64 (apple silicon)
+          
+          patterns = {
+              'linux-x86_64': r'.*amd64\.AppImage$',
+              'windows-x86_64': r'.*x64.*\.msi$|.*x64.*\.exe$',
+              'darwin-aarch64': r'.*aarch64\.app\.tar\.gz$|.*aarch64\.dmg$',
+              'darwin-x86_64': r'.*x64\.app\.tar\.gz$|.*x64\.dmg$'
+          }
+
+          print(f'Starting latest.json generation for version {version}')
+          
+          # Find all .sig files and map them to their binaries
+          sig_files = []
+          for root, _, files in os.walk('artifacts'):
               for file in files:
-                  f = os.path.join(root, file)
-                  if file.endswith('.json'):
-                      print(f'Checking JSON file: {f}')
-                      with open(f) as j:
-                          try:
-                              data = json.load(j)
-                              print(f'Content of {f}: {json.dumps(data, indent=2)}')
-                              if 'version' in data and 'platforms' in data:
-                                  found = True
-                                  print(f'Found valid updater metadata in: {f}')
-                                  merged['version'] = data.get('version', merged['version'])
-                                  merged['notes'] = data.get('notes', merged['notes'])
-                                  merged['pub_date'] = data.get('pub_date', merged['pub_date'])
-                                  merged['platforms'].update(data.get('platforms', {}))
-                              else:
-                                  print(f'JSON file {f} does not have version and platforms keys.')
-                          except Exception as e:
-                              print(f'Error reading JSON {f}: {e}')
-                  else:
-                      print(f'Found non-JSON file: {f}')
-          
-          if not found:
-              print('ERROR: No valid updater metadata (.json) files found! Build will fail.')
+                  if file.endswith('.sig'):
+                      sig_files.append(os.path.join(root, file))
+
+          for sig_path in sig_files:
+              binary_path = sig_path[:-4] # Remove .sig
+              if not os.path.exists(binary_path):
+                  print(f'Warning: Binary not found for signature {sig_path}')
+                  continue
+              
+              filename = os.path.basename(binary_path)
+              signature = ''
+              with open(sig_path, 'r') as f:
+                  signature = f.read().strip()
+              
+              # Determine platform
+              matched_platform = None
+              for platform, pattern in patterns.items():
+                  if re.match(pattern, filename, re.IGNORECASE):
+                      matched_platform = platform
+                      break
+              
+              if matched_platform:
+                  print(f'Matching {filename} to {matched_platform}')
+                  download_url = f'https://github.com/genc-murat/cliqon/releases/download/v{version}/{filename}'
+                  latest['platforms'][matched_platform] = {
+                      'signature': signature,
+                      'url': download_url
+                  }
+              else:
+                  print(f'No platform match for {filename}')
+
+          if not latest['platforms']:
+              print('ERROR: No platforms were added to latest.json! Build will fail.')
               sys.exit(1)
-          
-          if not merged['version']:
-              print('ERROR: Merged version is empty! Build will fail.')
-              sys.exit(1)
-          
-          print(f'Final Merged JSON: {json.dumps(merged, indent=2)}')
+
+          print(f'Generated latest.json: {json.dumps(latest, indent=2)}')
           with open('release_assets/latest.json', 'w') as f:
-              json.dump(merged, f, indent=2)
+              json.dump(latest, f, indent=2)
           "
           # Copy all other assets (zip, sig, deb, etc)
           find artifacts -type f \( -name "*.zip" -o -name "*.sig" -o -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" -o -name "*.dmg" -o -name "*.msi" -o -name "*.exe" \) -exec cp {} release_assets/ \;

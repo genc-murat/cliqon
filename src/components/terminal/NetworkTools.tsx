@@ -11,7 +11,7 @@ interface NetworkToolsProps {
     isEmbedded?: boolean;
 }
 
-type ToolTab = 'ping' | 'traceroute' | 'dns' | 'portscan' | 'connections' | 'interfaces' | 'public_ip' | 'routes' | 'neighbors' | 'listening' | 'http_check' | 'ssl_check' | 'stats_summary' | 'bandwidth_stats' | 'firewall_status' | 'nmap' | 'whois' | 'mtr' | 'tracepath' | 'nslookup' | 'netstat' | 'fail2ban_status' | 'hostname_info' | 'active_users' | 'open_files' | 'curl_timing' | 'dns_config' | 'hosts_file' | 'uptime' | 'disk_usage' | 'memory_usage' | 'last_logins' | 'arp' | 'ip_link' | 'ip_route_get' | 'resolvectl' | 'tcpdump' | 'speedtest';
+type ToolTab = 'ping' | 'traceroute' | 'dns' | 'portscan' | 'connections' | 'interfaces' | 'public_ip' | 'routes' | 'neighbors' | 'listening' | 'http_check' | 'ssl_check' | 'stats_summary' | 'bandwidth_stats' | 'firewall_status' | 'nmap' | 'whois' | 'mtr' | 'tracepath' | 'nslookup' | 'netstat' | 'fail2ban_status' | 'hostname_info' | 'active_users' | 'open_files' | 'curl_timing' | 'dns_config' | 'hosts_file' | 'uptime' | 'disk_usage' | 'memory_usage' | 'last_logins' | 'arp' | 'ip_link' | 'ip_route_get' | 'resolvectl' | 'tcpdump' | 'speedtest' | 'processes' | 'systemctl_list' | 'nmap_os';
 
 // ─── Ping Parser ───────────────────────────────────────────────────────────────
 interface PingResult {
@@ -346,14 +346,14 @@ interface Category {
 
 const CATEGORIES: Category[] = [
     { id: 'diagnostics', label: 'Diagnostics', icon: <Activity size={14} />, tools: ['ping', 'traceroute', 'dns', 'http_check', 'mtr', 'tracepath', 'nslookup', 'curl_timing', 'resolvectl', 'speedtest'] },
-    { id: 'status', label: 'Status', icon: <PieChart size={14} />, tools: ['connections', 'listening', 'stats_summary', 'bandwidth_stats', 'public_ip', 'netstat', 'hostname_info', 'uptime', 'disk_usage', 'memory_usage'] },
+    { id: 'status', label: 'Status', icon: <PieChart size={14} />, tools: ['connections', 'listening', 'stats_summary', 'bandwidth_stats', 'public_ip', 'netstat', 'hostname_info', 'uptime', 'disk_usage', 'memory_usage', 'processes', 'systemctl_list'] },
     { id: 'infrastructure', label: 'Network', icon: <Network size={14} />, tools: ['interfaces', 'routes', 'neighbors', 'dns_config', 'hosts_file', 'arp', 'ip_link', 'ip_route_get'] },
-    { id: 'security', label: 'Security', icon: <Shield size={14} />, tools: ['portscan', 'ssl_check', 'firewall_status', 'fail2ban_status', 'nmap', 'whois', 'last_logins', 'tcpdump'] },
+    { id: 'security', label: 'Security', icon: <Shield size={14} />, tools: ['portscan', 'ssl_check', 'firewall_status', 'fail2ban_status', 'nmap', 'whois', 'last_logins', 'tcpdump', 'nmap_os'] },
     { id: 'advanced', label: 'Advanced', icon: <Info size={14} />, tools: ['active_users', 'open_files'] },
 ];
 
 const isSelfTool = (tab: ToolTab) =>
-    ['connections', 'interfaces', 'public_ip', 'routes', 'neighbors', 'listening', 'stats_summary', 'bandwidth_stats', 'firewall_status', 'netstat', 'fail2ban_status', 'hostname_info', 'active_users', 'open_files', 'uptime', 'disk_usage', 'memory_usage', 'last_logins', 'dns_config', 'hosts_file', 'arp', 'ip_link', 'tcpdump'].includes(tab);
+    ['connections', 'interfaces', 'public_ip', 'routes', 'neighbors', 'listening', 'stats_summary', 'bandwidth_stats', 'firewall_status', 'netstat', 'fail2ban_status', 'hostname_info', 'active_users', 'open_files', 'uptime', 'disk_usage', 'memory_usage', 'last_logins', 'dns_config', 'hosts_file', 'arp', 'ip_link', 'tcpdump', 'processes', 'systemctl_list'].includes(tab);
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, onClose, isEmbedded }) => {
@@ -507,6 +507,9 @@ export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, 
         { id: 'resolvectl', label: 'Resolvectl', icon: <Globe size={13} /> },
         { id: 'tcpdump', label: 'Tcpdump', icon: <Terminal size={13} /> },
         { id: 'speedtest', label: 'Speedtest', icon: <Zap size={13} /> },
+        { id: 'processes', label: 'Processes', icon: <Activity size={13} /> },
+        { id: 'systemctl_list', label: 'Services', icon: <List size={13} /> },
+        { id: 'nmap_os', label: 'OS Scan', icon: <Shield size={13} /> },
     ];
 
     const activeCategoryTools = CATEGORIES.find(c => c.id === activeCategory)?.tools || [];
@@ -591,7 +594,7 @@ export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, 
                             value={target}
                             onChange={(e) => setTarget(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && !loading && runTool()}
-                            placeholder={activeTab === 'dns' || activeTab === 'nslookup' || activeTab === 'whois' || activeTab === 'resolvectl' ? 'example.com' : activeTab === 'portscan' || activeTab === 'nmap' || activeTab === 'ip_route_get' ? '8.8.8.8' : '8.8.8.8 or example.com'}
+                            placeholder={activeTab === 'dns' || activeTab === 'nslookup' || activeTab === 'whois' || activeTab === 'resolvectl' ? 'example.com' : activeTab === 'portscan' || activeTab === 'nmap' || activeTab === 'ip_route_get' || activeTab === 'nmap_os' ? '8.8.8.8' : '8.8.8.8 or example.com'}
                             disabled={isSelfTool(activeTab)}
                             className="flex-1 px-3 py-1.5 text-sm bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-color)] transition-colors font-mono disabled:opacity-50"
                         />
@@ -855,7 +858,10 @@ export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, 
                                 (activeTab === 'ip_route_get') ||
                                 (activeTab === 'resolvectl') ||
                                 (activeTab === 'tcpdump') ||
-                                (activeTab === 'speedtest')) && (
+                                (activeTab === 'speedtest') ||
+                                (activeTab === 'processes') ||
+                                (activeTab === 'systemctl_list') ||
+                                (activeTab === 'nmap_os')) && (
                                 <div className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl p-3">
                                     <pre className="font-mono text-[11px] text-[var(--text-muted)] whitespace-pre-wrap">{rawOutput}</pre>
                                 </div>

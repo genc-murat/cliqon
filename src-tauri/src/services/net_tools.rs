@@ -92,6 +92,9 @@ impl NetToolManager {
             "resolvectl" => format!("resolvectl query {} 2>&1", safe_target),
             "tcpdump" => "sudo tcpdump -i any -c 10 -n 2>&1 || timeout 5 tcpdump -i any -c 5 -n 2>&1".to_string(),
             "speedtest" => "speedtest-cli 2>&1 || (curl -s https://speed.cloudflare.com/api/info && echo 'Cloudflare speed test endpoint available')".to_string(),
+            "processes" => "ps aux --sort=-%mem 2>&1 | head -25".to_string(),
+            "systemctl_list" => "systemctl list-units --type=service --state=running --no-pager 2>&1".to_string(),
+            "nmap_os" => format!("nmap -O --osscan-guess {} 2>&1", safe_target),
             _ => return Err(AppError::Custom(format!("Unknown tool type: {}", tool_type))),
         };
 

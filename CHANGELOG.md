@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.2] - 2026-02-25
+
+### Added
+- **Network Tools - System Monitoring**:
+  - **Processes**: Top processes by memory usage (`ps aux --sort=-%mem`)
+  - **Services**: Running systemd services (`systemctl list-units --type=service --state=running`)
+  - **OS Scan**: OS detection via nmap (`nmap -O --osscan-guess`)
+
 ## [0.6.1] - 2026-02-25
 
 ### Added

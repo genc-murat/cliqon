@@ -37,7 +37,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDBCOUUyMDA2QzYwQUQ5MzIKUldReTJRckdCaUNlQ3hNc2FiTFJmUG5Jb0l1cUl5M3pSbTIwcHV2Sks3STc0OVpMOUZJVWp2ZHkK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc2MDg3OUREODE0NUI0NkMKUldSc3RFV0IzWGtJZGhrRUYvS3NPa1dYcmhrc3ZGNXRGazZ1cXMveHNXWnVDV28rWkhhNlBXa1IK",
       "endpoints": [
         "https://github.com/genc-murat/cliqon/releases/latest/download/latest.json"
       ]

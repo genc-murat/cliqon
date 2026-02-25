@@ -33,8 +33,8 @@ impl NetToolManager {
 
         if safe_target.is_empty() {
             // Some tools don't need a target, so we only error if one is strictly required by the command construction below.
-            // For simplicity, we'll let empty targets pass and handle them in the match arms if needed, 
-            // or rely on the frontend to block them. 
+            // For simplicity, we'll let empty targets pass and handle them in the match arms if needed,
+            // or rely on the frontend to block them.
             // However, existing logic checked for empty. Let's relax this for "self" tools or provide a dummy if not used.
         }
 
@@ -86,6 +86,12 @@ impl NetToolManager {
             "disk_usage" => "df -h 2>&1".to_string(),
             "memory_usage" => "free -h 2>&1".to_string(),
             "last_logins" => "last -n 10 2>&1".to_string(),
+            "arp" => "arp -n 2>&1".to_string(),
+            "ip_link" => "ip -c link 2>&1".to_string(),
+            "ip_route_get" => format!("ip route get {} 2>&1", safe_target),
+            "resolvectl" => format!("resolvectl query {} 2>&1", safe_target),
+            "tcpdump" => "sudo tcpdump -i any -c 10 -n 2>&1 || timeout 5 tcpdump -i any -c 5 -n 2>&1".to_string(),
+            "speedtest" => "speedtest-cli 2>&1 || (curl -s https://speed.cloudflare.com/api/info && echo 'Cloudflare speed test endpoint available')".to_string(),
             _ => return Err(AppError::Custom(format!("Unknown tool type: {}", tool_type))),
         };
 

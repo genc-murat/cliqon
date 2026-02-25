@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Globe, Radio, MapPin, Search, Copy, Loader2, AlertCircle, Shield, Activity, Network, ExternalLink, Navigation2, Users, List, Link, Lock, PieChart, ArrowUpCircle, Zap, X, Info, ShieldAlert, FileText, UserCheck, Timer, FileJson, Clock, HardDrive, Cpu } from 'lucide-react';
+import { Globe, Radio, MapPin, Search, Copy, Loader2, AlertCircle, Shield, Activity, Network, ExternalLink, Navigation2, Users, List, Link, Lock, PieChart, ArrowUpCircle, Zap, X, Info, ShieldAlert, FileText, UserCheck, Timer, FileJson, Clock, HardDrive, Cpu, Terminal } from 'lucide-react';
 import { SshProfile } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
@@ -11,7 +11,7 @@ interface NetworkToolsProps {
     isEmbedded?: boolean;
 }
 
-type ToolTab = 'ping' | 'traceroute' | 'dns' | 'portscan' | 'connections' | 'interfaces' | 'public_ip' | 'routes' | 'neighbors' | 'listening' | 'http_check' | 'ssl_check' | 'stats_summary' | 'bandwidth_stats' | 'firewall_status' | 'nmap' | 'whois' | 'mtr' | 'tracepath' | 'nslookup' | 'netstat' | 'fail2ban_status' | 'hostname_info' | 'active_users' | 'open_files' | 'curl_timing' | 'dns_config' | 'hosts_file' | 'uptime' | 'disk_usage' | 'memory_usage' | 'last_logins';
+type ToolTab = 'ping' | 'traceroute' | 'dns' | 'portscan' | 'connections' | 'interfaces' | 'public_ip' | 'routes' | 'neighbors' | 'listening' | 'http_check' | 'ssl_check' | 'stats_summary' | 'bandwidth_stats' | 'firewall_status' | 'nmap' | 'whois' | 'mtr' | 'tracepath' | 'nslookup' | 'netstat' | 'fail2ban_status' | 'hostname_info' | 'active_users' | 'open_files' | 'curl_timing' | 'dns_config' | 'hosts_file' | 'uptime' | 'disk_usage' | 'memory_usage' | 'last_logins' | 'arp' | 'ip_link' | 'ip_route_get' | 'resolvectl' | 'tcpdump' | 'speedtest';
 
 // ─── Ping Parser ───────────────────────────────────────────────────────────────
 interface PingResult {
@@ -345,15 +345,15 @@ interface Category {
 }
 
 const CATEGORIES: Category[] = [
-    { id: 'diagnostics', label: 'Diagnostics', icon: <Activity size={14} />, tools: ['ping', 'traceroute', 'dns', 'http_check', 'mtr', 'tracepath', 'nslookup', 'curl_timing'] },
+    { id: 'diagnostics', label: 'Diagnostics', icon: <Activity size={14} />, tools: ['ping', 'traceroute', 'dns', 'http_check', 'mtr', 'tracepath', 'nslookup', 'curl_timing', 'resolvectl', 'speedtest'] },
     { id: 'status', label: 'Status', icon: <PieChart size={14} />, tools: ['connections', 'listening', 'stats_summary', 'bandwidth_stats', 'public_ip', 'netstat', 'hostname_info', 'uptime', 'disk_usage', 'memory_usage'] },
-    { id: 'infrastructure', label: 'Network', icon: <Network size={14} />, tools: ['interfaces', 'routes', 'neighbors', 'dns_config', 'hosts_file'] },
-    { id: 'security', label: 'Security', icon: <Shield size={14} />, tools: ['portscan', 'ssl_check', 'firewall_status', 'fail2ban_status', 'nmap', 'whois', 'last_logins'] },
+    { id: 'infrastructure', label: 'Network', icon: <Network size={14} />, tools: ['interfaces', 'routes', 'neighbors', 'dns_config', 'hosts_file', 'arp', 'ip_link', 'ip_route_get'] },
+    { id: 'security', label: 'Security', icon: <Shield size={14} />, tools: ['portscan', 'ssl_check', 'firewall_status', 'fail2ban_status', 'nmap', 'whois', 'last_logins', 'tcpdump'] },
     { id: 'advanced', label: 'Advanced', icon: <Info size={14} />, tools: ['active_users', 'open_files'] },
 ];
 
 const isSelfTool = (tab: ToolTab) =>
-    ['connections', 'interfaces', 'public_ip', 'routes', 'neighbors', 'listening', 'stats_summary', 'bandwidth_stats', 'firewall_status', 'netstat', 'fail2ban_status', 'hostname_info', 'active_users', 'open_files', 'uptime', 'disk_usage', 'memory_usage', 'last_logins', 'dns_config', 'hosts_file'].includes(tab);
+    ['connections', 'interfaces', 'public_ip', 'routes', 'neighbors', 'listening', 'stats_summary', 'bandwidth_stats', 'firewall_status', 'netstat', 'fail2ban_status', 'hostname_info', 'active_users', 'open_files', 'uptime', 'disk_usage', 'memory_usage', 'last_logins', 'dns_config', 'hosts_file', 'arp', 'ip_link', 'tcpdump'].includes(tab);
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, onClose, isEmbedded }) => {
@@ -501,6 +501,12 @@ export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, 
         { id: 'disk_usage', label: 'Disk Usage', icon: <HardDrive size={13} /> },
         { id: 'memory_usage', label: 'Memory', icon: <Cpu size={13} /> },
         { id: 'last_logins', label: 'Last Logins', icon: <UserCheck size={13} /> },
+        { id: 'arp', label: 'ARP Table', icon: <Network size={13} /> },
+        { id: 'ip_link', label: 'Link Info', icon: <Network size={13} /> },
+        { id: 'ip_route_get', label: 'Route Get', icon: <Navigation2 size={13} /> },
+        { id: 'resolvectl', label: 'Resolvectl', icon: <Globe size={13} /> },
+        { id: 'tcpdump', label: 'Tcpdump', icon: <Terminal size={13} /> },
+        { id: 'speedtest', label: 'Speedtest', icon: <Zap size={13} /> },
     ];
 
     const activeCategoryTools = CATEGORIES.find(c => c.id === activeCategory)?.tools || [];
@@ -585,7 +591,7 @@ export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, 
                             value={target}
                             onChange={(e) => setTarget(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && !loading && runTool()}
-                            placeholder={activeTab === 'dns' || activeTab === 'nslookup' || activeTab === 'whois' ? 'example.com' : activeTab === 'portscan' || activeTab === 'nmap' ? '8.8.8.8' : '8.8.8.8 or example.com'}
+                            placeholder={activeTab === 'dns' || activeTab === 'nslookup' || activeTab === 'whois' || activeTab === 'resolvectl' ? 'example.com' : activeTab === 'portscan' || activeTab === 'nmap' || activeTab === 'ip_route_get' ? '8.8.8.8' : '8.8.8.8 or example.com'}
                             disabled={isSelfTool(activeTab)}
                             className="flex-1 px-3 py-1.5 text-sm bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-color)] transition-colors font-mono disabled:opacity-50"
                         />
@@ -595,7 +601,7 @@ export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, 
                             className="flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg bg-[var(--accent-color)] text-white hover:opacity-90 disabled:opacity-40 transition-all active:scale-95 shadow-sm"
                         >
                             {loading ? <Loader2 size={12} className="animate-spin" /> : tabs.find(t => t.id === activeTab)?.icon}
-                            {activeTab === 'ping' ? 'Ping' : activeTab === 'traceroute' ? 'Trace' : activeTab === 'dns' ? 'Lookup' : activeTab === 'portscan' ? 'Scan' : activeTab === 'nmap' ? 'Nmap' : activeTab === 'whois' ? 'Whois' : activeTab === 'nslookup' ? 'Nslookup' : 'Run'}
+                            {activeTab === 'ping' ? 'Ping' : activeTab === 'traceroute' ? 'Trace' : activeTab === 'dns' ? 'Lookup' : activeTab === 'portscan' ? 'Scan' : activeTab === 'nmap' ? 'Nmap' : activeTab === 'whois' ? 'Whois' : activeTab === 'nslookup' ? 'Nslookup' : activeTab === 'ip_route_get' ? 'Get Route' : activeTab === 'resolvectl' ? 'Query' : 'Run'}
                         </button>
                         {rawOutput && (
                             <button onClick={copyOutput} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded-lg transition-colors" title="Copy raw output">
@@ -843,7 +849,13 @@ export const NetworkTools: React.FC<NetworkToolsProps> = ({ profile, sessionId, 
                                 (activeTab === 'fail2ban_status') ||
                                 (activeTab === 'hostname_info') ||
                                 (activeTab === 'active_users') ||
-                                (activeTab === 'open_files')) && (
+                                (activeTab === 'open_files') ||
+                                (activeTab === 'arp') ||
+                                (activeTab === 'ip_link') ||
+                                (activeTab === 'ip_route_get') ||
+                                (activeTab === 'resolvectl') ||
+                                (activeTab === 'tcpdump') ||
+                                (activeTab === 'speedtest')) && (
                                 <div className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl p-3">
                                     <pre className="font-mono text-[11px] text-[var(--text-muted)] whitespace-pre-wrap">{rawOutput}</pre>
                                 </div>

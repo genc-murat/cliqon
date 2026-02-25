@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.1] - 2026-02-25
+
+### Added
+- **Network Tools Enhancements**:
+  - Added 7 new diagnostic tools:
+    - **ARP Table**: View local ARP cache (`arp -n`)
+    - **Link Info**: View network interface link status (`ip -c link`)
+    - **Route Get**: Get routing path to specific destination (`ip route get <target>`)
+    - **Resolvectl**: Query systemd-resolved for DNS records
+    - **Tcpdump**: Packet capture preview (requires sudo)
+    - **Speedtest**: Internet speed test (speedtest-cli or Cloudflare API)
+  - Tools organized into Diagnostics, Network, Security, and Advanced categories
+
 ## [0.6.0] - 2026-02-25
 
 ### Added

@@ -51,24 +51,36 @@ jobs:
         shell: bash
         run: |
           if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
-            echo "::error::TAURI_SIGNING_PRIVATE_KEY is MISSING! Release build cannot be signed and updater metadata will NOT be generated."
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY is MISSING! Release build cannot be signed."
             exit 1
           else
             echo "TAURI_SIGNING_PRIVATE_KEY is present."
+            # Debug: Check if key looks like a minisign key (not showing full key)
+            KEY_START=$(echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" | head -c 20)
+            echo "Key starts with: $KEY_START"
+            if [[ ! "$KEY_START" =~ "untrusted comment" ]]; then
+              echo "::warning::Key does not seem to start with 'untrusted comment'. Is it a valid minisign key?"
+            fi
           fi
           if [ -z "${{ secrets.TAURI_SIGNING_PASSWORD }}" ]; then
             echo "Note: TAURI_SIGNING_PASSWORD is not set."
           fi
 
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+        run: npm run tauri build -- --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PASSWORD: ${{ secrets.TAURI_SIGNING_PASSWORD }}
-        with:
-          args: --verbose
-          includeUpdaterJson: true
+          CI: true
+
+      - name: Recursive Bundle Search (Debug)
+        shell: bash
+        run: |
+          echo "Listing all files in src-tauri/target/release/bundle recursively:"
+          find src-tauri/target/release/bundle -type f
+          echo "Searching specifically for signature files:"
+          find src-tauri/target/release/bundle -name "*.sig"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

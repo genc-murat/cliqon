@@ -38,6 +38,9 @@
   },
   "plugins": {
     "updater": {
+      "windows": {
+        "installMode": "passive"
+      },
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQxNERGNkFBNjIwQUVBNDkKUldSSjZncGlxdlpOMFdGcCtjTTdjRmJoL01LZldmYWVWRjRGTy9MUXdubWtFRGExVWZGK25XUlQK",
       "endpoints": [
         "https://github.com/genc-murat/cliqon/releases/latest/download/latest.json"

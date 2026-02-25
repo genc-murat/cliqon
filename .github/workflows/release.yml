@@ -62,8 +62,8 @@ jobs:
               echo "::warning::Key does not seem to start with 'untrusted comment'. Is it a valid minisign key?"
             fi
           fi
-          if [ -z "${{ secrets.TAURI_SIGNING_PASSWORD }}" ]; then
-            echo "Note: TAURI_SIGNING_PASSWORD is not set."
+          if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" ]; then
+            echo "Note: TAURI_SIGNING_PRIVATE_KEY_PASSWORD is not set."
           fi
 
       - name: Build Tauri app
@@ -71,7 +71,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PASSWORD: ${{ secrets.TAURI_SIGNING_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           CI: true
 
       - name: Recursive Bundle Search (Debug)

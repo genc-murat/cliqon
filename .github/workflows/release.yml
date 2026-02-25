@@ -181,15 +181,22 @@ jobs:
                       matched_platform = platform
                       break
               
+              # Fallback for macOS where filename might be generic (e.g. cliqon.app.tar.gz)
+              if not matched_platform and filename.endswith('.app.tar.gz'):
+                  if 'macos-latest' in sig_path:
+                      matched_platform = 'darwin-aarch64' # macos-latest is ARM
+                  elif 'macos-13' in sig_path:
+                      matched_platform = 'darwin-x86_64' # macos-13 is Intel
+              
               if matched_platform:
-                  print(f'Matching {filename} to {matched_platform}')
+                  print(f'Matching {filename} to {matched_platform} (from {sig_path})')
                   download_url = f'https://github.com/genc-murat/cliqon/releases/download/v{version}/{filename}'
                   latest['platforms'][matched_platform] = {
                       'signature': signature,
                       'url': download_url
                   }
               else:
-                  print(f'No platform match for {filename}')
+                  print(f'No platform match for {filename} in {sig_path}')
 
           if not latest['platforms']:
               print('ERROR: No platforms were added to latest.json! Build will fail.')

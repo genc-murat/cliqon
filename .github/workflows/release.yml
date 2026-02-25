@@ -61,16 +61,14 @@ jobs:
           fi
 
       - name: Build Tauri app
-        run: npm run tauri build
+        uses: tauri-apps/tauri-action@v2
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PASSWORD: ${{ secrets.TAURI_SIGNING_PASSWORD }}
-
-      - name: List all artifacts recursively (Debug)
-        shell: bash
-        run: |
-          echo "Listing all files in src-tauri/target/release/bundle:"
-          find src-tauri/target/release/bundle -maxdepth 10 -not -path '*/.*'
+        with:
+          args: --verbose
+          includeUpdaterJson: true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -85,9 +83,10 @@ jobs:
             src-tauri/target/release/bundle/**/*.msi
             src-tauri/target/release/bundle/**/*.exe
             src-tauri/target/release/bundle/**/*.zip
+            src-tauri/target/release/bundle/**/*.tar.gz
             src-tauri/target/release/bundle/**/*.sig
             src-tauri/target/release/bundle/**/*.json
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
   release:
     name: Create GitHub Release

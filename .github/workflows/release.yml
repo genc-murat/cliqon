@@ -122,7 +122,7 @@ jobs:
           mkdir -p release_assets
           # Build latest.json from artifacts and signatures
           python3 -c "
-          import json, os, glob, sys, re
+          import json, os, glob, sys, re, datetime
           
           def get_version():
               try:
@@ -139,7 +139,7 @@ jobs:
           latest = {
               'version': f'v{version}',
               'notes': f'Release v{version}',
-              'pub_date': '',
+              'pub_date': datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z'),
               'platforms': {}
           }
 

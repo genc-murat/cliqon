@@ -96,7 +96,8 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
             fontSize: terminalFont.fontSize,
             lineHeight: terminalFont.lineHeight,
             scrollback,
-            theme: getXtermTheme()
+            theme: getXtermTheme(),
+            allowProposedApi: true
         });
 
         const fitAddon = new FitAddon();

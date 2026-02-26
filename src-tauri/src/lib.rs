@@ -104,6 +104,7 @@ pub fn run() {
             docker_compose_unpause,
             docker_compose_ps,
             get_system_services,
+            get_system_timers,
             manage_service,
             start_log_tail,
             stop_log_tail,

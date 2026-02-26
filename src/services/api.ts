@@ -227,6 +227,10 @@ export const api = {
         return await invoke<string>('get_system_services', { profile });
     },
 
+    getSystemTimers: async (profile: SshProfile): Promise<string> => {
+        return await invoke<string>('get_system_timers', { profile });
+    },
+
     manageService: async (profile: SshProfile, action: string, service: string): Promise<string> => {
         return await invoke<string>('manage_service', { profile, action, service });
     },

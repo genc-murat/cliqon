@@ -5,6 +5,7 @@ import { SshProfile } from '../../types/connection';
 import { api } from '../../services/api';
 import { useResizable } from '../../hooks/useResizable';
 import { ServiceManager } from './ServiceManager';
+import { TimerManager } from './TimerManager';
 
 interface ServerMetrics {
     // ... existing interface ...
@@ -120,7 +121,7 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
     const [diskHistory, setDiskHistory] = useState<number[]>([]);
     const [loadHistory, setLoadHistory] = useState<number[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'overview' | 'services'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'timers'>('overview');
     const unlistenRef = useRef<UnlistenFn | null>(null);
 
     const pushHistory = useCallback((setter: React.Dispatch<React.SetStateAction<number[]>>, value: number) => {
@@ -210,6 +211,12 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
                             >
                                 Services
                             </button>
+                            <button
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'timers' ? 'bg-[var(--accent-color)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                                onClick={() => setActiveTab('timers')}
+                            >
+                                Timers
+                            </button>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -248,6 +255,12 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
                         >
                             Services
                         </button>
+                        <button
+                            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'timers' ? 'bg-[var(--accent-color)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                            onClick={() => setActiveTab('timers')}
+                        >
+                            Timers
+                        </button>
                     </div>
                     {metrics && (
                         <div className="flex items-center gap-3 text-[10px] text-[var(--text-muted)] font-mono ml-auto">
@@ -263,6 +276,10 @@ export const ServerMonitor: React.FC<ServerMonitorProps> = ({ profile, sessionId
             {activeTab === 'services' ? (
                 <div className="p-0 flex-1 overflow-hidden relative">
                     <ServiceManager profile={profile} />
+                </div>
+            ) : activeTab === 'timers' ? (
+                <div className="p-0 flex-1 overflow-hidden relative">
+                    <TimerManager profile={profile} />
                 </div>
             ) : (
                 <div className="p-4 flex-1 overflow-y-auto w-full">

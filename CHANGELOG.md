@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2026-02-27
+
+### Added
+- **Systemd Timer Management**:
+  - New **Timers** tab integrated into the Server Monitor panel.
+  - Real-time monitoring of scheduled tasks with columns for:
+    - **Next Run**: When the timer will execute next.
+    - **Left**: Time remaining until the next execution.
+    - **Last Run**: When the timer last executed.
+    - **Activates**: The service unit triggered by the timer.
+  - Interactive controls: Start/Enable, Stop/Disable, and Restart timers directly from the UI.
+  - Search and filter functionality for system timers.
+  - Robust parsing of `systemctl list-timers` output to handle varying states (including `n/a`).
+
+### Changed
+- **UI Consistency**: Action buttons in **Service Manager** and **Timer Manager** are now always visible instead of hover-only, improving accessibility and tablet/touch compatibility.
+
 ## [0.6.2] - 2026-02-25
 
 ### Added

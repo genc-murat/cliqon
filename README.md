@@ -226,7 +226,8 @@ Easily manage repeating tasks on your remote servers:
 - **↔ Vertically Resizable** — Adjust the monitor panel height by dragging the top handle; height is persisted per user pref
 - **Auto-Open Preference** — Optional "Auto-open on connection" setting configurable via General Settings
 - **System Insights** — Fast parsing of Hostname, OS Distribution, and Uptime via background SSH exec commands
-- **System Services Manager** — Manage `systemctl` units directly; list, search, start, stop, and restart services without typing commands; integrated as a tab within the Monitor panel.
+- **System Services Manager** — Manage `systemctl` units directly; list, search, start, stop, and restart services without typing commands.
+- **Systemd Timer Management** — Monitor and manage scheduled tasks (timers); view next run times, time remaining, and last execution results with interactive controls.
 
 ### Network Tools
 A comprehensive suite of **30+ on-demand diagnostic tools** executed directly from the connected server via SSH, now organized into a logical two-pane layout:

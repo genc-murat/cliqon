@@ -61,6 +61,46 @@ impl SystemService {
         self.exec_command(&session, cmd)
     }
 
+    pub fn get_system_timers(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+    ) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        let cmd = r#"
+            if command -v systemctl > /dev/null; then
+                # Robust parsing for systemctl list-timers
+                systemctl list-timers --all --no-pager --no-legend | awk '{
+                    i=1;
+                    # NEXT
+                    if ($i == "n/a") { next_dt="n/a"; i++; }
+                    else { next_dt=$i" "$(i+1)" "$(i+2)" "$(i+3); i+=4; }
+                    
+                    # LEFT
+                    left_val=$i" "$(i+1); i+=2;
+                    
+                    # LAST
+                    if ($i == "n/a") { last_dt="n/a"; i++; }
+                    else { last_dt=$i" "$(i+1)" "$(i+2)" "$(i+3); i+=4; }
+                    
+                    # PASSED
+                    passed_val=$i" "$(i+1); i+=2;
+                    
+                    # UNIT
+                    unit=$i; i++;
+                    
+                    # ACTIVATES
+                    activates=$i;
+                    
+                    printf "%s|%s|%s|%s|%s|%s\n", next_dt, left_val, last_dt, passed_val, unit, activates
+                }'
+            else
+                echo "systemctl not found"
+            fi
+        "#;
+        self.exec_command(&session, cmd)
+    }
+
     pub fn manage_service(
         &self,
         profile: &SshProfile,

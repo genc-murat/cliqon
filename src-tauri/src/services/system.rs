@@ -127,4 +127,63 @@ impl SystemService {
         let cmd = format!("systemctl {} {} 2>&1", safe_action, safe_service);
         self.exec_command(&session, &cmd)
     }
+
+    pub fn get_env_vars(&self, profile: &SshProfile, secret: Option<&str>) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        // We use printenv to get the current environment variables
+        self.exec_command(&session, "printenv")
+    }
+
+    pub fn set_env_var(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        key: &str,
+        value: &str,
+    ) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        
+        // Sanitize inputs
+        let safe_key = key.replace("'", "'\\''").replace("\"", "\\\"");
+        let safe_value = value.replace("'", "'\\''").replace("\"", "\\\"");
+
+        // Script to update or append the export in .bashrc
+        let cmd = format!(
+            r#"
+            BASHRC="$HOME/.bashrc"
+            if grep -q "export {}=" "$BASHRC"; then
+                sed -i "s|^export {}=.*|export {}='{}'|" "$BASHRC"
+            else
+                echo "export {}='{}'" >> "$BASHRC"
+            fi
+            export {}='{}'
+            "#,
+            safe_key, safe_key, safe_key, safe_value, safe_key, safe_value, safe_key, safe_value
+        );
+        
+        self.exec_command(&session, &cmd)
+    }
+
+    pub fn delete_env_var(
+        &self,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        key: &str,
+    ) -> Result<String> {
+        let session = self.open_session(profile, secret)?;
+        
+        let safe_key = key.replace("'", "'\\''").replace("\"", "\\\"");
+
+        // Script to remove the export from .bashrc
+        let cmd = format!(
+            r#"
+            BASHRC="$HOME/.bashrc"
+            sed -i "/^export {}=/d" "$BASHRC"
+            unset {}
+            "#,
+            safe_key, safe_key
+        );
+        
+        self.exec_command(&session, &cmd)
+    }
 }

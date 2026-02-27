@@ -623,7 +623,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 </div>
                                 <div className="space-y-2 pt-4">
                                     <div className="px-4 py-2 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-full text-xs font-bold text-[var(--text-main)] shadow-sm">
-                                        Version 0.7.0
+                                        Version 0.8.0
                                     </div>
 
                                     <div className="pt-4 flex flex-col items-center gap-3">

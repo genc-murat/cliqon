@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Globe, Box, Link, Clock, X, Key } from 'lucide-react';
+import { Activity, Globe, Box, Link, Clock, X, Key, List } from 'lucide-react';
 import { SshProfile } from '../../types/connection';
 import { useResizable } from '../../hooks/useResizable';
 import { ServerMonitor } from './ServerMonitor';
@@ -8,8 +8,9 @@ import { DockerManager } from './DockerManager';
 import { TunnelManager } from './TunnelManager';
 import { CronManager } from './CronManager';
 import { RemoteKeyManager } from './RemoteKeyManager';
+import { EnvManager } from './EnvManager';
 
-export type ManagementTab = 'monitor' | 'network' | 'docker' | 'tunnels' | 'cron' | 'keys';
+export type ManagementTab = 'monitor' | 'network' | 'docker' | 'tunnels' | 'cron' | 'keys' | 'env';
 
 interface ManagementPanelProps {
     profile: SshProfile;
@@ -45,6 +46,7 @@ export const ManagementPanel: React.FC<ManagementPanelProps> = ({
         { id: 'tunnels', label: 'Tunnels', icon: <Link size={14} />, color: '#F59E0B' },
         { id: 'cron', label: 'Cron', icon: <Clock size={14} />, color: '#8B5CF6' },
         { id: 'keys', label: 'Keys', icon: <Key size={14} />, color: '#EC4899' },
+        { id: 'env', label: 'Env', icon: <List size={14} />, color: '#F43F5E' },
     ];
 
     return (
@@ -139,6 +141,11 @@ export const ManagementPanel: React.FC<ManagementPanelProps> = ({
                     <RemoteKeyManager
                         profile={profile}
                         sessionId={sessionId}
+                    />
+                )}
+                {activeTab === 'env' && (
+                    <EnvManager
+                        profile={profile}
                     />
                 )}
             </div>

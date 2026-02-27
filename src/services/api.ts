@@ -336,5 +336,17 @@ export const api = {
     getCronHistory: async (profile: SshProfile, limit?: number): Promise<string[]> => {
         return await invoke<string[]>('get_cron_history', { profile, limit });
     },
+
+    getEnvVars: async (profile: SshProfile): Promise<string> => {
+        return await invoke<string>('get_env_vars', { profile });
+    },
+
+    setEnvVar: async (profile: SshProfile, key: string, value: string): Promise<string> => {
+        return await invoke<string>('set_env_var', { profile, key, value });
+    },
+
+    deleteEnvVar: async (profile: SshProfile, key: string): Promise<string> => {
+        return await invoke<string>('delete_env_var', { profile, key });
+    },
 };
 

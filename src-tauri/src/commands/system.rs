@@ -39,3 +39,39 @@ pub async fn manage_service(
         .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
     system_service.manage_service(&profile, secret.as_deref(), &action, &service)
 }
+
+#[tauri::command]
+pub async fn get_env_vars(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    system_service: State<'_, Arc<SystemService>>,
+) -> Result<String> {
+    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+        .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
+    system_service.get_env_vars(&profile, secret.as_deref())
+}
+
+#[tauri::command]
+pub async fn set_env_var(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    key: String,
+    value: String,
+    system_service: State<'_, Arc<SystemService>>,
+) -> Result<String> {
+    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+        .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
+    system_service.set_env_var(&profile, secret.as_deref(), &key, &value)
+}
+
+#[tauri::command]
+pub async fn delete_env_var(
+    state: State<'_, AppState>,
+    profile: SshProfile,
+    key: String,
+    system_service: State<'_, Arc<SystemService>>,
+) -> Result<String> {
+    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+        .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
+    system_service.delete_env_var(&profile, secret.as_deref(), &key)
+}

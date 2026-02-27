@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2026-02-27
+
+### Added
+- **Environment Variable Manager**:
+  - New **Env** tab in the Management Panel for comprehensive environment variable control.
+  - View full list of server environment variables via `printenv`.
+  - Add and Edit variables with persistent storage in `~/.bashrc`.
+  - Securely delete variables from the shell profile.
+  - Real-time search and filter for quick variable discovery.
+  - Sanitized input handling to prevent shell injection.
+
 ## [0.7.0] - 2026-02-27
 
 ### Added

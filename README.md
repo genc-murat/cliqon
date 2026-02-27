@@ -37,6 +37,7 @@ graph TB
         NetTools["Network Tools"]
         Monitor["Server Monitor"]
         CronManager["Cron Manager"]
+        EnvManager["Env Manager"]
         KeyStore["SSH Key Store"]
         ML["ML Autocomplete<br/>(Markov Chain)"]
         Settings["Settings & Themes"]
@@ -227,7 +228,8 @@ Easily manage repeating tasks on your remote servers:
 - **Auto-Open Preference** — Optional "Auto-open on connection" setting configurable via General Settings
 - **System Insights** — Fast parsing of Hostname, OS Distribution, and Uptime via background SSH exec commands
 - **System Services Manager** — Manage `systemctl` units directly; list, search, start, stop, and restart services without typing commands.
-- **Systemd Timer Management** — Monitor and manage scheduled tasks (timers); view next run times, time remaining, and last execution results with interactive controls.
+- **Systemd Timer Management**: Monitor and manage scheduled tasks (timers); view next run times, time remaining, and last execution results with interactive controls.
+- **Environment Variable Manager**: List, add, edit, and delete environment variables with persistent storage in `~/.bashrc` via a dedicated management tab.
 
 ### Network Tools
 A comprehensive suite of **30+ on-demand diagnostic tools** executed directly from the connected server via SSH, now organized into a logical two-pane layout:

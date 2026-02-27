@@ -41,6 +41,7 @@ graph TB
         KeyStore["SSH Key Store"]
         ML["ML Autocomplete<br/>(Markov Chain)"]
         Settings["Settings & Themes"]
+        CommandPalette["Global Command Palette<br/>(Ctrl+K)"]
     end
 
     subgraph IPC ["Tauri IPC Bridge"]
@@ -76,6 +77,7 @@ graph TB
     Monitor --> Commands
     CronManager --> Commands
     KeyStore --> Commands
+    CommandPalette --> Commands
 
     Commands --> ProfileStore
     Commands --> SSHMgr
@@ -215,6 +217,14 @@ Easily manage repeating tasks on your remote servers:
 - **Sidebar-Driven Settings** — Completely redesigned, premium settings interface for easier customization.
 - **Modern Icons** — Refined UI with modern panel icons for collapse/expand functionality across the Sidebar, SFTP, and Snippets panels.
 
+### ⌨️ Global Command Palette
+Manage every aspect of the application without leaving your keyboard:
+- **Instant Access (`Ctrl + K`)** — Open a keyboard-first command hub to search profiles and execute actions.
+- **Terminal Control** — Live toggle for cursor styles, font sizes, and performance counters.
+- **Layout Management** — Toggle sidebar views (Cards/Compact), split panes, and visibility of snippets/SFTP panels.
+- **System Actions** — Quick access to management tools, update checks, and secure exit.
+- **Connection Hub** — Search and launch SSH connections directly from the palette.
+
 ### Security
 - Passwords and key passphrases stored via **OS Keyring** (Keychain on macOS, libsecret on Linux, Windows Credential Manager)
 - Obfuscated local fallback for environments where the system keyring is unavailable
@@ -303,6 +313,7 @@ Experience a smarter terminal that learns how you work. Cliqon includes a built-
 ### Keyboard Shortcuts
 | Shortcut | Action |
 |---|---|
+| `Ctrl + K` | Open Global Command Palette |
 | `Ctrl + Tab` | Switch to next SSH tab |
 | `Ctrl + Shift + Tab` | Switch to previous SSH tab |
 | `Ctrl + N` | Open "New Connection" modal |

@@ -12,6 +12,14 @@ All notable changes to this project will be documented in this file.
   - Securely delete variables from the shell profile.
   - Real-time search and filter for quick variable discovery.
   - Sanitized input handling to prevent shell injection.
+- **Global Command Palette (`Ctrl+K`)**:
+  - Massively expanded into a central command hub with 30+ searchable actions.
+  - **Terminal Settings**: Live control over cursor styles (Block/Bar/Underline), font size, and performance monitoring.
+  - **Layout & View**: Toggles for sidebar modes (Cards/Compact), global snippets panel, and SFTP browser.
+  - **Management Tools**: Quick access to Server Monitor, Docker, Env, Network Tools, Tunnels, Cron, and Remote Key Manager.
+  - **Tab Management**: Close active tab, split terminal horizontally, and cycle through tabs.
+  - **System Actions**: Securely exit the application, check for updates, or focus sidebar search.
+  - **SSH Connections**: Search and connect to saved profiles directly from the palette.
 
 ## [0.7.0] - 2026-02-27
 

@@ -14,6 +14,7 @@ import { useConfirm } from './hooks/useConfirm';
 import { SharingPanel } from './components/ui/SharingPanel';
 import { useConnections } from './hooks/useConnections';
 import { useUpdater } from './hooks/useUpdater';
+import { CommandPalette } from './components/ui/CommandPalette';
 
 interface SessionTab extends TabData {
   profile: SshProfile;
@@ -37,6 +38,7 @@ function App() {
   const { checkForUpdates, status: updateStatus, manifest: updateManifest } = useUpdater();
   const [hasNotifiedUpdate, setHasNotifiedUpdate] = useState(false);
   const confirm = useConfirm();
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   useEffect(() => {
     // Initial check on startup
@@ -176,6 +178,16 @@ function App() {
     api.writeToPty(tab.activePane, Array.from(encoder.encode(command))).catch(console.error);
   };
 
+  const handleClearTerminal = () => {
+    if (!activeTab) return;
+    const tab = tabs.find(t => t.id === activeTab);
+    if (!tab || !tab.activePane) return;
+
+    const command = `clear\n`;
+    const encoder = new TextEncoder();
+    api.writeToPty(tab.activePane, Array.from(encoder.encode(command))).catch(console.error);
+  };
+
   // ─── Global Keyboard Shortcuts ──────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -225,11 +237,62 @@ function App() {
         handleSplitPane(activeTab);
         return;
       }
+
+      // Ctrl+K → Toggle Command Palette
+      if (e.key === 'k' || e.key === 'K') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+        return;
+      }
     };
 
+    const handleCloseActiveTab = () => {
+      if (activeTab) handleTabClose(activeTab);
+    };
+
+    const handleSplit = () => {
+      if (activeTab) handleSplitPane(activeTab);
+    };
+
+    const handleCycleTabs = (forward: boolean) => {
+      setTabs(prev => {
+        if (prev.length < 2) return prev;
+        const idx = prev.findIndex(t => t.id === activeTab);
+        const next = forward
+          ? (idx + 1) % prev.length
+          : (idx - 1 + prev.length) % prev.length;
+        setActiveTab(prev[next].id);
+        return prev;
+      });
+    };
+
+    const handleExitApp = async () => {
+      try {
+        const { exit } = await import('@tauri-apps/plugin-process');
+        await exit(0);
+      } catch (err) {
+        window.close();
+      }
+    };
+
+    window.addEventListener('cliqon:close-active-tab', handleCloseActiveTab);
+    window.addEventListener('cliqon:split-pane', handleSplit);
+    window.addEventListener('cliqon:next-tab', () => handleCycleTabs(true));
+    window.addEventListener('cliqon:prev-tab', () => handleCycleTabs(false));
+    window.addEventListener('cliqon:check-updates', () => checkForUpdates());
+    window.addEventListener('cliqon:exit-app', handleExitApp);
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab]);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('cliqon:close-active-tab', handleCloseActiveTab);
+      window.removeEventListener('cliqon:split-pane', handleSplit);
+      window.removeEventListener('cliqon:next-tab', () => handleCycleTabs(true));
+      window.removeEventListener('cliqon:prev-tab', () => handleCycleTabs(false));
+      window.removeEventListener('cliqon:check-updates', () => checkForUpdates());
+      window.removeEventListener('cliqon:exit-app', handleExitApp);
+    };
+  }, [activeTab, checkForUpdates]);
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-main)] transition-colors duration-200">
@@ -297,6 +360,16 @@ function App() {
         </div>
       </div>
       <SharingPanel profiles={profiles} onProfilesChanged={refresh} />
+
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        profiles={profiles}
+        activeTabId={activeTab}
+        onConnect={handleConnect}
+        onToggleManagement={(type) => activeTab && handleToggleManagementPanel(activeTab, type)}
+        onClearTerminal={handleClearTerminal}
+      />
     </div>
   );
 }

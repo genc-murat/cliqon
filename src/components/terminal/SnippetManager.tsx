@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Play, Plus, Trash2, Code, ChevronLeft, ChevronRight, Folder, Copy, Share2, User } from 'lucide-react';
 import { Snippet } from '../../types/connection';
 import { api } from '../../services/api';
@@ -33,6 +33,12 @@ export const SnippetManager: React.FC<SnippetManagerProps> = ({ sessionId, isAct
         localStorage.setItem('cliqon-snippet-collapsed', String(next));
         setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
     };
+
+    useEffect(() => {
+        const handleToggle = () => toggleCollapse();
+        window.addEventListener('cliqon:toggle-snippets', handleToggle);
+        return () => window.removeEventListener('cliqon:toggle-snippets', handleToggle);
+    }, [isCollapsed]);
 
     // Group snippets by folder
     const groupedSnippets = useMemo(() => {

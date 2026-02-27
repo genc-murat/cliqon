@@ -274,10 +274,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
 
     useEffect(() => {
         const handleOpenSettings = () => setIsSettingsOpen(true);
-        window.addEventListener('cliqon:open-settings', handleOpenSettings);
-
-        if (openAddModalRef) openAddModalRef.current = handleAdd;
-        if (focusSearchRef) focusSearchRef.current = () => {
+        const handleOpenAdd = () => handleAdd();
+        const handleOpenImport = () => setIsImportModalOpen(true);
+        const handleFocusSearch = () => {
             if (isCollapsed) {
                 setIsCollapsed(false);
                 localStorage.setItem('sidebar-collapsed', 'false');
@@ -286,8 +285,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                 searchRef.current?.focus();
             }
         };
-        return () => window.removeEventListener('cliqon:open-settings', handleOpenSettings);
-    });
+        const handleToggleSharing = () => togglePanel();
+        const handleToggleSidebar = () => toggleCollapse();
+        const handleSwitchViewMode = () => switchViewMode(viewMode === 'cards' ? 'compact' : 'cards');
+
+        window.addEventListener('cliqon:open-settings', handleOpenSettings);
+        window.addEventListener('cliqon:open-add-profile', handleOpenAdd);
+        window.addEventListener('cliqon:open-import', handleOpenImport);
+        window.addEventListener('cliqon:focus-search', handleFocusSearch);
+        window.addEventListener('cliqon:toggle-sharing', handleToggleSharing);
+        window.addEventListener('cliqon:toggle-sidebar', handleToggleSidebar);
+        window.addEventListener('cliqon:switch-view-mode', handleSwitchViewMode);
+
+        if (openAddModalRef) openAddModalRef.current = handleAdd;
+        if (focusSearchRef) focusSearchRef.current = handleFocusSearch;
+
+        return () => {
+            window.removeEventListener('cliqon:open-settings', handleOpenSettings);
+            window.removeEventListener('cliqon:open-add-profile', handleOpenAdd);
+            window.removeEventListener('cliqon:open-import', handleOpenImport);
+            window.removeEventListener('cliqon:focus-search', handleFocusSearch);
+            window.removeEventListener('cliqon:toggle-sharing', handleToggleSharing);
+            window.removeEventListener('cliqon:toggle-sidebar', handleToggleSidebar);
+            window.removeEventListener('cliqon:switch-view-mode', handleSwitchViewMode);
+        };
+    }, [isCollapsed, viewMode, switchViewMode, togglePanel]);
 
     const toggleCollapse = () => {
         const next = !isCollapsed;

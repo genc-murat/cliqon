@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-    Settings, Shield, TerminalSquare, Plus, MoreVertical, Edit2, Trash2,
+    Settings, Shield, TerminalSquare, Plus, Edit2, Trash2,
     Star, ChevronDown, Search, X, Folder,
     Upload, Key, Lock, Link, LayoutGrid, List, Zap,
     ChevronLeft, ChevronRight, Users
@@ -53,104 +53,76 @@ interface SidebarProps {
 interface CardProps {
     profile: SshProfile;
     query: string;
-    isMenuOpen: boolean;
     onConnect: () => void;
-    onEdit: (e: React.MouseEvent) => void;
-    onDelete: (e: React.MouseEvent) => void;
     onToggleFavorite: (e: React.MouseEvent) => void;
-    onToggleMenu: (e: React.MouseEvent) => void;
-    onCloseMenu: () => void;
     onContextMenu: (e: React.MouseEvent) => void;
 }
 
 const ConnectionCard: React.FC<CardProps> = ({
-    profile, query, isMenuOpen,
-    onConnect, onEdit, onDelete, onToggleFavorite, onToggleMenu, onCloseMenu, onContextMenu
+    profile, query,
+    onConnect, onToggleFavorite, onContextMenu
 }) => {
     const auth = AUTH_META[profile.auth_method] ?? AUTH_META.Password;
-    const hostStr = `${profile.username}@${profile.host}:${profile.port}`;
+    const hostStr = `${profile.username}@${profile.host}${profile.port !== 22 ? `:${profile.port}` : ''}`;
+    const initial = profile.name.trim().charAt(0).toUpperCase() || '?';
 
     return (
         <div
-            className="connection-card"
+            className="connection-card group"
             style={{ '--card-accent': profile.color || undefined } as React.CSSProperties}
             onClick={onConnect}
             onContextMenu={onContextMenu}
         >
-            {/* Row 1: Name + Favorite */}
-            <div className="flex items-center justify-between gap-1">
-                <span className="text-xs font-medium text-[var(--text-main)] truncate flex-1">
-                    {highlightText(profile.name, query)}
-                </span>
-                <div className="flex items-center gap-1 shrink-0">
-                    <button
-                        onClick={onToggleFavorite}
-                        className="fav-star p-0.5"
-                        title={profile.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
-                    >
-                        <Star
-                            size={12}
-                            className={profile.is_favorite
-                                ? 'fill-amber-400 text-amber-400'
-                                : 'text-[var(--text-muted)] hover:text-amber-400'}
-                        />
-                    </button>
-                    <button
-                        onClick={onToggleMenu}
-                        className="p-0.5 text-[var(--text-muted)] hover:text-[var(--text-main)] rounded transition-colors opacity-0 group-hover:opacity-100"
-                        style={{ opacity: isMenuOpen ? 1 : undefined }}
-                    >
-                        <MoreVertical size={12} />
-                    </button>
+            <div className="flex items-start gap-3">
+                {/* Connection Icon / Avatar */}
+                <div className="connection-icon">
+                    {initial}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                    {/* Row 1: Name + Actions */}
+                    <div className="flex items-center justify-between gap-1 mb-0.5">
+                        <span className="text-xs font-bold text-[var(--text-main)] truncate">
+                            {highlightText(profile.name, query)}
+                        </span>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                                onClick={onToggleFavorite}
+                                className="fav-star p-1 rounded-md hover:bg-[var(--hover-color)]"
+                                title={profile.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+                            >
+                                <Star
+                                    size={12}
+                                    className={profile.is_favorite
+                                        ? 'fill-amber-400 text-amber-400'
+                                        : 'text-[var(--text-muted)] hover:text-amber-400'}
+                                />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Row 2: Host info */}
+                    <div className="flex items-center gap-1.5 mb-2">
+                        <span className="text-[10px] text-[var(--text-muted)] truncate font-mono opacity-80">
+                            {highlightText(hostStr, query)}
+                        </span>
+                    </div>
+
+                    {/* Row 3: Auth badge + Quick Connect */}
+                    <div className="flex items-center justify-between">
+                        <span className={auth.cls}>
+                            {auth.icon} {auth.label}
+                        </span>
+                        <button
+                            className="quick-connect-btn flex items-center gap-1 px-2.5 py-1 text-[9px] font-bold rounded-full bg-[var(--accent-color)] text-white hover:brightness-110 shadow-sm"
+                            onClick={(e) => { e.stopPropagation(); onConnect(); }}
+                            title="Quick Connect"
+                        >
+                            <Zap size={9} fill="currentColor" /> Connect
+                        </button>
+                    </div>
                 </div>
             </div>
-
-            {/* Row 2: Host info + Auth badge */}
-            <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] text-[var(--text-muted)] truncate font-mono">
-                    {highlightText(hostStr, query)}
-                </span>
-                <span className={auth.cls}>
-                    {auth.icon} {auth.label}
-                </span>
-            </div>
-
-            {/* Quick Connect overlay button */}
-            <button
-                className="quick-connect-btn absolute right-2 bottom-2 flex items-center gap-1 px-2 py-1 text-[9px] font-semibold rounded-md bg-[var(--accent-color)] text-white hover:brightness-110 transition-all"
-                onClick={(e) => { e.stopPropagation(); onConnect(); }}
-                title="Quick Connect"
-            >
-                <Zap size={9} /> Connect
-            </button>
-
-            {/* Context menu */}
-            {isMenuOpen && (
-                <div
-                    className="absolute right-2 top-10 z-20 w-36 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg shadow-xl py-1"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <button
-                        onClick={() => { onCloseMenu(); onConnect(); }}
-                        className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] flex items-center gap-2"
-                    >
-                        <TerminalSquare size={12} /> Connect
-                    </button>
-                    <button
-                        onClick={onEdit}
-                        className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] flex items-center gap-2"
-                    >
-                        <Edit2 size={12} /> Edit
-                    </button>
-                    <div className="border-t border-[var(--border-color)] my-1" />
-                    <button
-                        onClick={onDelete}
-                        className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10 flex items-center gap-2"
-                    >
-                        <Trash2 size={12} /> Delete
-                    </button>
-                </div>
-            )}
         </div>
     );
 };
@@ -160,18 +132,13 @@ const ConnectionCard: React.FC<CardProps> = ({
 interface CompactRowProps {
     profile: SshProfile;
     query: string;
-    isMenuOpen: boolean;
     onConnect: () => void;
-    onEdit: (e: React.MouseEvent) => void;
-    onDelete: (e: React.MouseEvent) => void;
-    onToggleMenu: (e: React.MouseEvent) => void;
-    onCloseMenu: () => void;
     onContextMenu: (e: React.MouseEvent) => void;
 }
 
 const CompactRow: React.FC<CompactRowProps> = ({
-    profile, query, isMenuOpen,
-    onConnect, onEdit, onDelete, onToggleMenu, onCloseMenu, onContextMenu
+    profile, query,
+    onConnect, onContextMenu
 }) => {
     const auth = AUTH_META[profile.auth_method] ?? AUTH_META.Password;
 
@@ -184,44 +151,29 @@ const CompactRow: React.FC<CompactRowProps> = ({
             onClick={onConnect}
             onContextMenu={onContextMenu}
         >
-            {profile.is_favorite
-                ? <Star size={13} className="shrink-0 fill-amber-400 text-amber-400" />
-                : <Shield size={13} style={profile.color ? { color: profile.color } : {}} className="text-[var(--accent-color)] shrink-0" />
-            }
-            <div className="flex-1 overflow-hidden">
-                <span className="text-xs text-[var(--text-main)] truncate block">
+            <div className="w-5 flex items-center justify-center shrink-0">
+                {profile.is_favorite
+                    ? <Star size={13} className="fill-amber-400 text-amber-400" />
+                    : <Shield size={13} style={profile.color ? { color: profile.color } : {}} className="text-[var(--accent-color)]" />
+                }
+            </div>
+            <div className="flex-1 min-w-0">
+                <span className="text-xs font-medium text-[var(--text-main)] truncate block">
                     {highlightText(profile.name, query)}
                 </span>
             </div>
-            <span className={`${auth.cls} hidden sm:inline-flex`}>
-                {auth.icon}
-            </span>
-            <button
-                className="quick-connect-btn p-1 rounded text-[var(--accent-color)] hover:bg-[var(--accent-color)] hover:text-white transition-colors"
-                onClick={(e) => { e.stopPropagation(); onConnect(); }}
-                title="Quick Connect"
-            >
-                <Zap size={11} />
-            </button>
-            <button
-                onClick={onToggleMenu}
-                className="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-main)] p-1 rounded-md transition-all"
-                style={{ opacity: isMenuOpen ? 1 : undefined }}
-            >
-                <MoreVertical size={12} />
-            </button>
-
-            {isMenuOpen && (
-                <div
-                    className="absolute right-2 top-8 z-20 w-36 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg shadow-xl py-1"
-                    onClick={(e) => e.stopPropagation()}
+            <div className="flex items-center gap-2 shrink-0">
+                <span className={`${auth.cls} scale-90 hidden sm:inline-flex`}>
+                    {auth.icon}
+                </span>
+                <button
+                    className="quick-connect-btn p-1.5 rounded-md text-[var(--accent-color)] hover:bg-[var(--accent-color)] hover:text-white transition-all shadow-sm"
+                    onClick={(e) => { e.stopPropagation(); onConnect(); }}
+                    title="Quick Connect"
                 >
-                    <button onClick={() => { onCloseMenu(); onConnect(); }} className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] flex items-center gap-2"><TerminalSquare size={12} /> Connect</button>
-                    <button onClick={onEdit} className="w-full text-left px-3 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--hover-color)] flex items-center gap-2"><Edit2 size={12} /> Edit</button>
-                    <div className="border-t border-[var(--border-color)] my-1" />
-                    <button onClick={onDelete} className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10 flex items-center gap-2"><Trash2 size={12} /> Delete</button>
-                </div>
-            )}
+                    <Zap size={12} fill="currentColor" />
+                </button>
+            </div>
         </div>
     );
 };
@@ -240,7 +192,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
     const { status: updateStatus } = useUpdater();
     const { togglePanel, isPanelOpen } = useSharing();
     const [editingProfile, setEditingProfile] = useState<SshProfile | null>(null);
-    const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<ViewMode>(() =>
         (localStorage.getItem('sidebar-view-mode') as ViewMode) || 'cards'
@@ -334,17 +285,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
         });
 
     const groupedView = !q;
-    const groups: { label: string; items: SshProfile[] }[] = [];
+    const groups: { label: string; items: SshProfile[]; isFavorite?: boolean }[] = [];
     if (groupedView) {
+        const favorites = filteredProfiles.filter(p => p.is_favorite);
+        const others = filteredProfiles.filter(p => !p.is_favorite);
+
+        if (favorites.length > 0) {
+            groups.push({ label: 'Favorites', items: favorites, isFavorite: true });
+        }
+
         const byGroup: Record<string, SshProfile[]> = {};
-        for (const p of filteredProfiles) {
+        for (const p of others) {
             const key = p.category?.trim() || '';
             if (!byGroup[key]) byGroup[key] = [];
             byGroup[key].push(p);
         }
         const named = Object.keys(byGroup).filter(k => k).sort();
         for (const name of named) groups.push({ label: name, items: byGroup[name] });
-        if (byGroup['']) groups.push({ label: '', items: byGroup[''] });
+        if (byGroup['']) groups.push({ label: named.length > 0 ? 'Other' : '', items: byGroup[''] });
     }
     const sortedProfiles = filteredProfiles;
 
@@ -357,7 +315,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
         e.stopPropagation();
         setEditingProfile(profile);
         setIsModalOpen(true);
-        setActiveMenuId(null);
     };
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -371,7 +328,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
         if (isConfirmed) {
             await deleteProfile(id);
         }
-        setActiveMenuId(null);
     };
 
     const handleToggleFavorite = async (profile: SshProfile, e: React.MouseEvent) => {
@@ -394,15 +350,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
             key: profile.id,
             profile,
             query: q,
-            isMenuOpen: activeMenuId === profile.id,
             onConnect: () => onConnect && onConnect(profile),
-            onEdit: (e: React.MouseEvent) => handleEdit(profile, e),
-            onDelete: (e: React.MouseEvent) => handleDelete(profile.id, e),
-            onToggleMenu: (e: React.MouseEvent) => {
-                e.stopPropagation();
-                setActiveMenuId(activeMenuId === profile.id ? null : profile.id);
-            },
-            onCloseMenu: () => setActiveMenuId(null),
             onContextMenu: (e: React.MouseEvent) => handleContextMenu(e, profile),
         };
 
@@ -607,7 +555,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                                                         onClick={() => toggleGroup(label)}
                                                         className="w-full flex items-center gap-1.5 px-1 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors rounded hover:bg-[var(--hover-color)]"
                                                     >
-                                                        <Folder size={10} className="shrink-0" />
+                                                        {groups.find(g => g.label === label)?.isFavorite ? (
+                                                            <Star size={10} className="shrink-0 fill-amber-400 text-amber-400" />
+                                                        ) : (
+                                                            <Folder size={10} className="shrink-0" />
+                                                        )}
                                                         <span className="flex-1 text-left truncate">{label}</span>
                                                         <span className="group-count-badge">{items.length}</span>
                                                         <ChevronDown size={10} className={`transition-transform duration-200 ${collapsedGroups[label] ? '-rotate-90' : ''}`} />
@@ -654,10 +606,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                 onClose={() => setIsSettingsOpen(false)}
             />
 
-            {/* Click outside context menu */}
-            {activeMenuId && (
-                <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)} />
-            )}
+            {/* Settings button moved to top of sidebar */}
 
             {/* Context Menu */}
             {contextMenu && (

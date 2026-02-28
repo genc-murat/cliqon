@@ -100,3 +100,141 @@ impl LogManager {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_log_manager_new() {
+        let manager = LogManager::new();
+        let lock = manager.active_tails.lock().unwrap();
+        assert!(lock.is_empty());
+    }
+
+    #[test]
+    fn test_active_tails_initially_empty() {
+        let manager = LogManager::new();
+        let map = manager.active_tails.lock().unwrap();
+        assert_eq!(map.len(), 0);
+    }
+
+    #[test]
+    fn test_stop_tail_nonexistent() {
+        let manager = LogManager::new();
+        manager.stop_tail("nonexistent-session");
+        // Should not panic
+    }
+
+    #[test]
+    fn test_stop_tail_flag_set() {
+        let manager = LogManager::new();
+        
+        // Manually insert a stop flag for testing
+        let stop_flag = Arc::new(Mutex::new(false));
+        manager.active_tails
+            .lock()
+            .unwrap()
+            .insert("test-session".to_string(), stop_flag.clone());
+        
+        // Verify it's initially false
+        assert!(!*stop_flag.lock().unwrap());
+        
+        // Stop the tail
+        manager.stop_tail("test-session");
+        
+        // Verify flag is now true
+        assert!(*stop_flag.lock().unwrap());
+    }
+
+    #[test]
+    fn test_stop_tail_removes_from_map() {
+        let manager = LogManager::new();
+        
+        let stop_flag = Arc::new(Mutex::new(false));
+        manager.active_tails
+            .lock()
+            .unwrap()
+            .insert("test-session".to_string(), stop_flag);
+        
+        // Verify it exists
+        assert!(manager.active_tails.lock().unwrap().contains_key("test-session"));
+        
+        // Stop the tail
+        manager.stop_tail("test-session");
+        
+        // Verify it's removed
+        assert!(!manager.active_tails.lock().unwrap().contains_key("test-session"));
+    }
+
+    #[test]
+    fn test_multiple_stop_tails() {
+        let manager = LogManager::new();
+        
+        let flag1 = Arc::new(Mutex::new(false));
+        let flag2 = Arc::new(Mutex::new(false));
+        
+        manager.active_tails
+            .lock()
+            .unwrap()
+            .insert("session-1".to_string(), flag1);
+        manager.active_tails
+            .lock()
+            .unwrap()
+            .insert("session-2".to_string(), flag2);
+        
+        manager.stop_tail("session-1");
+        manager.stop_tail("session-2");
+        
+        let map = manager.active_tails.lock().unwrap();
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn test_log_manager_mutex_access() {
+        let manager = LogManager::new();
+        
+        // Test that we can lock and unlock the mutex
+        let lock = manager.active_tails.lock().unwrap();
+        drop(lock);
+        
+        // Should be able to lock again
+        let lock2 = manager.active_tails.lock().unwrap();
+        assert!(lock2.is_empty());
+    }
+
+    #[test]
+    fn test_stop_flag_default_value() {
+        let flag = Arc::new(Mutex::new(false));
+        assert!(!*flag.lock().unwrap());
+    }
+
+    #[test]
+    fn test_stop_flag_can_be_set() {
+        let flag = Arc::new(Mutex::new(false));
+        *flag.lock().unwrap() = true;
+        assert!(*flag.lock().unwrap());
+    }
+
+    #[test]
+    fn test_hashmap_insert_and_contains() {
+        let mut map: std::collections::HashMap<String, Arc<Mutex<bool>>> = std::collections::HashMap::new();
+        let flag = Arc::new(Mutex::new(false));
+        
+        map.insert("test".to_string(), flag);
+        assert!(map.contains_key("test"));
+        assert_eq!(map.len(), 1);
+    }
+
+    #[test]
+    fn test_hashmap_remove() {
+        let mut map: std::collections::HashMap<String, Arc<Mutex<bool>>> = std::collections::HashMap::new();
+        let flag = Arc::new(Mutex::new(false));
+        
+        map.insert("test".to_string(), flag);
+        map.remove("test");
+        
+        assert!(!map.contains_key("test"));
+        assert_eq!(map.len(), 0);
+    }
+}

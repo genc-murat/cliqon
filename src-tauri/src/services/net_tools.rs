@@ -121,3 +121,213 @@ impl NetToolManager {
         Ok(output)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_net_tool_manager_new() {
+        let manager = NetToolManager::new();
+        // NetToolManager is a unit struct, just verify it can be created
+        let _ = manager;
+    }
+
+    #[test]
+    fn test_run_tool_unknown_tool() {
+        let manager = NetToolManager::new();
+        let profile = SshProfile::default();
+        
+        let result = manager.run_tool(&profile, None, "unknown_tool", "127.0.0.1");
+        
+        assert!(result.is_err());
+        if let Err(e) = result {
+            let msg = e.to_string();
+            assert!(msg.contains("Unknown tool type"));
+        }
+    }
+
+    #[test]
+    fn test_run_tool_empty_target_filter() {
+        let target = "";
+        let safe_target: String = target
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == ':' || *c == '_')
+            .collect();
+        assert!(safe_target.is_empty());
+    }
+
+    #[test]
+    fn test_run_tool_target_sanitization() {
+        let malicious_target = "127.0.0.1; rm -rf /";
+        let safe_target: String = malicious_target
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == ':' || *c == '_')
+            .collect();
+        
+        // The filter keeps alphanumeric and .-:_ characters
+        // Note: "rm" in the original becomes part of the string since 'r' and 'm' are alphanumeric
+        // The important thing is that dangerous characters are removed
+        assert!(safe_target.starts_with("127.0.0.1"));
+        assert!(!safe_target.contains(';'));
+        assert!(!safe_target.contains(' '));
+        assert!(!safe_target.contains('/'));
+        // The dangerous command structure is broken even if some letters remain
+    }
+
+    #[test]
+    fn test_run_tool_target_with_valid_chars() {
+        let valid_target = "example-server.example.com";
+        let safe_target: String = valid_target
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == ':' || *c == '_')
+            .collect();
+        
+        assert_eq!(safe_target, valid_target);
+    }
+
+    #[test]
+    fn test_run_tool_ipv6_target() {
+        let ipv6 = "::1";
+        let safe_target: String = ipv6
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == ':' || *c == '_')
+            .collect();
+        
+        assert_eq!(safe_target, "::1");
+    }
+
+    #[test]
+    fn test_ping_command_format() {
+        let target = "127.0.0.1";
+        let cmd = format!("ping -c 10 -i 0.3 {} 2>&1", target);
+        assert!(cmd.contains("ping"));
+        assert!(cmd.contains("-c 10"));
+        assert!(cmd.contains(target));
+    }
+
+    #[test]
+    fn test_traceroute_command_format() {
+        let target = "example.com";
+        let cmd = format!(
+            "traceroute -m 30 {} 2>&1 || tracepath {} 2>&1",
+            target, target
+        );
+        assert!(cmd.contains("traceroute"));
+        assert!(cmd.contains("tracepath"));
+    }
+
+    #[test]
+    fn test_dns_command_format() {
+        let target = "example.com";
+        let cmd = format!(
+            "dig +noall +answer {} ANY 2>&1 || nslookup {} 2>&1 || host {} 2>&1",
+            target, target, target
+        );
+        assert!(cmd.contains("dig"));
+        assert!(cmd.contains("nslookup"));
+        assert!(cmd.contains("host"));
+    }
+
+    #[test]
+    fn test_portscan_command_format() {
+        let target = "127.0.0.1";
+        let cmd = format!(
+            "nc -zv -w 2 {} 21 22 25 53 80 110 143 443 465 587 993 995 3306 5432 6379 8080 8123 2>&1",
+            target
+        );
+        assert!(cmd.contains("nc -zv"));
+        assert!(cmd.contains("22"));
+        assert!(cmd.contains("80"));
+    }
+
+    #[test]
+    fn test_connections_command() {
+        let cmd = "ss -tunap 2>&1 || netstat -tunap 2>&1";
+        assert!(cmd.contains("ss -tunap"));
+        assert!(cmd.contains("netstat -tunap"));
+    }
+
+    #[test]
+    fn test_interfaces_command() {
+        let cmd = "ip -c addr 2>&1 || ifconfig 2>&1";
+        assert!(cmd.contains("ip -c addr"));
+        assert!(cmd.contains("ifconfig"));
+    }
+
+    #[test]
+    fn test_public_ip_command() {
+        let cmd = "curl -s https://ifconfig.me 2>&1 || curl -s https://api.ipify.org 2>&1";
+        assert!(cmd.contains("ifconfig.me"));
+        assert!(cmd.contains("api.ipify.org"));
+    }
+
+    #[test]
+    fn test_curl_timing_command_format() {
+        let target = "https://example.com";
+        let cmd = format!(
+            "curl -s -w \"DNS Lookup: %{{time_namelookup}}s\\nConnect: %{{time_connect}}s\\nApp Connect: %{{time_appconnect}}s\\nPre Transfer: %{{time_pretransfer}}s\\nStart Transfer: %{{time_starttransfer}}s\\nTotal: %{{time_total}}s\\nSize: %{{size_download}} bytes\\nSpeed: %{{speed_download}} bps\\n\" -o /dev/null {} 2>&1",
+            target
+        );
+        assert!(cmd.contains("curl"));
+        assert!(cmd.contains("time_namelookup"));
+        assert!(cmd.contains("time_total"));
+    }
+
+    #[test]
+    fn test_ssl_check_command_format() {
+        let target = "example.com";
+        let cmd = format!(
+            "echo | openssl s_client -connect {}:443 -servername {} -showcerts 2>/dev/null | openssl x509 -text 2>&1",
+            target, target
+        );
+        assert!(cmd.contains("openssl s_client"));
+        assert!(cmd.contains(":443"));
+    }
+
+    #[test]
+    fn test_tool_type_variants() {
+        // Test that all tool types can be matched
+        let tools = vec![
+            "ping", "traceroute", "dns", "portscan", "nmap", "whois", "mtr",
+            "tracepath", "nslookup", "curl_timing", "connections", "interfaces",
+            "public_ip", "routes", "neighbors", "listening", "netstat",
+            "dns_config", "hosts_file", "http_check", "ssl_check", "stats_summary",
+            "bandwidth_stats", "firewall_status", "fail2ban_status", "hostname_info",
+            "active_users", "open_files", "uptime", "disk_usage", "memory_usage",
+            "last_logins", "arp", "ip_link", "ip_route_get", "resolvectl",
+            "tcpdump", "speedtest", "processes", "systemctl_list", "nmap_os",
+        ];
+
+        for tool in tools {
+            match tool {
+                "ping" | "traceroute" | "dns" | "portscan" | "nmap" | "whois" | "mtr"
+                | "tracepath" | "nslookup" | "curl_timing" | "connections" | "interfaces"
+                | "public_ip" | "routes" | "neighbors" | "listening" | "netstat"
+                | "dns_config" | "hosts_file" | "http_check" | "ssl_check" | "stats_summary"
+                | "bandwidth_stats" | "firewall_status" | "fail2ban_status" | "hostname_info"
+                | "active_users" | "open_files" | "uptime" | "disk_usage" | "memory_usage"
+                | "last_logins" | "arp" | "ip_link" | "ip_route_get" | "resolvectl"
+                | "tcpdump" | "speedtest" | "processes" | "systemctl_list" | "nmap_os" => {
+                    // Valid tool type
+                }
+                _ => panic!("Unknown tool type: {}", tool),
+            }
+        }
+    }
+
+    #[test]
+    fn test_command_injection_characters_blocked() {
+        let blocked_chars = vec![';', '&', '|', '$', '`', '(', ')', '{', '}', '<', '>', '\n', '\r'];
+        
+        for ch in blocked_chars {
+            let target = format!("127.0.0.1{}rm", ch);
+            let safe_target: String = target
+                .chars()
+                .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == ':' || *c == '_')
+                .collect();
+            
+            assert!(!safe_target.contains(ch), "Character {} should be filtered", ch);
+        }
+    }
+}

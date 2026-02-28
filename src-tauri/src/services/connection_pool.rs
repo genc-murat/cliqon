@@ -365,4 +365,279 @@ mod tests {
         assert_eq!(stats.idle_connections, 0);
         assert_eq!(stats.total_ref_count, 0);
     }
+
+    #[test]
+    fn test_pooled_connection_new() {
+        let session = Session::new().unwrap();
+        let conn = PooledConnection::new("profile-123".to_string(), session);
+
+        assert_eq!(conn.profile_id, "profile-123");
+        assert_eq!(conn.get_ref_count(), 0);
+        assert!(conn.is_alive());
+    }
+
+    #[test]
+    fn test_pooled_connection_touch() {
+        let session = Session::new().unwrap();
+        let conn = PooledConnection::new("test".to_string(), session);
+
+        let idle_before = conn.get_idle_secs();
+        thread::sleep(Duration::from_millis(10));
+        conn.touch();
+        let idle_after = conn.get_idle_secs();
+
+        assert!(idle_after <= idle_before || idle_after < 2);
+    }
+
+    #[test]
+    fn test_pooled_connection_mark_dead() {
+        let session = Session::new().unwrap();
+        let conn = PooledConnection::new("test".to_string(), session);
+
+        assert!(conn.is_alive());
+        conn.mark_dead();
+        assert!(!conn.is_alive());
+    }
+
+    #[test]
+    fn test_pooled_connection_needs_keepalive() {
+        let session = Session::new().unwrap();
+        let conn = PooledConnection::new("test".to_string(), session);
+
+        // Just created, shouldn't need keepalive yet
+        assert!(!conn.needs_keepalive(0));
+        
+        // With a very short interval, it should need keepalive after some time
+        thread::sleep(Duration::from_secs(2));
+        assert!(conn.needs_keepalive(1));
+    }
+
+    #[test]
+    fn test_pooled_connection_touch_keepalive() {
+        let session = Session::new().unwrap();
+        let conn = PooledConnection::new("test".to_string(), session);
+
+        conn.touch_keepalive();
+        // Should reset the keepalive timer
+        assert!(!conn.needs_keepalive(1));
+    }
+
+    #[test]
+    fn test_current_timestamp() {
+        let ts1 = current_timestamp();
+        thread::sleep(Duration::from_secs(2));
+        let ts2 = current_timestamp();
+
+        assert!(ts2 > ts1);
+        assert!(ts2 - ts1 >= 2);
+    }
+
+    #[test]
+    fn test_connection_info_serialization() {
+        let info = ConnectionInfo {
+            profile_id: "test".to_string(),
+            ref_count: 5,
+            idle_secs: 100,
+            is_alive: true,
+        };
+
+        let json = serde_json::to_string(&info).unwrap();
+        assert!(json.contains("test"));
+        assert!(json.contains("5"));
+    }
+
+    #[test]
+    fn test_pool_stats_serialization() {
+        let stats = PoolStats {
+            total_connections: 10,
+            active_connections: 3,
+            idle_connections: 7,
+            total_ref_count: 15,
+        };
+
+        let json = serde_json::to_string(&stats).unwrap();
+        assert!(json.contains("10"));
+        assert!(json.contains("3"));
+    }
+
+    #[test]
+    fn test_pool_new_creates_threads() {
+        let config = PoolConfig::default();
+        let pool = ConnectionPool::new(config);
+
+        // Pool should be active
+        assert!(pool.active.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn test_pool_shutdown() {
+        let config = PoolConfig::default();
+        let pool = ConnectionPool::new(config);
+
+        pool.shutdown();
+
+        assert!(!pool.active.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn test_pool_get_stats_empty() {
+        let config = PoolConfig::default();
+        let pool = ConnectionPool::new(config);
+
+        let stats = pool.get_stats();
+        assert_eq!(stats.total_connections, 0);
+        assert_eq!(stats.active_connections, 0);
+        assert_eq!(stats.idle_connections, 0);
+    }
+
+    #[test]
+    fn test_pool_get_connection_info_empty() {
+        let config = PoolConfig::default();
+        let pool = ConnectionPool::new(config);
+
+        let info = pool.get_connection_info();
+        assert!(info.is_empty());
+    }
+
+    #[test]
+    fn test_pool_release_nonexistent() {
+        let config = PoolConfig::default();
+        let pool = ConnectionPool::new(config);
+
+        // Should not panic
+        pool.release("nonexistent");
+    }
+
+    #[test]
+    fn test_pool_remove_nonexistent() {
+        let config = PoolConfig::default();
+        let pool = ConnectionPool::new(config);
+
+        // Should not panic
+        pool.remove("nonexistent");
+    }
+
+    #[test]
+    fn test_pool_get_nonexistent() {
+        let config = PoolConfig::default();
+        let pool = ConnectionPool::new(config);
+
+        let result = pool.get("nonexistent");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_atomic_bool_operations() {
+        let flag = AtomicBool::new(true);
+        assert!(flag.load(Ordering::SeqCst));
+
+        flag.store(false, Ordering::SeqCst);
+        assert!(!flag.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn test_atomic_i64_operations() {
+        let val = AtomicI64::new(100);
+        assert_eq!(val.load(Ordering::SeqCst), 100);
+
+        val.store(200, Ordering::SeqCst);
+        assert_eq!(val.load(Ordering::SeqCst), 200);
+    }
+
+    #[test]
+    fn test_atomic_u32_operations() {
+        let val = AtomicU32::new(10);
+        assert_eq!(val.load(Ordering::SeqCst), 10);
+
+        val.store(20, Ordering::SeqCst);
+        assert_eq!(val.load(Ordering::SeqCst), 20);
+    }
+
+    #[test]
+    fn test_hashmap_operations() {
+        let mut map: HashMap<String, i32> = HashMap::new();
+        map.insert("key1".to_string(), 1);
+        map.insert("key2".to_string(), 2);
+
+        assert_eq!(map.len(), 2);
+        assert_eq!(map.get("key1"), Some(&1));
+
+        map.remove("key1");
+        assert_eq!(map.len(), 1);
+        assert!(map.get("key1").is_none());
+    }
+
+    #[test]
+    fn test_mutex_lock_unlock() {
+        let mutex = Mutex::new(HashMap::<String, i32>::new());
+        let mut map = mutex.lock().unwrap();
+        map.insert("test".to_string(), 42);
+        drop(map);
+
+        let map2 = mutex.lock().unwrap();
+        assert_eq!(map2.get("test"), Some(&42));
+    }
+
+    #[test]
+    fn test_duration_creation() {
+        let duration = Duration::from_secs(60);
+        assert_eq!(duration.as_secs(), 60);
+
+        let duration2 = Duration::from_millis(500);
+        assert_eq!(duration2.as_millis(), 500);
+    }
+
+    #[test]
+    fn test_instant_now() {
+        let now = Instant::now();
+        thread::sleep(Duration::from_millis(10));
+        let elapsed = now.elapsed();
+
+        assert!(elapsed >= Duration::from_millis(10));
+    }
+
+    #[test]
+    fn test_option_map() {
+        let opt: Option<i32> = Some(5);
+        let result = opt.map(|x| x * 2);
+        assert_eq!(result, Some(10));
+
+        let none: Option<i32> = None;
+        let none_result = none.map(|x| x * 2);
+        assert_eq!(none_result, None);
+    }
+
+    #[test]
+    fn test_result_map_err() {
+        let ok: Result<i32> = Ok(42);
+        let mapped = ok.map_err(|e: AppError| e);
+        assert_eq!(mapped.unwrap(), 42);
+
+        let err: Result<i32> = Err(AppError::Custom("test".to_string()));
+        let mapped_err = err.map_err(|e| AppError::Custom(format!("wrapped: {}", e)));
+        assert!(mapped_err.is_err());
+    }
+
+    #[test]
+    fn test_vec_filter_and_collect() {
+        let nums = vec![1, 2, 3, 4, 5, 6];
+        let evens: Vec<i32> = nums.into_iter().filter(|x| x % 2 == 0).collect();
+        assert_eq!(evens, vec![2, 4, 6]);
+    }
+
+    #[test]
+    fn test_arc_clone_and_share() {
+        let arc = Arc::new(AtomicU32::new(0));
+        let arc_clone = Arc::clone(&arc);
+
+        arc.store(42, Ordering::SeqCst);
+        assert_eq!(arc_clone.load(Ordering::SeqCst), 42);
+    }
+
+    #[test]
+    fn test_saturating_sub() {
+        let val: u32 = 5;
+        assert_eq!(val.saturating_sub(3), 2);
+        assert_eq!(val.saturating_sub(10), 0); // Doesn't underflow
+    }
 }

@@ -182,4 +182,159 @@ mod tests {
     fn test_deobfuscate_empty() {
         assert!(deobfuscate("").is_none());
     }
+
+    #[test]
+    fn test_obfuscate_simple_string() {
+        let result = obfuscate("test");
+        assert_eq!(result.len(), 8); // 4 chars * 2 hex digits
+    }
+
+    #[test]
+    fn test_obfuscate_consistent_output() {
+        let result1 = obfuscate("same_input");
+        let result2 = obfuscate("same_input");
+        assert_eq!(result1, result2);
+    }
+
+    #[test]
+    fn test_deobfuscate_valid_hex() {
+        // "test" obfuscated and then deobfuscated should return "test"
+        let obfuscated = obfuscate("test");
+        let result = deobfuscate(&obfuscated);
+        assert_eq!(result, Some("test".to_string()));
+    }
+
+    #[test]
+    fn test_keyring_service_constant() {
+        assert_eq!(KEYRING_SERVICE, "cliqon_ssh_profiles");
+    }
+
+    #[test]
+    fn test_profile_vec_operations() {
+        let mut profiles: Vec<SshProfile> = Vec::new();
+        
+        let profile1 = SshProfile::default();
+        let profile2 = SshProfile::default();
+        
+        profiles.push(profile1);
+        profiles.push(profile2);
+        
+        assert_eq!(profiles.len(), 2);
+        
+        if let Some(pos) = profiles.iter().position(|p| p.id == profiles[0].id) {
+            profiles.remove(pos);
+        }
+        
+        assert_eq!(profiles.len(), 1);
+    }
+
+    #[test]
+    fn test_profile_find_by_id() {
+        let profile1 = SshProfile::default();
+        let profile2 = SshProfile::default();
+        
+        let profiles = vec![profile1.clone(), profile2.clone()];
+        
+        let found = profiles.iter().find(|p| p.id == profile1.id);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().id, profile1.id);
+        
+        let not_found = profiles.iter().find(|p| p.id == "nonexistent");
+        assert!(not_found.is_none());
+    }
+
+    #[test]
+    fn test_profile_update_position() {
+        let profile = SshProfile::default();
+        let mut profiles = vec![profile.clone()];
+        
+        // Update the existing profile
+        if let Some(pos) = profiles.iter().position(|p| p.id == profile.id) {
+            profiles[pos] = profile.clone();
+        } else {
+            profiles.push(profile.clone());
+        }
+        
+        // Should still be 1 since we updated, not added
+        assert_eq!(profiles.len(), 1);
+    }
+
+    #[test]
+    fn test_pathbuf_join() {
+        let app_data_dir = PathBuf::from("/home/user/.config/cliqon");
+        let profiles_path = app_data_dir.join("profiles.json");
+        
+        assert_eq!(profiles_path.to_string_lossy(), "/home/user/.config/cliqon/profiles.json");
+    }
+
+    #[test]
+    fn test_path_exists_check() {
+        let path = PathBuf::from("/tmp/nonexistent_file_12345.json");
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn test_option_handling() {
+        let secret: Option<String> = None;
+        let result = secret.clone();
+        assert!(result.is_none());
+
+        let secret2: Option<String> = Some("value".to_string());
+        let result2 = secret2.clone();
+        assert!(result2.is_some());
+    }
+
+    #[test]
+    fn test_xor_operation() {
+        let byte: u8 = 0x41; // 'A'
+        let xored = byte ^ 0x6A;
+        let restored = xored ^ 0x6A;
+        assert_eq!(byte, restored);
+    }
+
+    #[test]
+    fn test_hex_format() {
+        let byte: u8 = 65; // 'A'
+        let hex = format!("{:02x}", byte);
+        assert_eq!(hex, "41");
+        
+        let byte2: u8 = 10;
+        let hex2 = format!("{:02x}", byte2);
+        assert_eq!(hex2, "0a"); // Leading zero
+    }
+
+    #[test]
+    fn test_step_by_iterator() {
+        let s = "abcdef";
+        let pairs: Vec<&str> = (0..s.len()).step_by(2).map(|i| &s[i..i+2]).collect();
+        assert_eq!(pairs, vec!["ab", "cd", "ef"]);
+    }
+
+    #[test]
+    fn test_from_str_radix() {
+        let result = u8::from_str_radix("41", 16);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 65);
+
+        let invalid = u8::from_str_radix("ZZ", 16);
+        assert!(invalid.is_err());
+    }
+
+    #[test]
+    fn test_string_from_utf8() {
+        let bytes = vec![65, 66, 67]; // 'A', 'B', 'C'
+        let result = String::from_utf8(bytes);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "ABC");
+    }
+
+    #[test]
+    fn test_result_and_option_combination() {
+        let result: std::result::Result<Option<String>, &'static str> = Ok(Some("value".to_string()));
+        assert!(result.is_ok());
+        
+        let result2: std::result::Result<Option<String>, &'static str> = Ok(None);
+        assert!(result2.is_ok());
+        assert!(result2.unwrap().is_none());
+    }
 }

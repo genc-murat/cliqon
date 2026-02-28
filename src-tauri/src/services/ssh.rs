@@ -224,3 +224,150 @@ impl SshManager {
         lock.get(session_id).map(|s| s.session.clone())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ssh_manager_new() {
+        let manager = SshManager::new();
+        let lock = manager.active_sessions.lock().unwrap();
+        assert!(lock.is_empty());
+    }
+
+    #[test]
+    fn test_ssh_payload_clone() {
+        let payload = SshPayload {
+            session_id: "test-session".to_string(),
+            data: vec![1, 2, 3, 4],
+        };
+
+        let cloned = payload.clone();
+        assert_eq!(cloned.session_id, "test-session");
+        assert_eq!(cloned.data, vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn test_active_session_write_data() {
+        let (tx, rx) = unbounded::<Vec<u8>>();
+        
+        let session = ActiveSession {
+            profile_id: "profile-1".to_string(),
+            session_id: "session-1".to_string(),
+            session: Session::new().unwrap(),
+            tx,
+            resize_tx: unbounded().0,
+        };
+
+        session.write_data(vec![1, 2, 3]);
+        
+        let received = rx.try_recv();
+        assert!(received.is_ok());
+        assert_eq!(received.unwrap(), vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_active_session_resize() {
+        let (resize_tx, _) = unbounded::<(u32, u32)>();
+        
+        let session = ActiveSession {
+            profile_id: "profile-1".to_string(),
+            session_id: "session-1".to_string(),
+            session: Session::new().unwrap(),
+            tx: unbounded().0,
+            resize_tx,
+        };
+
+        session.resize(80, 24);
+        
+        // Note: resize_tx is moved to session, so we can't directly test the receiver
+        // This test just verifies the method doesn't panic
+    }
+
+    #[test]
+    fn test_write_to_session_not_found() {
+        let manager = SshManager::new();
+        let result = manager.write_to_session("nonexistent", vec![1, 2, 3]);
+        
+        assert!(result.is_err());
+        if let Err(e) = result {
+            let msg = e.to_string();
+            assert!(msg.contains("Session not found"));
+        }
+    }
+
+    #[test]
+    fn test_resize_session_not_found() {
+        let manager = SshManager::new();
+        let result = manager.resize_session("nonexistent", 80, 24);
+        
+        assert!(result.is_err());
+        if let Err(e) = result {
+            let msg = e.to_string();
+            assert!(msg.contains("Session not found"));
+        }
+    }
+
+    #[test]
+    fn test_close_session_nonexistent() {
+        let manager = SshManager::new();
+        manager.close_session("nonexistent");
+        // Should not panic
+    }
+
+    #[test]
+    fn test_get_session_nonexistent() {
+        let manager = SshManager::new();
+        let session = manager.get_session("nonexistent");
+        assert!(session.is_none());
+    }
+
+    #[test]
+    fn test_ssh_manager_empty_sessions() {
+        let manager = SshManager::new();
+        let lock = manager.active_sessions.lock().unwrap();
+        assert_eq!(lock.len(), 0);
+    }
+
+    #[test]
+    fn test_output_batch_interval_constant() {
+        // Verify the constant is defined and has a reasonable value
+        assert!(OUTPUT_BATCH_INTERVAL_MS > 0);
+        assert!(OUTPUT_BATCH_INTERVAL_MS < 1000);
+    }
+
+    #[test]
+    fn test_output_batch_max_size_constant() {
+        // Verify the constant is defined and has a reasonable value
+        assert!(OUTPUT_BATCH_MAX_SIZE > 0);
+        assert!(OUTPUT_BATCH_MAX_SIZE >= 1024);
+    }
+
+    #[test]
+    fn test_active_session_fields() {
+        let session = ActiveSession {
+            profile_id: "test-profile".to_string(),
+            session_id: "test-session".to_string(),
+            session: Session::new().unwrap(),
+            tx: unbounded().0,
+            resize_tx: unbounded().0,
+        };
+
+        assert_eq!(session.profile_id, "test-profile");
+        assert_eq!(session.session_id, "test-session");
+    }
+
+    #[test]
+    fn test_ssh_manager_mutex_access() {
+        let manager = SshManager::new();
+        
+        // Test that we can lock and unlock the mutex
+        let lock = manager.active_sessions.lock().unwrap();
+        drop(lock);
+        
+        // Should be able to lock again
+        let lock2 = manager.active_sessions.lock().unwrap();
+        assert!(lock2.is_empty());
+    }
+}

@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use ssh2::Session;
 use tauri::{AppHandle, Emitter};
 
@@ -13,7 +13,7 @@ use crate::error::{AppError, Result};
 use crate::models::profile::SshProfile;
 use crate::services::auth::authenticate_session;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerMetrics {
     pub cpu_percent: f64,
     pub ram_total: u64,
@@ -288,4 +288,244 @@ fn parse_loadavg(raw: &str) -> (f64, f64, f64) {
         return (l1, l5, l15);
     }
     (0.0, 0.0, 0.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_monitor_manager_new() {
+        let manager = MonitorManager::new();
+        let lock = manager.monitors.lock().unwrap();
+        assert!(lock.is_empty());
+    }
+
+    #[test]
+    fn test_server_metrics_serialization() {
+        let metrics = ServerMetrics {
+            cpu_percent: 45.5,
+            ram_total: 16_000_000_000,
+            ram_used: 8_000_000_000,
+            ram_percent: 50.0,
+            disk_total: 500_000_000_000,
+            disk_used: 250_000_000_000,
+            disk_percent: 50.0,
+            load_1: 1.5,
+            load_5: 1.2,
+            load_15: 0.9,
+            uptime: "2 days".to_string(),
+            hostname: "test-server".to_string(),
+            os_info: "Ubuntu 22.04".to_string(),
+        };
+
+        let json = serde_json::to_string(&metrics).unwrap();
+        let decoded: ServerMetrics = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(decoded.cpu_percent, metrics.cpu_percent);
+        assert_eq!(decoded.ram_total, metrics.ram_total);
+        assert_eq!(decoded.hostname, metrics.hostname);
+    }
+
+    #[test]
+    fn test_server_metrics_debug() {
+        let metrics = ServerMetrics {
+            cpu_percent: 25.0,
+            ram_total: 8_000_000_000,
+            ram_used: 4_000_000_000,
+            ram_percent: 50.0,
+            disk_total: 250_000_000_000,
+            disk_used: 125_000_000_000,
+            disk_percent: 50.0,
+            load_1: 0.5,
+            load_5: 0.4,
+            load_15: 0.3,
+            uptime: "1 hour".to_string(),
+            hostname: "localhost".to_string(),
+            os_info: "Linux".to_string(),
+        };
+
+        let debug_str = format!("{:?}", metrics);
+        assert!(debug_str.contains("ServerMetrics"));
+        assert!(debug_str.contains("cpu_percent"));
+    }
+
+    #[test]
+    fn test_parse_cpu_normal() {
+        let cpu_line = "cpu  1000 200 300 5000 100 50 25 10 0";
+        let mut prev: Option<(u64, u64)> = None;
+        let result = parse_cpu(cpu_line, &mut prev);
+        
+        assert!(result >= 0.0);
+        assert!(result <= 100.0);
+        assert!(prev.is_some());
+    }
+
+    #[test]
+    fn test_parse_cpu_empty_input() {
+        let cpu_line = "";
+        let mut prev: Option<(u64, u64)> = None;
+        let result = parse_cpu(cpu_line, &mut prev);
+        assert_eq!(result, 0.0);
+    }
+
+    #[test]
+    fn test_parse_cpu_insufficient_parts() {
+        let cpu_line = "cpu";
+        let mut prev: Option<(u64, u64)> = None;
+        let result = parse_cpu(cpu_line, &mut prev);
+        assert_eq!(result, 0.0);
+    }
+
+    #[test]
+    fn test_parse_cpu_with_previous_sample() {
+        let cpu_line1 = "cpu  1000 200 300 5000 100 50 25 10 0";
+        let cpu_line2 = "cpu  1500 300 400 6000 150 60 30 15 0";
+        let mut prev: Option<(u64, u64)> = None;
+        
+        let _ = parse_cpu(cpu_line1, &mut prev);
+        let result = parse_cpu(cpu_line2, &mut prev);
+        
+        assert!(result >= 0.0);
+        assert!(result <= 100.0);
+    }
+
+    #[test]
+    fn test_parse_cpu_zero_total() {
+        let cpu_line = "cpu  0 0 0 0 0 0 0 0 0";
+        let mut prev: Option<(u64, u64)> = None;
+        let result = parse_cpu(cpu_line, &mut prev);
+        assert_eq!(result, 0.0);
+    }
+
+    #[test]
+    fn test_parse_memory_normal() {
+        let mem_output = "              total        used        free      shared  buff/cache   available\nMem:    16000000000  8000000000  4000000000   500000000  4000000000  7500000000";
+        let (total, used, percent) = parse_memory(mem_output);
+        
+        assert_eq!(total, 16_000_000_000);
+        assert_eq!(used, 8_000_000_000);
+        assert!((percent - 50.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_parse_memory_empty() {
+        let mem_output = "";
+        let (total, used, percent) = parse_memory(mem_output);
+        assert_eq!(total, 0);
+        assert_eq!(used, 0);
+        assert_eq!(percent, 0.0);
+    }
+
+    #[test]
+    fn test_parse_memory_invalid_format() {
+        let mem_output = "invalid format";
+        let (total, used, percent) = parse_memory(mem_output);
+        assert_eq!(total, 0);
+        assert_eq!(used, 0);
+        assert_eq!(percent, 0.0);
+    }
+
+    #[test]
+    fn test_parse_memory_no_mem_line() {
+        let mem_output = "Swap:   1000000000  200000000  800000000";
+        let (total, used, percent) = parse_memory(mem_output);
+        assert_eq!(total, 0);
+        assert_eq!(used, 0);
+        assert_eq!(percent, 0.0);
+    }
+
+    #[test]
+    fn test_parse_disk_normal() {
+        let disk_line = "/dev/sda1  500000000000  250000000000  250000000000  50%  /";
+        let (total, used, percent) = parse_disk(disk_line);
+        
+        assert_eq!(total, 500_000_000_000);
+        assert_eq!(used, 250_000_000_000);
+        assert!((percent - 50.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_parse_disk_empty() {
+        let disk_line = "";
+        let (total, used, percent) = parse_disk(disk_line);
+        assert_eq!(total, 0);
+        assert_eq!(used, 0);
+        assert_eq!(percent, 0.0);
+    }
+
+    #[test]
+    fn test_parse_disk_insufficient_parts() {
+        let disk_line = "/dev/sda1  100";
+        let (total, used, percent) = parse_disk(disk_line);
+        assert_eq!(total, 0);
+        assert_eq!(used, 0);
+        assert_eq!(percent, 0.0);
+    }
+
+    #[test]
+    fn test_parse_disk_zero_total() {
+        let disk_line = "/dev/sda1  0  0  0  0%  /";
+        let (total, used, percent) = parse_disk(disk_line);
+        assert_eq!(total, 0);
+        assert_eq!(used, 0);
+        assert_eq!(percent, 0.0);
+    }
+
+    #[test]
+    fn test_parse_loadavg_normal() {
+        let loadavg = "0.15 0.10 0.05 1/234 12345";
+        let (l1, l5, l15) = parse_loadavg(loadavg);
+        
+        assert!((l1 - 0.15).abs() < 0.01);
+        assert!((l5 - 0.10).abs() < 0.01);
+        assert!((l15 - 0.05).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_parse_loadavg_empty() {
+        let loadavg = "";
+        let (l1, l5, l15) = parse_loadavg(loadavg);
+        assert_eq!(l1, 0.0);
+        assert_eq!(l5, 0.0);
+        assert_eq!(l15, 0.0);
+    }
+
+    #[test]
+    fn test_parse_loadavg_insufficient_parts() {
+        let loadavg = "0.15 0.10";
+        let (l1, l5, l15) = parse_loadavg(loadavg);
+        // When insufficient parts (less than 3), it returns 0.0 for all values
+        // because the function requires at least 3 parts
+        assert_eq!(l1, 0.0);
+        assert_eq!(l5, 0.0);
+        assert_eq!(l15, 0.0);
+    }
+
+    #[test]
+    fn test_parse_loadavg_invalid_numbers() {
+        let loadavg = "invalid invalid invalid";
+        let (l1, l5, l15) = parse_loadavg(loadavg);
+        assert_eq!(l1, 0.0);
+        assert_eq!(l5, 0.0);
+        assert_eq!(l15, 0.0);
+    }
+
+    #[test]
+    fn test_monitor_thread_stop_flag() {
+        let stop_flag = Arc::new(Mutex::new(false));
+        assert!(!*stop_flag.lock().unwrap());
+        
+        *stop_flag.lock().unwrap() = true;
+        assert!(*stop_flag.lock().unwrap());
+    }
+
+    #[test]
+    fn test_monitor_manager_contains_key() {
+        let manager = MonitorManager::new();
+        {
+            let lock = manager.monitors.lock().unwrap();
+            assert!(!lock.contains_key("test-session"));
+        }
+    }
 }

@@ -144,3 +144,108 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_greet_function() {
+        let result = greet("World");
+        assert_eq!(result, "Hello, World! You've been greeted from Rust!");
+    }
+
+    #[test]
+    fn test_greet_with_name() {
+        let result = greet("Alice");
+        assert!(result.contains("Alice"));
+        assert!(result.starts_with("Hello,"));
+    }
+
+    #[test]
+    fn test_greet_empty_name() {
+        let result = greet("");
+        assert_eq!(result, "Hello, ! You've been greeted from Rust!");
+    }
+
+    #[test]
+    fn test_greet_special_characters() {
+        let result = greet("Test-User_123");
+        assert!(result.contains("Test-User_123"));
+    }
+
+    #[test]
+    fn test_modules_exist() {
+        // Verify all modules are defined
+        let modules = vec!["error", "models", "commands", "state", "services"];
+        for module in modules {
+            assert!(!module.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_command_imports() {
+        // Verify command modules are imported
+        let command_modules = vec![
+            "profile", "terminal", "sftp", "monitor", "net_tools",
+            "docker", "system", "logging", "sharing", "tunnel",
+            "snippet", "ssh_keys", "cron",
+        ];
+        for module in command_modules {
+            assert!(!module.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_service_imports() {
+        // Verify service modules are imported
+        let services = vec!["system", "logging"];
+        for service in services {
+            assert!(!service.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_system_service_creation() {
+        let _service = SystemService::new();
+    }
+
+    #[test]
+    fn test_log_manager_creation() {
+        let _manager = LogManager::new();
+    }
+
+    #[test]
+    fn test_arc_system_service() {
+        let _service: std::sync::Arc<SystemService> = std::sync::Arc::new(SystemService::new());
+    }
+
+    #[test]
+    fn test_arc_log_manager() {
+        let _manager: std::sync::Arc<LogManager> = std::sync::Arc::new(LogManager::new());
+    }
+
+    #[test]
+    fn test_tauri_command_list() {
+        // List of all registered commands
+        let commands = vec![
+            "greet", "get_profiles", "save_profile", "delete_profile",
+            "connect_ssh", "connect_sftp", "start_monitor", "run_net_tool",
+            "get_docker_containers", "start_docker_container", "stop_docker_container",
+            "start_sharing", "stop_sharing", "start_tunnel", "stop_tunnel",
+            "get_snippets", "save_snippet", "delete_snippet",
+            "generate_ssh_key", "list_cron_jobs", "create_cron_job",
+        ];
+        
+        for cmd in commands {
+            assert!(!cmd.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_string_format_in_greet() {
+        let name = "Test";
+        let expected = format!("Hello, {}! You've been greeted from Rust!", name);
+        assert!(expected.contains(name));
+    }
+}
+

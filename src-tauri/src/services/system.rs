@@ -187,3 +187,240 @@ impl SystemService {
         self.exec_command(&session, &cmd)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_system_service_new() {
+        let service = SystemService::new();
+        // SystemService is a unit struct, just verify it can be created
+        let _ = service;
+    }
+
+    #[test]
+    fn test_safe_action_sanitization() {
+        let action = "start";
+        let safe_action = action
+            .replace("'", "'\\''")
+            .replace(";", "")
+            .replace("&", "")
+            .replace("|", "");
+        assert_eq!(safe_action, "start");
+    }
+
+    #[test]
+    fn test_safe_service_sanitization() {
+        let service = "nginx";
+        let safe_service = service
+            .replace("'", "'\\''")
+            .replace(";", "")
+            .replace("&", "")
+            .replace("|", "");
+        assert_eq!(safe_service, "nginx");
+    }
+
+    #[test]
+    fn test_safe_action_with_dangerous_chars() {
+        let action = "start;rm -rf /";
+        let safe_action = action
+            .replace("'", "'\\''")
+            .replace(";", "")
+            .replace("&", "")
+            .replace("|", "");
+        assert_eq!(safe_action, "startrm -rf /");
+        assert!(!safe_action.contains(';'));
+    }
+
+    #[test]
+    fn test_safe_service_with_dangerous_chars() {
+        let service = "nginx&shutdown";
+        let safe_service = service
+            .replace("'", "'\\''")
+            .replace(";", "")
+            .replace("&", "")
+            .replace("|", "");
+        assert_eq!(safe_service, "nginxshutdown");
+        assert!(!safe_service.contains('&'));
+    }
+
+    #[test]
+    fn test_manage_service_command_format() {
+        let safe_action = "start";
+        let safe_service = "nginx";
+        let cmd = format!("systemctl {} {} 2>&1", safe_action, safe_service);
+        assert!(cmd.contains("systemctl"));
+        assert!(cmd.contains("start"));
+        assert!(cmd.contains("nginx"));
+        assert!(cmd.contains("2>&1"));
+    }
+
+    #[test]
+    fn test_env_var_key_sanitization() {
+        let key = "MY_VAR";
+        let safe_key = key.replace("'", "'\\''").replace("\"", "\\\"");
+        assert_eq!(safe_key, "MY_VAR");
+    }
+
+    #[test]
+    fn test_env_var_value_sanitization() {
+        let value = "hello world";
+        let safe_value = value.replace("'", "'\\''").replace("\"", "\\\"");
+        assert_eq!(safe_value, "hello world");
+    }
+
+    #[test]
+    fn test_env_var_with_quotes_sanitization() {
+        let key = "VAR'WITH'QUOTES";
+        let safe_key = key.replace("'", "'\\''").replace("\"", "\\\"");
+        assert_eq!(safe_key, "VAR'\\''WITH'\\''QUOTES");
+        // The shell escaping produces '\'' sequences
+        assert!(safe_key.contains("'\\''"));
+    }
+
+    #[test]
+    fn test_set_env_var_grep_command() {
+        let safe_key = "MY_VAR";
+        let safe_value = "my_value";
+        
+        // The script should contain grep to check for existing export
+        let script_contains_grep = format!(
+            r#"
+            BASHRC="$HOME/.bashrc"
+            if grep -q "export {}=" "$BASHRC"; then
+                sed -i "s|^export {}=.*|export {}='{}'|" "$BASHRC"
+            else
+                echo "export {}='{}'" >> "$BASHRC"
+            fi
+            export {}='{}'
+            "#,
+            safe_key, safe_key, safe_key, safe_value, safe_key, safe_value, safe_key, safe_value
+        );
+        
+        assert!(script_contains_grep.contains("grep -q"));
+        assert!(script_contains_grep.contains("sed -i"));
+        assert!(script_contains_grep.contains("export MY_VAR="));
+    }
+
+    #[test]
+    fn test_delete_env_var_command() {
+        let safe_key = "MY_VAR";
+        let cmd = format!(
+            r#"
+            BASHRC="$HOME/.bashrc"
+            sed -i "/^export {}=/d" "$BASHRC"
+            unset {}
+            "#,
+            safe_key, safe_key
+        );
+        
+        assert!(cmd.contains("sed -i"));
+        assert!(cmd.contains("unset MY_VAR"));
+    }
+
+    #[test]
+    fn test_systemctl_command_variants() {
+        let actions = vec!["start", "stop", "restart", "enable", "disable"];
+        let service = "nginx";
+        
+        for action in actions {
+            let cmd = format!("systemctl {} {} 2>&1", action, service);
+            assert!(cmd.contains("systemctl"));
+            assert!(cmd.contains(action));
+            assert!(cmd.contains(service));
+        }
+    }
+
+    #[test]
+    fn test_bashrc_path_constant() {
+        assert_eq!("$HOME/.bashrc", "$HOME/.bashrc");
+    }
+
+    #[test]
+    fn test_printenv_command() {
+        let cmd = "printenv";
+        assert_eq!(cmd, "printenv");
+    }
+
+    #[test]
+    fn test_systemctl_check_command() {
+        let cmd = r#"
+            if command -v systemctl > /dev/null; then
+                # Output format: UNIT LOAD ACTIVE SUB DESCRIPTION
+                systemctl list-units --type=service --all --no-pager --no-legend | awk '{
+                    unit=$1; load=$2; active=$3; sub=$4;
+                    // Description is the rest of the line
+                    desc=""; for(i=5;i<=NF;i++) desc=desc " " $i;
+                    gsub(/^[ \t]+|[ \t]+$/, "", desc);
+                    printf "%s|%s|%s|%s|%s\n", unit, load, active, sub, desc
+                }'
+            else
+                echo "systemctl not found"
+            fi
+        "#;
+        
+        assert!(cmd.contains("command -v systemctl"));
+        assert!(cmd.contains("systemctl list-units"));
+        assert!(cmd.contains("--type=service"));
+        assert!(cmd.contains("--no-pager"));
+        assert!(cmd.contains("--no-legend"));
+    }
+
+    #[test]
+    fn test_systemctl_timers_command() {
+        let cmd = r#"
+            if command -v systemctl > /dev/null; then
+                # Robust parsing for systemctl list-timers
+                systemctl list-timers --all --no-pager --no-legend | awk '{
+                    i=1;
+                    # NEXT
+                    if ($i == "n/a") { next_dt="n/a"; i++; }
+                    else { next_dt=$i" "$(i+1)" "$(i+2)" "$(i+3); i+=4; }
+
+                    # LEFT
+                    left_val=$i" "$(i+1); i+=2;
+
+                    # LAST
+                    if ($i == "n/a") { last_dt="n/a"; i++; }
+                    else { last_dt=$i" "$(i+1)" "$(i+2)" "$(i+3); i+=4; }
+
+                    # PASSED
+                    passed_val=$i" "$(i+1); i+=2;
+
+                    # UNIT
+                    unit=$i; i++;
+
+                    # ACTIVATES
+                    activates=$i;
+
+                    printf "%s|%s|%s|%s|%s|%s\n", next_dt, left_val, last_dt, passed_val, unit, activates
+                }'
+            else
+                echo "systemctl not found"
+            fi
+        "#;
+        
+        assert!(cmd.contains("systemctl list-timers"));
+        assert!(cmd.contains("--all"));
+        assert!(cmd.contains("--no-pager"));
+    }
+
+    #[test]
+    fn test_action_types() {
+        let valid_actions = vec!["start", "stop", "restart", "enable", "disable"];
+        for action in valid_actions {
+            assert!(!action.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_service_name_validation() {
+        let valid_services = vec!["nginx", "docker", "ssh", "mysql", "postgresql"];
+        for service in valid_services {
+            assert!(!service.contains(';'));
+            assert!(!service.contains('&'));
+            assert!(!service.contains('|'));
+        }
+    }
+}

@@ -79,7 +79,7 @@ const ConnectionCard: React.FC<CardProps> = ({
         >
             {/* Row 1: Name + Favorite */}
             <div className="flex items-center justify-between gap-1">
-                <span className="text-sm font-medium text-[var(--text-main)] truncate flex-1">
+                <span className="text-xs font-medium text-[var(--text-main)] truncate flex-1">
                     {highlightText(profile.name, query)}
                 </span>
                 <div className="flex items-center gap-1 shrink-0">
@@ -89,7 +89,7 @@ const ConnectionCard: React.FC<CardProps> = ({
                         title={profile.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
                     >
                         <Star
-                            size={13}
+                            size={12}
                             className={profile.is_favorite
                                 ? 'fill-amber-400 text-amber-400'
                                 : 'text-[var(--text-muted)] hover:text-amber-400'}
@@ -100,14 +100,14 @@ const ConnectionCard: React.FC<CardProps> = ({
                         className="p-0.5 text-[var(--text-muted)] hover:text-[var(--text-main)] rounded transition-colors opacity-0 group-hover:opacity-100"
                         style={{ opacity: isMenuOpen ? 1 : undefined }}
                     >
-                        <MoreVertical size={13} />
+                        <MoreVertical size={12} />
                     </button>
                 </div>
             </div>
 
             {/* Row 2: Host info + Auth badge */}
             <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] text-[var(--text-muted)] truncate font-mono">
+                <span className="text-[10px] text-[var(--text-muted)] truncate font-mono">
                     {highlightText(hostStr, query)}
                 </span>
                 <span className={auth.cls}>
@@ -117,11 +117,11 @@ const ConnectionCard: React.FC<CardProps> = ({
 
             {/* Quick Connect overlay button */}
             <button
-                className="quick-connect-btn absolute right-2 bottom-2 flex items-center gap-1 px-2 py-1 text-[10px] font-semibold rounded-md bg-[var(--accent-color)] text-white hover:brightness-110 transition-all"
+                className="quick-connect-btn absolute right-2 bottom-2 flex items-center gap-1 px-2 py-1 text-[9px] font-semibold rounded-md bg-[var(--accent-color)] text-white hover:brightness-110 transition-all"
                 onClick={(e) => { e.stopPropagation(); onConnect(); }}
                 title="Quick Connect"
             >
-                <Zap size={10} /> Connect
+                <Zap size={9} /> Connect
             </button>
 
             {/* Context menu */}
@@ -185,11 +185,11 @@ const CompactRow: React.FC<CompactRowProps> = ({
             onContextMenu={onContextMenu}
         >
             {profile.is_favorite
-                ? <Star size={14} className="shrink-0 fill-amber-400 text-amber-400" />
-                : <Shield size={14} style={profile.color ? { color: profile.color } : {}} className="text-[var(--accent-color)] shrink-0" />
+                ? <Star size={13} className="shrink-0 fill-amber-400 text-amber-400" />
+                : <Shield size={13} style={profile.color ? { color: profile.color } : {}} className="text-[var(--accent-color)] shrink-0" />
             }
             <div className="flex-1 overflow-hidden">
-                <span className="text-sm text-[var(--text-main)] truncate block">
+                <span className="text-xs text-[var(--text-main)] truncate block">
                     {highlightText(profile.name, query)}
                 </span>
             </div>
@@ -201,14 +201,14 @@ const CompactRow: React.FC<CompactRowProps> = ({
                 onClick={(e) => { e.stopPropagation(); onConnect(); }}
                 title="Quick Connect"
             >
-                <Zap size={12} />
+                <Zap size={11} />
             </button>
             <button
                 onClick={onToggleMenu}
                 className="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-main)] p-1 rounded-md transition-all"
                 style={{ opacity: isMenuOpen ? 1 : undefined }}
             >
-                <MoreVertical size={13} />
+                <MoreVertical size={12} />
             </button>
 
             {isMenuOpen && (
@@ -488,10 +488,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                 ) : (
                     /* ── Expanded ────────────────────────────────── */
                     <div className="flex-1 overflow-hidden flex flex-col p-4">
-                        <div className="flex items-center justify-between mb-6 shrink-0 gap-2">
+                        <div className="flex items-center justify-between mb-4 shrink-0 gap-2">
                             <div className="flex items-center gap-2">
-                                <Logo size={32} />
-                                <h1 className="text-xl font-bold tracking-tight text-[var(--text-main)]">Cliqon</h1>
+                                <Logo size={24} />
+                                <h1 className="text-lg font-bold tracking-tight text-[var(--text-main)]">Cliqon</h1>
                             </div>
                             <button
                                 onClick={() => setIsSettingsOpen(true)}
@@ -510,7 +510,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                                 {/* Header: Connections + actions */}
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
-                                        <h2 className="text-xs uppercase tracking-wider text-[var(--text-muted)] font-semibold">
+                                        <h2 className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">
                                             Connections
                                         </h2>
                                         {profiles.length > 0 && (
@@ -540,21 +540,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                                             className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-1 rounded-md transition-colors"
                                             title="Import connections"
                                         >
-                                            <Upload size={14} />
+                                            <Upload size={13} />
                                         </button>
                                         <button
                                             onClick={togglePanel}
                                             className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-1 rounded-md transition-colors"
                                             title="Network sharing"
                                         >
-                                            <Users size={14} />
+                                            <Users size={13} />
                                         </button>
                                         <button
                                             onClick={handleAdd}
                                             className="text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] p-1 rounded-md transition-colors"
                                             title="New connection (Ctrl+N)"
                                         >
-                                            <Plus size={14} />
+                                            <Plus size={13} />
                                         </button>
                                     </div>
                                 </div>
@@ -562,21 +562,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                                 {/* Search */}
                                 {profiles.length > 0 && (
                                     <div className="relative mb-3">
-                                        <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+                                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
                                         <input
                                             ref={searchRef}
                                             type="text"
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
                                             placeholder="Search… (Ctrl+F)"
-                                            className="w-full pl-7 pr-6 py-1.5 text-xs bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-md text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-color)] transition-colors"
+                                            className="w-full pl-7 pr-6 py-1.5 text-[11px] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-md text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-color)] transition-colors"
                                         />
                                         {searchQuery && (
                                             <button
                                                 onClick={() => setSearchQuery('')}
                                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)]"
                                             >
-                                                <X size={11} />
+                                                <X size={10} />
                                             </button>
                                         )}
                                     </div>
@@ -605,12 +605,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onConnect, openAddModalRef, fo
                                                 {label && (
                                                     <button
                                                         onClick={() => toggleGroup(label)}
-                                                        className="w-full flex items-center gap-1.5 px-1 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors rounded hover:bg-[var(--hover-color)]"
+                                                        className="w-full flex items-center gap-1.5 px-1 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors rounded hover:bg-[var(--hover-color)]"
                                                     >
-                                                        <Folder size={11} className="shrink-0" />
+                                                        <Folder size={10} className="shrink-0" />
                                                         <span className="flex-1 text-left truncate">{label}</span>
                                                         <span className="group-count-badge">{items.length}</span>
-                                                        <ChevronDown size={11} className={`transition-transform duration-200 ${collapsedGroups[label] ? '-rotate-90' : ''}`} />
+                                                        <ChevronDown size={10} className={`transition-transform duration-200 ${collapsedGroups[label] ? '-rotate-90' : ''}`} />
                                                     </button>
                                                 )}
                                                 {!collapsedGroups[label] && (

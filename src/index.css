@@ -76,8 +76,8 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 10px 12px;
+  gap: 3px;
+  padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid var(--border-color);
   background: var(--bg-primary);
@@ -121,7 +121,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 500;
   padding: 1px 6px;
   border-radius: 4px;
@@ -162,8 +162,8 @@ body {
 }
 
 .view-toggle button {
-  padding: 3px 8px;
-  font-size: 11px;
+  padding: 2px 6px;
+  font-size: 10px;
   border: none;
   background: transparent;
   color: var(--text-muted);
@@ -204,7 +204,7 @@ body {
   justify-content: center;
   min-width: 18px;
   height: 16px;
-  font-size: 9px;
+  font-size: 8px;
   padding: 1px 4px;
   border-radius: 4px;
   background: var(--border-color);
@@ -216,8 +216,8 @@ body {
 .connection-compact {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: 6px;
+  padding: 4px 8px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;

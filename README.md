@@ -186,9 +186,11 @@ Share SSH connection profiles and global snippets with teammates on the same loc
 
 ### Global Connection Snippets
 - **Global Library** — Save your most-used commands globally to access them across any SSH profile or connection.
+- **Real-time Synchronization** — Snippets are synchronized across all your terminal instances; changes reflect immediately in all open tabs.
+- **Dedicated Management UI** — Manage your command library through a dedicated section in Preferences without needing an active SSH connection.
+- **Smart Autocomplete** — Your snippets are automatically integrated into the terminal's predictive engine as high-priority suggestions.
 - **Folder Organization** — Group snippets logically (e.g., "Docker", "Updates", "Network").
 - **Auto-run Toggle** — Choose whether a snippet executes instantly upon clicking, or just pastes into the terminal buffer for further editing.
-- Add, edit, or delete snippets with a clean, collapsable sidebar panel.
 
 ### SSH Tunneling (Port Forwarding)
 - **Local & Remote Forwarding** — Securely expose local services to the remote host, or access remote internal services on your local machine.

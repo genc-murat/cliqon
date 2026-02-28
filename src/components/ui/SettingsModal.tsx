@@ -14,7 +14,7 @@ interface SettingsModalProps {
     onClose: () => void;
 }
 
-type SettingsSection = 'appearance' | 'terminal' | 'performance' | 'general' | 'keys' | 'backup' | 'about';
+type SettingsSection = 'appearance' | 'terminal' | 'performance' | 'general' | 'keys' | 'snippets' | 'backup' | 'about';
 
 interface DbStats {
     profiles: number;
@@ -106,6 +106,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         { id: 'performance', label: 'Performance', icon: Zap },
         { id: 'general', label: 'General', icon: Monitor },
         { id: 'keys', label: 'Keys', icon: Key },
+        { id: 'snippets', label: 'Snippets', icon: Zap },
         { id: 'backup', label: 'Backup', icon: HardDrive },
         { id: 'about', label: 'About', icon: Info },
     ];
@@ -389,6 +390,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                             </section>
                         )}
 
+                        {activeSection === 'snippets' && (
+                            <section className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-[var(--text-main)] mb-1">Global Snippets</h3>
+                                        <p className="text-sm text-[var(--text-muted)]">Manage snippets available across all connections.</p>
+                                    </div>
+                                    <button
+                                        onClick={() => window.dispatchEvent(new CustomEvent('cliqon:toggle-snippets'))}
+                                        className="px-4 py-2 bg-[var(--accent-color)] text-white text-xs font-bold rounded-xl shadow-lg hover:opacity-90 transition-all flex items-center gap-2"
+                                    >
+                                        <Zap size={14} /> View in Sidebar
+                                    </button>
+                                </div>
+
+                                <div className="p-6 border border-[var(--border-color)] rounded-2xl bg-[var(--bg-sidebar)]/50">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <Info size={16} className="text-[var(--accent-color)]" />
+                                        <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                                            Snippets are synchronized across all your terminal instances. You can also view and run them quickly using the right sidebar or the Command Palette (Ctrl+K).
+                                        </p>
+                                    </div>
+
+                                    <div className="text-center py-12">
+                                        <div className="w-16 h-16 bg-[var(--accent-color)]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Zap size={32} className="text-[var(--accent-color)]" />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-[var(--text-main)] mb-2">Centralized Snippet Management</h4>
+                                        <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto mb-6">
+                                            Manage your common commands and scripts in one place.
+                                        </p>
+                                        <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold">
+                                            Use the sidebar for quick access
+                                        </p>
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+
                         {activeSection === 'performance' && (
                             <section className="space-y-8 max-w-2xl animate-in slide-in-from-bottom-4 duration-300">
                                 <div>
@@ -630,7 +670,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 </div>
                                 <div className="space-y-2 pt-4">
                                     <div className="px-4 py-2 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-full text-xs font-bold text-[var(--text-main)] shadow-sm">
-                                        Version 0.8.1
+                                        Version 0.9.0
                                     </div>
 
                                     <div className="pt-4 flex flex-col items-center gap-3">

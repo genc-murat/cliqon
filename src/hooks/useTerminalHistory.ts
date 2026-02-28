@@ -13,12 +13,19 @@ function getOrCreatePredictor(profileId: string): CommandPredictor {
     return predictor;
 }
 
+import { useSnippets } from './useSnippets';
+
 export function useTerminalHistory(profileId: string) {
     const predictorRef = useRef<CommandPredictor>(getOrCreatePredictor(profileId));
+    const { snippets } = useSnippets();
     const inputBufferRef = useRef<string>('');
     const isInteractiveRef = useRef<boolean>(false);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isLoadedRef = useRef<boolean>(false);
+
+    useEffect(() => {
+        predictorRef.current.setSnippets(snippets.map(s => s.command));
+    }, [snippets]);
 
     useEffect(() => {
         const loadModel = async () => {
@@ -34,7 +41,7 @@ export function useTerminalHistory(profileId: string) {
                 isLoadedRef.current = true;
             }
         };
-        
+
         loadModel();
     }, [profileId]);
 

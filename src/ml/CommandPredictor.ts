@@ -38,9 +38,17 @@ export class CommandPredictor {
     private markov: Map<string, MarkovTransition[]> = new Map();
     private ngrams: Map<string, number> = new Map();
     private lastCommand: string | null = null;
+    private userSnippets: string[] = [];
 
     constructor() {
         this.bootstrapFromDictionary();
+    }
+
+    /**
+     * Update the predictor with user-defined snippets.
+     */
+    setSnippets(snippets: string[]): void {
+        this.userSnippets = snippets;
     }
 
     /**
@@ -139,6 +147,17 @@ export class CommandPredictor {
 
         // 4. Dictionary fallback (low priority)
         if (candidates.size < maxResults) {
+            // Include user snippets with higher priority than fallback dictionary
+            for (const snippet of this.userSnippets) {
+                if (snippet.toLowerCase().startsWith(prefix) && !candidates.has(snippet) && snippet !== currentInput.trim()) {
+                    candidates.set(snippet, {
+                        command: snippet,
+                        score: 0.5, // Higher than dictionary, lower than history
+                        source: 'dictionary', // Reusing source type
+                    });
+                }
+            }
+
             for (const cmd of TERMINAL_COMMANDS) {
                 if (cmd.toLowerCase().startsWith(prefix) && !candidates.has(cmd) && cmd !== currentInput.trim()) {
                     candidates.set(cmd, {

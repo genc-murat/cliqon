@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
  
+## [0.9.0] - 2026-02-28
+ 
+### Added
+- **Global Snippets Refactor**:
+  - **Real-time Synchronization**: Snippets are now synchronized across all open terminal tabs instantly via a global provider.
+  - **Centralized Management**: New dedicated **Snippets** tab in Preferences for managing command libraries without an active connection.
+  - **Predictive Integration**: User-defined snippets are now integrated into the ML-powered terminal autocomplete (ghost-text) with high priority.
+- **Backend Refinement**:
+  - Implemented `SnippetsProvider` for robust frontend state management and synchronization.
+
+### Fixed
+- **Snippet State Drifts**: Resolved issues where adding/editing a snippet in one terminal session wouldn't update others until a full reload.
+ 
 ## [0.8.1] - 2026-02-28
  
 ### Fixed

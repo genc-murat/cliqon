@@ -238,7 +238,8 @@ mod tests {
         let payload = SharePayload {
             sender_name: "Alice".to_string(),
             sender_ip: "192.168.1.10".to_string(),
-            profiles: vec![],
+            profiles: Some(vec![]),
+            snippets: Some(vec![]),
             timestamp: 1700000000,
         };
 
@@ -246,7 +247,7 @@ mod tests {
         let decoded: SharePayload = serde_json::from_str(&json).unwrap();
 
         assert_eq!(decoded.sender_name, payload.sender_name);
-        assert_eq!(decoded.profiles.len(), 0);
+        assert_eq!(decoded.profiles.as_ref().map(|v| v.len()).unwrap_or(0), 0);
     }
 
     #[test]
@@ -256,6 +257,7 @@ mod tests {
             from_name: "Bob".to_string(),
             from_ip: "10.0.0.5".to_string(),
             profiles: vec![],
+            snippets: vec![],
             received_at: 1700000000,
         };
 

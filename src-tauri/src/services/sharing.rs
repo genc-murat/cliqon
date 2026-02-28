@@ -578,6 +578,7 @@ mod tests {
             from_name: "Sender".to_string(),
             from_ip: "192.168.1.5".to_string(),
             profiles: vec![],
+            snippets: vec![],
             received_at: now_secs(),
         };
 
@@ -596,6 +597,7 @@ mod tests {
             from_name: "Sender".to_string(),
             from_ip: "192.168.1.5".to_string(),
             profiles: vec![],
+            snippets: vec![],
             received_at: now_secs(),
         };
 

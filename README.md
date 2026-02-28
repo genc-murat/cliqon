@@ -2,6 +2,7 @@
 
 [![Release](https://img.shields.io/github/v/release/genc-murat/cliqon?style=flat-square)](https://github.com/genc-murat/cliqon/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/genc-murat/cliqon/release.yml?style=flat-square)](https://github.com/genc-murat/cliqon/actions)
+[![Codecov](https://img.shields.io/codecov/c/github/genc-murat/cliqon?style=flat-square&logo=codecov)](https://codecov.io/gh/genc-murat/cliqon)
 [![License](https://img.shields.io/github/license/genc-murat/cliqon?style=flat-square)](LICENSE)
 [![Changelog](https://img.shields.io/badge/changelog-CHANGELOG.md-brightgreen?style=flat-square)](https://github.com/genc-murat/cliqon/blob/main/CHANGELOG.md)
 [![Platform](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-blue?style=flat-square)](https://github.com/genc-murat/cliqon/releases)

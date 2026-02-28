@@ -348,5 +348,9 @@ export const api = {
     deleteEnvVar: async (profile: SshProfile, key: string): Promise<string> => {
         return await invoke<string>('delete_env_var', { profile, key });
     },
+
+    saveTextFile: async (path: string, content: string): Promise<void> => {
+        return await invoke('save_text_file', { path, content });
+    },
 };
 

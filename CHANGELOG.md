@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+ 
+## [0.8.1] - 2026-02-28
+ 
+### Fixed
+- **Backup & Restore**: Fixed "Export All Data" button by replacing browser-style downloads with Tauri's native file saving dialog and commands.
+ 
 
 ## [0.8.0] - 2026-02-27
 

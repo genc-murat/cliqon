@@ -137,7 +137,8 @@ pub fn run() {
             get_cron_history,
             get_env_vars,
             set_env_var,
-            delete_env_var
+            delete_env_var,
+            save_text_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { X, Palette, Terminal as TerminalIcon, Monitor, Info, Check, Activity, Shield, Zap, HardDrive, Key } from 'lucide-react';
+import { save } from '@tauri-apps/plugin-dialog';
 import { Logo } from '../layout/Logo';
 import { KeyStore } from '../settings/KeyStore';
 import { useTheme } from '../../hooks/useTheme';
 import { terminalFontFamilies } from '../../lib/themes';
 import { exportAllData, importData as importDataFn, ExportData, getDatabaseStats } from '../../lib/db';
+import { api } from '../../services/api';
 import { useUpdater } from '../../hooks/useUpdater';
 
 interface SettingsModalProps {
@@ -62,15 +64,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     const handleExport = async () => {
         try {
             const data = await exportAllData();
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `cliqon-backup-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            const jsonString = JSON.stringify(data, null, 2);
+
+            const filePath = await save({
+                filters: [{
+                    name: 'JSON',
+                    extensions: ['json']
+                }],
+                defaultPath: `cliqon-backup-${new Date().toISOString().split('T')[0]}.json`
+            });
+
+            if (filePath) {
+                await api.saveTextFile(filePath, jsonString);
+                console.log('Export successful to:', filePath);
+            }
         } catch (e) {
             console.error('Export failed:', e);
         }
@@ -623,7 +630,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 </div>
                                 <div className="space-y-2 pt-4">
                                     <div className="px-4 py-2 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-full text-xs font-bold text-[var(--text-main)] shadow-sm">
-                                        Version 0.8.0
+                                        Version 0.8.1
                                     </div>
 
                                     <div className="pt-4 flex flex-col items-center gap-3">

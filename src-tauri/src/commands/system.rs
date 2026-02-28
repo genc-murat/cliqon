@@ -75,3 +75,9 @@ pub async fn delete_env_var(
         .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
     system_service.delete_env_var(&profile, secret.as_deref(), &key)
 }
+
+#[tauri::command]
+pub async fn save_text_file(path: String, content: String) -> Result<()> {
+    std::fs::write(path, content).map_err(|e| crate::error::AppError::Custom(e.to_string()))?;
+    Ok(())
+}

@@ -2,6 +2,12 @@ export interface Theme {
     id: string;
     name: string;
     type: 'dark' | 'light';
+    gradient?: {
+        from: string;
+        to: string;
+        direction?: 'to-bottom' | 'to-right' | 'diagonal' | 'radial';
+        animated?: boolean;
+    };
     colors: {
         bgPrimary: string;
         bgSidebar: string;
@@ -712,6 +718,366 @@ export const themes: Record<string, Theme> = {
             accent: '#c04080',
             border: '#e8d0e0',
             hover: '#f0d8f0',
+        }
+    },
+    gradientSunset: {
+        id: 'gradientSunset',
+        name: 'Gradient Sunset',
+        type: 'dark',
+        gradient: {
+            from: '#2b1055',
+            to: '#7597de',
+            direction: 'diagonal',
+            animated: true
+        },
+        colors: {
+            bgPrimary: '#1a0f3a',
+            bgSidebar: '#251840',
+            textMain: '#f0e6ff',
+            textMuted: '#a89fd8',
+            accent: '#f472b6',
+            border: '#3d2f5a',
+            hover: '#4a3a6a',
+        }
+    },
+    gradientOcean: {
+        id: 'gradientOcean',
+        name: 'Gradient Ocean',
+        type: 'dark',
+        gradient: {
+            from: '#0f4c75',
+            to: '#3282b8',
+            direction: 'to-bottom',
+            animated: false
+        },
+        colors: {
+            bgPrimary: '#0a2a4a',
+            bgSidebar: '#0f3555',
+            textMain: '#e0f0ff',
+            textMuted: '#7aa3c8',
+            accent: '#00d4ff',
+            border: '#1a4a6a',
+            hover: '#205575',
+        }
+    },
+    gradientForest: {
+        id: 'gradientForest',
+        name: 'Gradient Forest',
+        type: 'dark',
+        gradient: {
+            from: '#134e5e',
+            to: '#71b280',
+            direction: 'diagonal',
+            animated: false
+        },
+        colors: {
+            bgPrimary: '#0f3a3a',
+            bgSidebar: '#144545',
+            textMain: '#e0fff5',
+            textMuted: '#7ac8b0',
+            accent: '#34d399',
+            border: '#1f5a50',
+            hover: '#256555',
+        }
+    },
+    gradientFire: {
+        id: 'gradientFire',
+        name: 'Gradient Fire',
+        type: 'dark',
+        gradient: {
+            from: '#833ab4',
+            to: '#fd1d1d',
+            direction: 'to-right',
+            animated: true
+        },
+        colors: {
+            bgPrimary: '#2a0a1a',
+            bgSidebar: '#3a0f25',
+            textMain: '#ffe6f0',
+            textMuted: '#d89fb0',
+            accent: '#fb7185',
+            border: '#5a1f35',
+            hover: '#6a2540',
+        }
+    },
+    gradientMidnight: {
+        id: 'gradientMidnight',
+        name: 'Gradient Midnight',
+        type: 'dark',
+        gradient: {
+            from: '#000428',
+            to: '#004e92',
+            direction: 'to-bottom',
+            animated: false
+        },
+        colors: {
+            bgPrimary: '#051025',
+            bgSidebar: '#0a1835',
+            textMain: '#d0e0ff',
+            textMuted: '#7090c0',
+            accent: '#60a5fa',
+            border: '#153055',
+            hover: '#1a3a60',
+        }
+    },
+    gradientAurora: {
+        id: 'gradientAurora',
+        name: 'Gradient Aurora',
+        type: 'dark',
+        gradient: {
+            from: '#00c6fb',
+            to: '#005bea',
+            direction: 'diagonal',
+            animated: true
+        },
+        colors: {
+            bgPrimary: '#0a1a3a',
+            bgSidebar: '#0f2045',
+            textMain: '#e0f0ff',
+            textMuted: '#80a0d0',
+            accent: '#00d4ff',
+            border: '#1a3a6a',
+            hover: '#204575',
+        }
+    },
+    gradientCosmic: {
+        id: 'gradientCosmic',
+        name: 'Gradient Cosmic',
+        type: 'dark',
+        gradient: {
+            from: '#4c1a57',
+            to: '#f761a1',
+            direction: 'radial',
+            animated: true
+        },
+        colors: {
+            bgPrimary: '#1a0a25',
+            bgSidebar: '#250f35',
+            textMain: '#f5e6ff',
+            textMuted: '#c090d0',
+            accent: '#e879f9',
+            border: '#4a1f55',
+            hover: '#552560',
+        }
+    },
+    gradientDawn: {
+        id: 'gradientDawn',
+        name: 'Gradient Dawn',
+        type: 'light',
+        gradient: {
+            from: '#ff9a9e',
+            to: '#fecfef',
+            direction: 'to-bottom',
+            animated: false
+        },
+        colors: {
+            bgPrimary: '#fff5f7',
+            bgSidebar: '#ffeef2',
+            textMain: '#3a2030',
+            textMuted: '#a07085',
+            accent: '#f472b6',
+            border: '#f8d0e0',
+            hover: '#fce4f0',
+        }
+    },
+    gradientTropical: {
+        id: 'gradientTropical',
+        name: 'Gradient Tropical',
+        type: 'light',
+        gradient: {
+            from: '#56ab2f',
+            to: '#a8e063',
+            direction: 'diagonal',
+            animated: false
+        },
+        colors: {
+            bgPrimary: '#f0fff0',
+            bgSidebar: '#e8f8e0',
+            textMain: '#204030',
+            textMuted: '#609070',
+            accent: '#22c55e',
+            border: '#c0e8c0',
+            hover: '#d0f0d0',
+        }
+    },
+    gradientSky: {
+        id: 'gradientSky',
+        name: 'Gradient Sky',
+        type: 'light',
+        gradient: {
+            from: '#2980b9',
+            to: '#6dd5fa',
+            direction: 'to-bottom',
+            animated: false
+        },
+        colors: {
+            bgPrimary: '#f0f8ff',
+            bgSidebar: '#e6f4ff',
+            textMain: '#1a3a5a',
+            textMuted: '#5080a0',
+            accent: '#0ea5e9',
+            border: '#b0d8f0',
+            hover: '#c0e0f5',
+        }
+    },
+    gradientBerry: {
+        id: 'gradientBerry',
+        name: 'Gradient Berry',
+        type: 'dark',
+        gradient: {
+            from: '#8e2de2',
+            to: '#4a00e0',
+            direction: 'diagonal',
+            animated: true
+        },
+        colors: {
+            bgPrimary: '#1a0a3a',
+            bgSidebar: '#200f45',
+            textMain: '#f0e6ff',
+            textMuted: '#a090c8',
+            accent: '#a78bfa',
+            border: '#3a2065',
+            hover: '#452875',
+        }
+    },
+    gradientLime: {
+        id: 'gradientLime',
+        name: 'Gradient Lime',
+        type: 'dark',
+        gradient: {
+            from: '#598334',
+            to: '#b8c954',
+            direction: 'to-right',
+            animated: false
+        },
+        colors: {
+            bgPrimary: '#1a2a15',
+            bgSidebar: '#20351a',
+            textMain: '#e8f5e0',
+            textMuted: '#80a070',
+            accent: '#84cc16',
+            border: '#3a5025',
+            hover: '#456030',
+        }
+    },
+    gradientPeach: {
+        id: 'gradientPeach',
+        name: 'Gradient Peach',
+        type: 'light',
+        gradient: {
+            from: '#f7971e',
+            to: '#ffd200',
+            direction: 'diagonal',
+            animated: false
+        },
+        colors: {
+            bgPrimary: '#fffaf0',
+            bgSidebar: '#fff5e0',
+            textMain: '#3a2815',
+            textMuted: '#907040',
+            accent: '#f59e0b',
+            border: '#f8e0c0',
+            hover: '#fcecd0',
+        }
+    },
+    gradientNeon: {
+        id: 'gradientNeon',
+        name: 'Gradient Neon',
+        type: 'dark',
+        gradient: {
+            from: '#00f260',
+            to: '#0575e6',
+            direction: 'to-right',
+            animated: true
+        },
+        colors: {
+            bgPrimary: '#0a1a2a',
+            bgSidebar: '#0f2035',
+            textMain: '#e0f5ff',
+            textMuted: '#70a0b8',
+            accent: '#00f260',
+            border: '#1a4055',
+            hover: '#204a60',
+        }
+    },
+    gradientVelvet: {
+        id: 'gradientVelvet',
+        name: 'Gradient Velvet',
+        type: 'dark',
+        gradient: {
+            from: '#403866',
+            to: '#928d83',
+            direction: 'radial',
+            animated: false
+        },
+        colors: {
+            bgPrimary: '#1a1525',
+            bgSidebar: '#201a30',
+            textMain: '#e8e0f0',
+            textMuted: '#9085a0',
+            accent: '#c084fc',
+            border: '#3a3050',
+            hover: '#45385a',
+        }
+    },
+    gradientCoral: {
+        id: 'gradientCoral',
+        name: 'Gradient Coral',
+        type: 'light',
+        gradient: {
+            from: '#ff6b6b',
+            to: '#feca57',
+            direction: 'diagonal',
+            animated: false
+        },
+        colors: {
+            bgPrimary: '#fff5f5',
+            bgSidebar: '#ffefef',
+            textMain: '#3a2025',
+            textMuted: '#a06070',
+            accent: '#fb7185',
+            border: '#f8d0d5',
+            hover: '#fce4e8',
+        }
+    },
+    gradientTeal: {
+        id: 'gradientTeal',
+        name: 'Gradient Teal',
+        type: 'dark',
+        gradient: {
+            from: '#11998e',
+            to: '#38ef7d',
+            direction: 'to-bottom',
+            animated: true
+        },
+        colors: {
+            bgPrimary: '#0a2520',
+            bgSidebar: '#0f3028',
+            textMain: '#e0fff5',
+            textMuted: '#70b895',
+            accent: '#14b8a6',
+            border: '#1a5045',
+            hover: '#206050',
+        }
+    },
+    gradientPlum: {
+        id: 'gradientPlum',
+        name: 'Gradient Plum',
+        type: 'dark',
+        gradient: {
+            from: '#663399',
+            to: '#ba55d3',
+            direction: 'diagonal',
+            animated: false
+        },
+        colors: {
+            bgPrimary: '#1a0f25',
+            bgSidebar: '#201530',
+            textMain: '#f5e6ff',
+            textMuted: '#a080b8',
+            accent: '#c084fc',
+            border: '#3a2055',
+            hover: '#452860',
         }
     },
 };

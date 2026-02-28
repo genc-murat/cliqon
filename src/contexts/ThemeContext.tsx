@@ -162,9 +162,9 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     useEffect(() => {
         if (isLoading) return;
-        
+
         const root = document.documentElement;
-        root.setAttribute('data-theme', theme.type);
+        root.setAttribute('data-theme', theme.id);
 
         root.style.setProperty('--bg-primary', theme.colors.bgPrimary);
         root.style.setProperty('--bg-sidebar', theme.colors.bgSidebar);
@@ -173,6 +173,26 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         root.style.setProperty('--accent-color', theme.colors.accent);
         root.style.setProperty('--border-color', theme.colors.border);
         root.style.setProperty('--hover-color', theme.colors.hover);
+
+        // Handle gradient themes
+        if (theme.gradient) {
+            root.style.setProperty('--gradient-from', theme.gradient.from);
+            root.style.setProperty('--gradient-to', theme.gradient.to);
+            root.style.setProperty('--gradient-direction', theme.gradient.direction || 'to bottom');
+            
+            // Apply gradient animation class based on animated property
+            const body = document.body;
+            if (theme.gradient.animated) {
+                body.classList.add('gradient-animated');
+            } else {
+                body.classList.remove('gradient-animated');
+            }
+        } else {
+            // Reset gradient variables for non-gradient themes
+            root.style.setProperty('--gradient-from', 'transparent');
+            root.style.setProperty('--gradient-to', 'transparent');
+            document.body.classList.remove('gradient-animated');
+        }
 
         if (theme.id === 'glassDark') {
             root.classList.add('theme-glass');

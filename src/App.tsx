@@ -295,7 +295,16 @@ function App() {
   }, [activeTab, checkForUpdates]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-main)] transition-colors duration-200">
+    <div className="relative flex flex-col h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-main)] transition-colors duration-200">
+      {/* Gradient Background Overlay */}
+      <div 
+        className="theme-gradient-overlay gradient-diagonal"
+        style={{
+          '--gradient-from': 'var(--gradient-from)',
+          '--gradient-to': 'var(--gradient-to)',
+        } as React.CSSProperties}
+      />
+      
       <TitleBar />
       <div className="flex flex-1 min-h-0">
         <Sidebar

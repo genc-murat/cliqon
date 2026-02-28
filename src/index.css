@@ -15,6 +15,12 @@
   --accent-color: #3b82f6;
   --border-color: #e4e4e7;
   --hover-color: #f4f4f5;
+  
+  /* Gradient theme variables */
+  --gradient-from: transparent;
+  --gradient-to: transparent;
+  --gradient-direction: to bottom;
+  --gradient-animation: none;
 }
 
 [data-theme='dark'] {
@@ -27,9 +33,108 @@
   --hover-color: #27272a;
 }
 
+/* ── Gradient Theme Animations ──────────────────────────────────────── */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes gradient-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes gradient-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Gradient animation classes */
+.gradient-animated {
+  background-size: 200% 200%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+.gradient-animated-slow {
+  background-size: 200% 200%;
+  animation: gradient-shift 30s ease infinite;
+}
+
+.gradient-animated-fast {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+.gradient-pulse {
+  animation: gradient-pulse 3s ease-in-out infinite;
+}
+
+/* Gradient direction classes */
+.gradient-to-bottom {
+  background: linear-gradient(to bottom, var(--gradient-from), var(--gradient-to));
+}
+
+.gradient-to-right {
+  background: linear-gradient(to right, var(--gradient-from), var(--gradient-to));
+}
+
+.gradient-diagonal {
+  background: linear-gradient(135deg, var(--gradient-from), var(--gradient-to));
+}
+
+.gradient-radial {
+  background: radial-gradient(ellipse at center, var(--gradient-from), var(--gradient-to));
+}
+
+/* Theme gradient overlay */
+.theme-gradient-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.1;
+  transition: opacity 0.3s ease;
+}
+
+[data-theme^='gradient'] .theme-gradient-overlay {
+  opacity: 0.15;
+}
+
+/* Apply gradient to body background for gradient themes */
+[data-theme^='gradient'] {
+  background: linear-gradient(135deg, var(--gradient-from), var(--gradient-to));
+  background-size: 200% 200%;
+}
+
+[data-theme^='gradient'].gradient-animated {
+  animation: gradient-shift 15s ease infinite;
+}
+
+/* Glass effect for gradient themes */
 .theme-glass {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+.theme-glass-strong {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 body {
@@ -100,10 +205,20 @@ body {
   transition: all 0.2s;
 }
 
+.connection-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.03), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
 .connection-card:hover {
   border-color: color-mix(in srgb, var(--card-accent, var(--accent-color)) 30%, var(--border-color));
   background: color-mix(in srgb, var(--card-accent, var(--accent-color)) 4%, var(--bg-primary));
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 0 20px rgba(0, 0, 0, 0.05);
   transform: translateY(-2px);
 }
 
@@ -114,9 +229,25 @@ body {
   opacity: 1;
 }
 
+.connection-card:hover::after {
+  opacity: 1;
+}
+
 .connection-card:active {
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Gradient connection cards */
+[data-theme^='gradient'] .connection-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme^='gradient'] .connection-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 40px rgba(255, 255, 255, 0.05);
 }
 
 /* Connection Icon / Avatar */

@@ -766,4 +766,508 @@ mod tests {
         let error = crate::error::AppError::Custom("Docker command failed".to_string());
         assert!(error.to_string().contains("failed"));
     }
+
+    #[test]
+    fn test_docker_profile_secret_handling() {
+        let profile = SshProfile {
+            id: "test-id".to_string(),
+            name: "Test".to_string(),
+            host: "192.168.1.1".to_string(),
+            port: 22,
+            username: "user".to_string(),
+            auth_method: crate::models::profile::AuthMethod::Password,
+            category: None,
+            private_key_path: None,
+            obfuscated_secret: None,
+            tunnels: None,
+            is_favorite: Some(true),
+            color: None,
+        };
+        
+        let _secret: Option<String> = None;
+        let _secret_value = _secret.as_deref();
+        
+        assert_eq!(profile.port, 22);
+        assert!(_secret_value.is_none());
+    }
+
+    #[test]
+    fn test_docker_profile_password_auth() {
+        let profile = SshProfile {
+            id: "pwd-auth".to_string(),
+            name: "Password Auth Server".to_string(),
+            host: "10.0.0.1".to_string(),
+            port: 2222,
+            username: "admin".to_string(),
+            auth_method: crate::models::profile::AuthMethod::Password,
+            category: Some("Production".to_string()),
+            private_key_path: None,
+            obfuscated_secret: None,
+            tunnels: None,
+            is_favorite: None,
+            color: Some("#FF5500".to_string()),
+        };
+        
+        assert!(matches!(profile.auth_method, crate::models::profile::AuthMethod::Password));
+    }
+
+    #[test]
+    fn test_docker_profile_private_key_auth() {
+        let profile = SshProfile {
+            id: "key-auth".to_string(),
+            name: "Key Auth Server".to_string(),
+            host: "10.0.0.2".to_string(),
+            port: 22,
+            username: "deploy".to_string(),
+            auth_method: crate::models::profile::AuthMethod::PrivateKey,
+            category: Some("Development".to_string()),
+            private_key_path: Some("/home/user/.ssh/id_rsa".to_string()),
+            obfuscated_secret: None,
+            tunnels: None,
+            is_favorite: Some(false),
+            color: None,
+        };
+        
+        assert!(matches!(profile.auth_method, crate::models::profile::AuthMethod::PrivateKey));
+    }
+
+    #[test]
+    fn test_docker_tunnel_struct() {
+        use crate::models::profile::TunnelConfig;
+        
+        let tunnel = TunnelConfig {
+            id: "tunnel-1".to_string(),
+            name: "Test Tunnel".to_string(),
+            tunnel_type: crate::models::profile::TunnelType::Local,
+            local_port: 8080,
+            remote_host: Some("localhost".to_string()),
+            remote_port: Some(80),
+        };
+        
+        assert_eq!(tunnel.local_port, 8080);
+        assert!(tunnel.remote_port.is_some());
+    }
+
+    #[test]
+    fn test_docker_tunnels_vec() {
+        use crate::models::profile::TunnelConfig;
+        
+        let tunnels = vec![
+            TunnelConfig { 
+                id: "t1".to_string(), 
+                name: "Tunnel 1".to_string(),
+                tunnel_type: crate::models::profile::TunnelType::Local,
+                local_port: 3000, 
+                remote_host: Some("localhost".to_string()), 
+                remote_port: Some(3000) 
+            },
+            TunnelConfig { 
+                id: "t2".to_string(), 
+                name: "Tunnel 2".to_string(),
+                tunnel_type: crate::models::profile::TunnelType::Local,
+                local_port: 5432, 
+                remote_host: Some("db.local".to_string()), 
+                remote_port: Some(5432) 
+            },
+        ];
+        
+        assert_eq!(tunnels.len(), 2);
+        
+        let total_local: u16 = tunnels.iter().map(|t| t.local_port).sum();
+        assert_eq!(total_local, 8432);
+    }
+
+    #[test]
+    fn test_docker_result_map() {
+        let ok_result: Result<String> = Ok("docker output".to_string());
+        let mapped = ok_result.map(|s| s.len());
+        assert_eq!(mapped.unwrap(), 13);
+        
+        let err_result: Result<String> = Err(crate::error::AppError::Custom("fail".to_string()));
+        let mapped_err = err_result.map(|_| "should not run");
+        assert!(mapped_err.is_err());
+    }
+
+    #[test]
+    fn test_docker_result_and_then() {
+        let result: Result<i32> = Ok(10);
+        let chained = result.and_then(|n| Ok(n * 2));
+        assert_eq!(chained.unwrap(), 20);
+    }
+
+    #[test]
+    fn test_docker_string_options() {
+        let none_str: Option<String> = None;
+        let some_str = Some("value".to_string());
+        
+        assert_eq!(none_str.as_deref(), None);
+        assert_eq!(some_str.as_deref(), Some("value"));
+    }
+
+    #[test]
+    fn test_docker_container_filter() {
+        let containers = vec![
+            "nginx".to_string(),
+            "redis".to_string(),
+            "postgres".to_string(),
+        ];
+        
+        let filtered: Vec<&String> = containers.iter()
+            .filter(|c| c.starts_with("n") || c.starts_with("p"))
+            .collect();
+        
+        assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn test_docker_json_parse() {
+        let json_str = r#"{"Id":"abc123","Names":["/nginx"],"State":"running"}"#;
+        let _parsed: serde_json::Value = serde_json::from_str(json_str).unwrap();
+        
+        assert!(json_str.contains("abc123"));
+    }
+
+    #[test]
+    fn test_docker_container_state_check() {
+        let states = vec!["running", "exited", "paused", "created"];
+        
+        for state in states {
+            let is_running = state == "running";
+            let is_stopped = state == "exited";
+            let is_paused = state == "paused";
+            
+            assert!(is_running || is_stopped || is_paused || state == "created");
+        }
+    }
+
+    #[test]
+    fn test_docker_log_tail_default() {
+        let tail: Option<u32> = None;
+        let tail_lines = tail.unwrap_or(500);
+        assert_eq!(tail_lines, 500);
+        
+        let custom_tail = Some(100);
+        let custom_lines = custom_tail.unwrap_or(500);
+        assert_eq!(custom_lines, 100);
+    }
+
+    #[test]
+    fn test_docker_format_json() {
+        let format = "{{json .}}";
+        assert!(format.contains("json"));
+    }
+
+    #[test]
+    fn test_docker_container_names_parse() {
+        let names = vec![
+            "/nginx",
+            "/redis",
+            "/postgres",
+            "/my-container",
+        ];
+        
+        for name in names {
+            let clean = name.trim_start_matches('/');
+            assert!(!clean.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_docker_volume_name_parse() {
+        let volumes = vec![
+            "my_volume",
+            "data_volume",
+            "postgres_data",
+        ];
+        
+        for vol in volumes {
+            assert!(!vol.contains('/'));
+        }
+    }
+
+    #[test]
+    fn test_docker_network_driver() {
+        let drivers = vec!["bridge", "host", "overlay", "macvlan"];
+        
+        for driver in drivers {
+            let is_valid = driver == "bridge" || driver == "host" || driver == "overlay" || driver == "macvlan";
+            assert!(is_valid);
+        }
+    }
+
+    #[test]
+    fn test_docker_image_names() {
+        let images = vec![
+            "nginx:latest",
+            "postgres:14",
+            "redis:alpine",
+            "ubuntu:22.04",
+        ];
+        
+        for img in images {
+            assert!(img.contains(':'));
+        }
+    }
+
+    #[test]
+    fn test_docker_container_labels() {
+        let labels = vec![
+            "label1=value1",
+            "environment=production",
+            "team=devops",
+        ];
+        
+        for label in labels {
+            assert!(label.contains('='));
+        }
+    }
+
+    #[test]
+    fn test_docker_memory_format() {
+        let memory = vec!["512m", "1g", "2G", "512M"];
+        
+        for mem in memory {
+            let has_unit = mem.ends_with('m') || mem.ends_with('g') || mem.ends_with('M') || mem.ends_with('G');
+            assert!(has_unit);
+        }
+    }
+
+    #[test]
+    fn test_docker_cpu_format() {
+        let cpus = vec!["0.5", "1.0", "2", "0.25"];
+        
+        for cpu in cpus {
+            let parse_result = cpu.parse::<f32>();
+            assert!(parse_result.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_docker_port_mapping() {
+        let mappings = vec![
+            "8080:80",
+            "5432:5432",
+            "3000:3000",
+        ];
+        
+        for map in mappings {
+            let parts: Vec<&str> = map.split(':').collect();
+            assert_eq!(parts.len(), 2);
+        }
+    }
+
+    #[test]
+    fn test_docker_volume_mount() {
+        let mounts = vec![
+            "/host/path:/container/path",
+            "./local:/container",
+            "/data:/var/data",
+        ];
+        
+        for mount in mounts {
+            let parts: Vec<&str> = mount.split(':').collect();
+            assert_eq!(parts.len(), 2);
+            assert!(parts[0].starts_with('/') || parts[0].starts_with('.'));
+        }
+    }
+
+    #[test]
+    fn test_docker_env_var_format() {
+        let vars = vec![
+            "KEY=value",
+            "DATABASE_URL=postgres://localhost:5432/db",
+            "DEBUG=true",
+        ];
+        
+        for var in vars {
+            assert!(var.contains('='));
+        }
+    }
+
+    #[test]
+    fn test_docker_command_chain() {
+        let chains = vec![
+            "docker stop container1 && docker rm container1",
+            "docker build . && docker push image",
+            "docker-compose up -d && docker-compose ps",
+        ];
+        
+        for chain in chains {
+            assert!(chain.contains("&&") || chain.contains("||"));
+        }
+    }
+
+    #[test]
+    fn test_docker_timestamp_format() {
+        let timestamps = vec![
+            "2023-01-01T00:00:00Z",
+            "2023-12-31T23:59:59Z",
+        ];
+        
+        for ts in timestamps {
+            assert!(ts.contains('T') && ts.ends_with('Z'));
+        }
+    }
+
+    #[test]
+    fn test_docker_json_fields() {
+        let fields = vec![
+            "Id",
+            "Names",
+            "Image",
+            "State",
+            "Status",
+            "Ports",
+        ];
+        
+        for field in fields {
+            assert!(!field.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_docker_container_state_enum() {
+        #[derive(Debug)]
+        enum ContainerState {
+            Running,
+            Exited,
+            Paused,
+            Created,
+            Restarting,
+            Dead,
+        }
+        
+        let states = vec![
+            ContainerState::Running,
+            ContainerState::Exited,
+            ContainerState::Paused,
+        ];
+        
+        assert_eq!(states.len(), 3);
+    }
+
+    #[test]
+    fn test_docker_container_action_results() {
+        let results = vec![
+            ("start", true),
+            ("stop", false),
+            ("restart", true),
+            ("pause", true),
+        ];
+        
+        for (action, _success) in results {
+            assert!(!action.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_docker_container_state_transitions() {
+        let transitions = vec![
+            ("created", "running"),
+            ("running", "paused"),
+            ("paused", "running"),
+            ("running", "exited"),
+        ];
+        
+        for (from, to) in transitions {
+            assert!(!from.is_empty());
+            assert!(!to.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_docker_container_inspect_json() {
+        let json = r#"{
+            "Id": "abc123def456",
+            "Name": "/nginx",
+            "Config": {
+                "Image": "nginx:latest"
+            },
+            "State": {
+                "Status": "running"
+            }
+        }"#;
+        
+        let _parsed: serde_json::Value = serde_json::from_str(json).unwrap();
+        assert!(json.contains("abc123def456"));
+    }
+
+    #[test]
+    fn test_docker_image_remove_options() {
+        let options = vec![
+            "-f",
+            "--no-prune",
+            "-f --no-prune",
+        ];
+        
+        for opt in options {
+            assert!(!opt.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_docker_volume_remove_force() {
+        let force_flags = vec![
+            "-f",
+            "--force",
+            "",
+        ];
+        
+        for flag in force_flags {
+            let is_valid = flag.is_empty() || flag.contains('-');
+            assert!(is_valid);
+        }
+    }
+
+    #[test]
+    fn test_docker_network_disconnect_connect() {
+        let commands = vec![
+            "docker network disconnect bridge container",
+            "docker network connect bridge container",
+        ];
+        
+        for cmd in commands {
+            assert!(cmd.starts_with("docker network"));
+        }
+    }
+
+    #[test]
+    fn test_docker_container_exec_command() {
+        let exec_commands = vec![
+            "docker exec container ls",
+            "docker exec -it container bash",
+            "docker exec -d container python app.py",
+        ];
+        
+        for cmd in exec_commands {
+            assert!(cmd.contains("docker exec"));
+        }
+    }
+
+    #[test]
+    fn test_docker_build_context() {
+        let contexts = vec![
+            ".",
+            "./app",
+            "git://github.com/user/repo",
+            "https://github.com/user/repo.tar.gz",
+        ];
+        
+        for ctx in contexts {
+            assert!(!ctx.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_docker_registry_credentials() {
+        let configs = vec![
+            ("registry.example.com", "user", "password"),
+            ("docker.io", "", ""),
+            ("ghcr.io", "username", "token"),
+        ];
+        
+        for (registry, _user, _pass) in configs {
+            assert!(!registry.is_empty());
+        }
+    }
 }

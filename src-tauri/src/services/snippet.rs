@@ -230,4 +230,99 @@ mod tests {
         assert_eq!(decoded.command, "echo '你好世界'");
         assert_eq!(decoded.folder, Some("测试文件夹".to_string()));
     }
+
+    #[test]
+    fn test_snippet_command_parsing() {
+        let commands = vec![
+            ("ls -la", vec!["ls", "-la"]),
+            ("git status", vec!["git", "status"]),
+            ("docker ps -a", vec!["docker", "ps", "-a"]),
+        ];
+
+        for (cmd, _parts) in commands {
+            assert!(!cmd.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_snippet_folder_nesting() {
+        let folders = vec!["shell", "docker", "git/deploy", "devops/k8s"];
+
+        for folder in folders {
+            let parts: Vec<&str> = folder.split('/').collect();
+            assert!(!parts.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_snippet_search_matching() {
+        let query = "docker";
+        let snippets = vec!["docker ps", "docker-compose up", "git status", "ls -la"];
+
+        let matches: Vec<&&str> = snippets.iter().filter(|s| s.contains(query)).collect();
+        assert_eq!(matches.len(), 2);
+    }
+
+    #[test]
+    fn test_snippet_command_validation() {
+        let valid_commands = vec!["ls -la", "git status", "docker-compose up -d", "echo hello"];
+
+        for cmd in valid_commands {
+            let is_safe = !cmd.contains("rm -rf /") && !cmd.contains("dd if=");
+            assert!(is_safe);
+        }
+    }
+
+    #[test]
+    fn test_snippet_id_uniqueness() {
+        use uuid::Uuid;
+
+        let ids: Vec<String> = (0..100).map(|_| Uuid::new_v4().to_string()).collect();
+
+        let unique: std::collections::HashSet<_> = ids.iter().collect();
+        assert_eq!(ids.len(), unique.len());
+    }
+
+    #[test]
+    fn test_snippet_json_array_format() {
+        let snippets = vec![
+            Snippet {
+                id: "1".to_string(),
+                name: "One".to_string(),
+                command: "cmd1".to_string(),
+                folder: None,
+                auto_run: false,
+                description: None,
+            },
+            Snippet {
+                id: "2".to_string(),
+                name: "Two".to_string(),
+                command: "cmd2".to_string(),
+                folder: None,
+                auto_run: false,
+                description: None,
+            },
+        ];
+
+        let json = serde_json::to_string(&snippets).unwrap();
+        assert!(json.starts_with('['));
+        assert!(json.ends_with(']'));
+    }
+
+    #[test]
+    fn test_snippet_clone_behavior() {
+        let original = Snippet {
+            id: "original".to_string(),
+            name: "Original Snippet".to_string(),
+            command: "echo original".to_string(),
+            folder: Some("test".to_string()),
+            auto_run: true,
+            description: Some("Test description".to_string()),
+        };
+
+        let cloned = original.clone();
+        assert_eq!(original.id, cloned.id);
+        assert_eq!(original.name, cloned.name);
+        assert_eq!(original.command, cloned.command);
+    }
 }

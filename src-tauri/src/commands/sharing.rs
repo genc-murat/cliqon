@@ -364,4 +364,136 @@ mod tests {
         assert!(profiles.is_empty());
         assert!(!snippets.is_empty());
     }
+
+    #[test]
+    fn test_sharing_peer_info_access() {
+        let peer = PeerInfo {
+            id: "peer-123".to_string(),
+            display_name: "Test Peer".to_string(),
+            ip: "192.168.1.100".to_string(),
+            port: 19876,
+            last_seen: 1700000000,
+        };
+        
+        assert_eq!(peer.id, "peer-123");
+        assert_eq!(peer.ip, "192.168.1.100");
+        assert_eq!(peer.port, 19876);
+    }
+
+    #[test]
+    fn test_sharing_pending_share_fields() {
+        let share = PendingShare {
+            id: "share-456".to_string(),
+            from_name: "Alice".to_string(),
+            from_ip: "192.168.1.50".to_string(),
+            profiles: vec![],
+            snippets: vec![],
+            received_at: 1700000000,
+        };
+        
+        assert_eq!(share.from_name, "Alice");
+        assert!(share.profiles.is_empty());
+    }
+
+    #[test]
+    fn test_sharing_status_active_flag() {
+        let status = SharingStatus {
+            active: true,
+            display_name: "My PC".to_string(),
+            local_ip: "192.168.1.1".to_string(),
+            http_port: 8080,
+            peer_count: 5,
+        };
+        
+        assert!(status.active);
+        assert_eq!(status.peer_count, 5);
+    }
+
+    #[test]
+    fn test_sharing_beacon_packet_format() {
+        use crate::models::sharing::BeaconPacket;
+        
+        let beacon = BeaconPacket {
+            id: "beacon-789".to_string(),
+            display_name: "Host".to_string(),
+            http_port: 12345,
+        };
+        
+        let json = serde_json::to_string(&beacon).unwrap();
+        assert!(json.contains("beacon-789"));
+    }
+
+    #[test]
+    fn test_sharing_share_payload_creation() {
+        use crate::models::sharing::SharePayload;
+        
+        let payload = SharePayload {
+            sender_name: "Bob".to_string(),
+            sender_ip: "192.168.1.10".to_string(),
+            profiles: None,
+            snippets: None,
+            timestamp: 1700000000,
+        };
+        
+        assert_eq!(payload.sender_name, "Bob");
+        assert!(payload.timestamp > 0);
+    }
+
+    #[test]
+    fn test_sharing_peer_info_json_roundtrip() {
+        let peer = PeerInfo {
+            id: "peer-1".to_string(),
+            display_name: "Test".to_string(),
+            ip: "192.168.1.1".to_string(),
+            port: 8080,
+            last_seen: 1234567890,
+        };
+        
+        let json = serde_json::to_string(&peer).unwrap();
+        let decoded: PeerInfo = serde_json::from_str(&json).unwrap();
+        
+        assert_eq!(peer.id, decoded.id);
+        assert_eq!(peer.ip, decoded.ip);
+    }
+
+    #[test]
+    fn test_sharing_pending_share_json_roundtrip() {
+        let share = PendingShare {
+            id: "share-1".to_string(),
+            from_name: "User".to_string(),
+            from_ip: "10.0.0.1".to_string(),
+            profiles: vec![],
+            snippets: vec![],
+            received_at: 1234567890,
+        };
+        
+        let json = serde_json::to_string(&share).unwrap();
+        let decoded: PendingShare = serde_json::from_str(&json).unwrap();
+        
+        assert_eq!(share.id, decoded.id);
+    }
+
+    #[test]
+    fn test_sharing_peer_ip_port_combination() {
+        let peers = vec![
+            ("192.168.1.1", 8080u16),
+            ("10.0.0.1", 9000u16),
+            ("172.16.0.1", 8081u16),
+        ];
+        
+        for (ip, port) in peers {
+            let combined = format!("{}:{}", ip, port);
+            assert!(combined.contains(':'));
+        }
+    }
+
+    #[test]
+    fn test_sharing_http_port_range() {
+        let ports = vec![8080, 9000, 12345, 60000];
+        
+        for port in ports {
+            let is_valid = port > 1024 && port <= 65535;
+            assert!(is_valid);
+        }
+    }
 }

@@ -355,7 +355,7 @@ mod tests {
         let cpu_line = "cpu  1000 200 300 5000 100 50 25 10 0";
         let mut prev: Option<(u64, u64)> = None;
         let result = parse_cpu(cpu_line, &mut prev);
-        
+
         assert!(result >= 0.0);
         assert!(result <= 100.0);
         assert!(prev.is_some());
@@ -382,10 +382,10 @@ mod tests {
         let cpu_line1 = "cpu  1000 200 300 5000 100 50 25 10 0";
         let cpu_line2 = "cpu  1500 300 400 6000 150 60 30 15 0";
         let mut prev: Option<(u64, u64)> = None;
-        
+
         let _ = parse_cpu(cpu_line1, &mut prev);
         let result = parse_cpu(cpu_line2, &mut prev);
-        
+
         assert!(result >= 0.0);
         assert!(result <= 100.0);
     }
@@ -402,7 +402,7 @@ mod tests {
     fn test_parse_memory_normal() {
         let mem_output = "              total        used        free      shared  buff/cache   available\nMem:    16000000000  8000000000  4000000000   500000000  4000000000  7500000000";
         let (total, used, percent) = parse_memory(mem_output);
-        
+
         assert_eq!(total, 16_000_000_000);
         assert_eq!(used, 8_000_000_000);
         assert!((percent - 50.0).abs() < 0.1);
@@ -439,7 +439,7 @@ mod tests {
     fn test_parse_disk_normal() {
         let disk_line = "/dev/sda1  500000000000  250000000000  250000000000  50%  /";
         let (total, used, percent) = parse_disk(disk_line);
-        
+
         assert_eq!(total, 500_000_000_000);
         assert_eq!(used, 250_000_000_000);
         assert!((percent - 50.0).abs() < 0.1);
@@ -476,7 +476,7 @@ mod tests {
     fn test_parse_loadavg_normal() {
         let loadavg = "0.15 0.10 0.05 1/234 12345";
         let (l1, l5, l15) = parse_loadavg(loadavg);
-        
+
         assert!((l1 - 0.15).abs() < 0.01);
         assert!((l5 - 0.10).abs() < 0.01);
         assert!((l15 - 0.05).abs() < 0.01);
@@ -515,7 +515,7 @@ mod tests {
     fn test_monitor_thread_stop_flag() {
         let stop_flag = Arc::new(Mutex::new(false));
         assert!(!*stop_flag.lock().unwrap());
-        
+
         *stop_flag.lock().unwrap() = true;
         assert!(*stop_flag.lock().unwrap());
     }
@@ -527,5 +527,36 @@ mod tests {
             let lock = manager.monitors.lock().unwrap();
             assert!(!lock.contains_key("test-session"));
         }
+    }
+
+    #[test]
+    fn test_server_metrics_fields() {
+        let metrics = ServerMetrics {
+            cpu_percent: 50.0,
+            ram_total: 16000000,
+            ram_used: 8000000,
+            ram_percent: 50.0,
+            disk_total: 500000000,
+            disk_used: 250000000,
+            disk_percent: 50.0,
+            load_1: 1.5,
+            load_5: 1.2,
+            load_15: 1.0,
+            uptime: "1 day".to_string(),
+            hostname: "server1".to_string(),
+            os_info: "Linux".to_string(),
+        };
+
+        assert_eq!(metrics.cpu_percent, 50.0);
+        assert_eq!(metrics.ram_percent, 50.0);
+    }
+
+    #[test]
+    fn test_metrics_calculation() {
+        let total: u64 = 100000;
+        let used: u64 = 50000;
+        let percent = (used as f64 / total as f64) * 100.0;
+
+        assert_eq!(percent, 50.0);
     }
 }

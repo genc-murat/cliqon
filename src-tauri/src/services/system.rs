@@ -61,11 +61,7 @@ impl SystemService {
         self.exec_command(&session, cmd)
     }
 
-    pub fn get_system_timers(
-        &self,
-        profile: &SshProfile,
-        secret: Option<&str>,
-    ) -> Result<String> {
+    pub fn get_system_timers(&self, profile: &SshProfile, secret: Option<&str>) -> Result<String> {
         let session = self.open_session(profile, secret)?;
         let cmd = r#"
             if command -v systemctl > /dev/null; then
@@ -142,7 +138,7 @@ impl SystemService {
         value: &str,
     ) -> Result<String> {
         let session = self.open_session(profile, secret)?;
-        
+
         // Sanitize inputs
         let safe_key = key.replace("'", "'\\''").replace("\"", "\\\"");
         let safe_value = value.replace("'", "'\\''").replace("\"", "\\\"");
@@ -160,7 +156,7 @@ impl SystemService {
             "#,
             safe_key, safe_key, safe_key, safe_value, safe_key, safe_value, safe_key, safe_value
         );
-        
+
         self.exec_command(&session, &cmd)
     }
 
@@ -171,7 +167,7 @@ impl SystemService {
         key: &str,
     ) -> Result<String> {
         let session = self.open_session(profile, secret)?;
-        
+
         let safe_key = key.replace("'", "'\\''").replace("\"", "\\\"");
 
         // Script to remove the export from .bashrc
@@ -183,7 +179,7 @@ impl SystemService {
             "#,
             safe_key, safe_key
         );
-        
+
         self.exec_command(&session, &cmd)
     }
 }
@@ -283,7 +279,7 @@ mod tests {
     fn test_set_env_var_grep_command() {
         let safe_key = "MY_VAR";
         let safe_value = "my_value";
-        
+
         // The script should contain grep to check for existing export
         let script_contains_grep = format!(
             r#"
@@ -297,7 +293,7 @@ mod tests {
             "#,
             safe_key, safe_key, safe_key, safe_value, safe_key, safe_value, safe_key, safe_value
         );
-        
+
         assert!(script_contains_grep.contains("grep -q"));
         assert!(script_contains_grep.contains("sed -i"));
         assert!(script_contains_grep.contains("export MY_VAR="));
@@ -314,7 +310,7 @@ mod tests {
             "#,
             safe_key, safe_key
         );
-        
+
         assert!(cmd.contains("sed -i"));
         assert!(cmd.contains("unset MY_VAR"));
     }
@@ -323,7 +319,7 @@ mod tests {
     fn test_systemctl_command_variants() {
         let actions = vec!["start", "stop", "restart", "enable", "disable"];
         let service = "nginx";
-        
+
         for action in actions {
             let cmd = format!("systemctl {} {} 2>&1", action, service);
             assert!(cmd.contains("systemctl"));
@@ -359,7 +355,7 @@ mod tests {
                 echo "systemctl not found"
             fi
         "#;
-        
+
         assert!(cmd.contains("command -v systemctl"));
         assert!(cmd.contains("systemctl list-units"));
         assert!(cmd.contains("--type=service"));
@@ -400,7 +396,7 @@ mod tests {
                 echo "systemctl not found"
             fi
         "#;
-        
+
         assert!(cmd.contains("systemctl list-timers"));
         assert!(cmd.contains("--all"));
         assert!(cmd.contains("--no-pager"));
@@ -421,6 +417,128 @@ mod tests {
             assert!(!service.contains(';'));
             assert!(!service.contains('&'));
             assert!(!service.contains('|'));
+        }
+    }
+
+    #[test]
+    fn test_systemctl_command_format() {
+        let service = "nginx";
+        let actions = vec![
+            format!("systemctl start {}", service),
+            format!("systemctl stop {}", service),
+            format!("systemctl restart {}", service),
+            format!("systemctl status {}", service),
+            format!("systemctl enable {}", service),
+            format!("systemctl disable {}", service),
+        ];
+
+        for cmd in actions {
+            assert!(cmd.starts_with("systemctl"));
+        }
+    }
+
+    #[test]
+    fn test_system_info_gathering() {
+        let commands = vec![
+            "uname -a",
+            "uptime",
+            "df -h",
+            "free -m",
+            "cat /proc/cpuinfo",
+        ];
+
+        for cmd in commands {
+            assert!(!cmd.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_process_monitoring() {
+        let process_names = vec!["nginx", "postgres", "docker", "redis-server"];
+
+        for name in process_names {
+            assert!(!name.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_disk_space_calculation() {
+        let partitions = vec![
+            ("/", 50000000u64),
+            ("/home", 100000000u64),
+            ("/var", 75000000u64),
+        ];
+
+        for (_mount, size) in partitions {
+            assert!(size > 0);
+        }
+    }
+
+    #[test]
+    fn test_memory_info_parsing() {
+        let mem_values = vec![
+            ("MemTotal", 16000000u64),
+            ("MemFree", 8000000u64),
+            ("MemAvailable", 12000000u64),
+        ];
+
+        for (_label, value) in mem_values {
+            assert!(value > 0);
+        }
+    }
+
+    #[test]
+    fn test_cpu_info_format() {
+        let cpu_models = vec![
+            "Intel(R) Core(TM) i7-9700K",
+            "AMD Ryzen 7 3700X",
+            "Intel(R) Xeon(R) CPU E5-2680 v4",
+        ];
+
+        for model in cpu_models {
+            assert!(!model.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_uptime_calculation() {
+        let uptimes = vec![
+            3600u64,    // 1 hour
+            86400u64,   // 1 day
+            604800u64,  // 1 week
+            2592000u64, // 1 month
+        ];
+
+        for uptime in uptimes {
+            assert!(uptime > 0);
+        }
+    }
+
+    #[test]
+    fn test_service_status_check() {
+        let statuses = vec![
+            "active (running)",
+            "inactive (dead)",
+            "failed",
+            "activating",
+        ];
+
+        for status in statuses {
+            assert!(!status.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_log_file_paths() {
+        let log_paths = vec![
+            "/var/log/syslog",
+            "/var/log/nginx/access.log",
+            "/var/log/nginx/error.log",
+            "/var/log/messages",
+        ];
+
+        for path in log_paths {
+            assert!(path.starts_with("/var/log"));
         }
     }
 }

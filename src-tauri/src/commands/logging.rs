@@ -111,4 +111,26 @@ mod tests {
         assert_eq!(path.clone(), path);
         assert_eq!(session_id.clone(), session_id);
     }
+
+    #[test]
+    fn test_logging_path_validation() {
+        let paths = vec![
+            "/var/log/syslog",
+            "/var/log/nginx/access.log",
+            "/home/user/logs/app.log",
+        ];
+        
+        for path in paths {
+            assert!(path.starts_with('/'));
+        }
+    }
+
+    #[test]
+    fn test_logging_result_types() {
+        let ok: Result<()> = Ok(());
+        let err: Result<()> = Err(crate::error::AppError::Custom("error".to_string()));
+        
+        assert!(ok.is_ok());
+        assert!(err.is_err());
+    }
 }

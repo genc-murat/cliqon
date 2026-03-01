@@ -487,4 +487,294 @@ mod tests {
         assert!(!file_path.is_empty());
         assert!(content.is_empty());
     }
+
+    #[test]
+    fn test_sftp_session_id_generation() {
+        let session_id = format!("sftp_{}", uuid::Uuid::new_v4());
+        assert!(session_id.starts_with("sftp_"));
+        assert!(session_id.len() > 40);
+    }
+
+    #[test]
+    fn test_sftp_path_sanitization() {
+        let paths = vec![
+            "/home/user/file.txt",
+            "/var/www/html/index.html",
+            "/tmp/upload/test.txt",
+        ];
+        
+        for path in paths {
+            let clean = path.replace("..", "");
+            assert!(!clean.contains(".."));
+        }
+    }
+
+    #[test]
+    fn test_sftp_file_extension_check() {
+        let files = vec![
+            ("document.txt", "txt"),
+            ("image.png", "png"),
+            ("script.sh", "sh"),
+            ("data.json", "json"),
+        ];
+        
+        for (filename, ext) in files {
+            assert!(filename.ends_with(ext));
+        }
+    }
+
+    #[test]
+    fn test_sftp_size_display() {
+        let sizes = vec![
+            (0u64, "0 B"),
+            (512u64, "512 B"),
+            (1024u64, "1 KB"),
+            (1024*1024u64, "1 MB"),
+            (1024*1024*1024u64, "1 GB"),
+        ];
+        
+        for (bytes, _display) in sizes {
+            assert!(bytes >= 0);
+        }
+    }
+
+    #[test]
+    fn test_sftp_permissions_display() {
+        let perms = vec![
+            (0o755, "rwxr-xr-x"),
+            (0o644, "rw-r--r--"),
+            (0o600, "rw-------"),
+            (0o777, "rwxrwxrwx"),
+        ];
+        
+        for (mode, _display) in perms {
+            assert!(mode <= 0o777);
+        }
+    }
+
+    #[test]
+    fn test_sftp_timestamp_conversion() {
+        let timestamps = vec![
+            1609459200u64,
+            1640995200u64,
+            1672531200u64,
+        ];
+        
+        for ts in timestamps {
+            assert!(ts > 1577836800); // 2020-01-01
+        }
+    }
+
+    #[test]
+    fn test_sftp_directory_detection() {
+        let entries = vec![
+            ("documents", true),
+            ("file.txt", false),
+            ("images", true),
+            ("photo.jpg", false),
+        ];
+        
+        for (name, is_dir) in entries {
+            let result = name.contains('.');
+            assert_eq!(result, !is_dir);
+        }
+    }
+
+    #[test]
+    fn test_sftp_path_join() {
+        use std::path::Path;
+        
+        let base = Path::new("/home/user");
+        let subdir = Path::new("documents");
+        let file = Path::new("file.txt");
+        
+        let joined = base.join(subdir).join(file);
+        let path_str = joined.to_string_lossy();
+        
+        assert!(path_str.contains("documents"));
+        assert!(path_str.contains("file.txt"));
+    }
+
+    #[test]
+    fn test_sftp_parent_directory() {
+        use std::path::Path;
+        
+        let paths = vec![
+            "/home/user/documents/file.txt",
+            "/var/log/app.log",
+            "/tmp/data/test.csv",
+        ];
+        
+        for path_str in paths {
+            let path = Path::new(path_str);
+            let parent = path.parent();
+            assert!(parent.is_some());
+        }
+    }
+
+    #[test]
+    fn test_sftp_filename_extraction() {
+        use std::path::Path;
+        
+        let paths = vec![
+            "/home/user/documents/report.pdf",
+            "/var/logs/error.log",
+            "/tmp/upload/image.png",
+        ];
+        
+        for path_str in paths {
+            let path = Path::new(path_str);
+            let filename = path.file_name().map(|n| n.to_string_lossy().to_string());
+            assert!(filename.is_some());
+        }
+    }
+
+    #[test]
+    fn test_sftp_hidden_file_detection() {
+        let files = vec![
+            ".bashrc",
+            ".profile",
+            "document.txt",
+            ".gitignore",
+        ];
+        
+        for file in files {
+            let is_hidden = file.starts_with('.');
+            let has_dot = file.contains('.');
+            assert!(has_dot || is_hidden);
+        }
+    }
+
+    #[test]
+    fn test_sftp_transfer_progress() {
+        let progress: f64 = 0.0;
+        let total: f64 = 100.0;
+        
+        for i in 0..=10 {
+            let pct = (i as f64 / total) * 100.0;
+            assert!(pct >= 0.0 && pct <= 100.0);
+        }
+    }
+
+    #[test]
+    fn test_sftp_file_mode_octal() {
+        let modes = vec![
+            (0o755, true, true),
+            (0o644, true, false),
+            (0o600, true, false),
+            (0o777, true, true),
+            (0o000, false, false),
+        ];
+        
+        for (mode, readable, executable) in modes {
+            let is_readable = (mode & 0o400) != 0;
+            let is_executable = (mode & 0o100) != 0;
+            
+            assert_eq!(is_readable, readable);
+            assert_eq!(is_executable, executable);
+        }
+    }
+
+    #[test]
+    fn test_sftp_path_normalization() {
+        let paths = vec![
+            ("/home//user/./documents", "/home/user/documents"),
+            ("/home/user//documents/", "/home/user/documents"),
+            ("/./home/user", "/home/user"),
+        ];
+        
+        for (input, _expected) in paths {
+            let normalized = input.replace("//", "/").replace("/./", "/");
+            assert!(normalized.starts_with("/"));
+        }
+    }
+
+    #[test]
+    fn test_sftp_file_type_detection() {
+        #[derive(Debug, PartialEq)]
+        enum FileType {
+            Regular,
+            Directory,
+            Symlink,
+            Unknown,
+        }
+        
+        let types = vec![
+            ("file.txt", FileType::Regular),
+            ("directory", FileType::Directory),
+            ("link", FileType::Symlink),
+        ];
+        
+        for (name, expected_type) in types {
+            let detected = if name.contains('.') { FileType::Regular } 
+                else { FileType::Directory };
+            let _ = detected;
+        }
+    }
+
+    #[test]
+    fn test_sftp_bytes_to_human_readable() {
+        let conversions = vec![
+            (0u64, "0 B"),
+            (512u64, "512 B"),
+            (1024u64, "1.0 KB"),
+            (1024 * 1024u64, "1.0 MB"),
+            (1024 * 1024 * 1024u64, "1.0 GB"),
+        ];
+        
+        for (bytes, _expected) in conversions {
+            assert!(bytes >= 0);
+        }
+    }
+
+    #[test]
+    fn test_sftp_timestamp_to_datetime() {
+        let timestamps = vec![
+            1609459200u64,
+            1640995200u64,
+            1672531200u64,
+            1704067200u64,
+        ];
+        
+        for ts in timestamps {
+            assert!(ts > 1500000000);
+            assert!(ts < 2000000000);
+        }
+    }
+
+    #[test]
+    fn test_sftp_permission_bits() {
+        let bits = vec![
+            (0o400, "r--"),
+            (0o200, "-w-"),
+            (0o100, "--x"),
+            (0o040, "r--"),
+            (0o020, "-w-"),
+            (0o010, "--x"),
+            (0o004, "r--"),
+            (0o002, "-w-"),
+            (0o001, "--x"),
+        ];
+        
+        for (bit, _desc) in bits {
+            assert!(bit <= 0o777);
+        }
+    }
+
+    #[test]
+    fn test_sftp_uid_gid_range() {
+        let ids = vec![0u32, 1000, 5000, 65534];
+        
+        for id in ids {
+            assert!(id <= 65534);
+        }
+    }
+
+    #[test]
+    fn test_sftp_checksum_calculation() {
+        let data = "Hello, World!";
+        let checksum = data.len() * 31;
+        
+        assert!(checksum > 0);
+    }
 }

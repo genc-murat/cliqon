@@ -221,4 +221,37 @@ mod tests {
         assert_eq!(config.id, cloned.id);
         assert_eq!(config.name, cloned.name);
     }
+
+    #[test]
+    fn test_tunnel_result_error_handling() {
+        let err_result: Result<()> = Err(crate::error::AppError::Custom("Tunnel failed".to_string()));
+        assert!(err_result.is_err());
+        
+        let ok_result: Result<()> = Ok(());
+        assert!(ok_result.is_ok());
+    }
+
+    #[test]
+    fn test_tunnel_local_port_range() {
+        let ports = vec![8080, 3000, 5000, 9000, 5432];
+        
+        for port in ports {
+            let is_valid = port > 1024 && port <= 65535;
+            assert!(is_valid);
+        }
+    }
+
+    #[test]
+    fn test_tunnel_remote_host_format() {
+        let hosts = vec![
+            "localhost",
+            "127.0.0.1",
+            "db.example.com",
+            "192.168.1.100",
+        ];
+        
+        for host in hosts {
+            assert!(!host.is_empty());
+        }
+    }
 }

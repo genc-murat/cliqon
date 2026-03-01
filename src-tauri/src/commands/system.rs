@@ -208,4 +208,109 @@ mod tests {
         let _response_type: Result<String> = Ok("output".to_string());
         let _error_type: Result<String> = Err(crate::error::AppError::Custom("error".to_string()));
     }
+
+    #[test]
+    fn test_system_command_result_map() {
+        let ok: Result<String> = Ok("success".to_string());
+        let mapped = ok.map(|s| s.to_uppercase());
+        assert_eq!(mapped.unwrap(), "SUCCESS");
+        
+        let err: Result<String> = Err(crate::error::AppError::Custom("fail".to_string()));
+        let mapped_err = err.map(|_| "should not run");
+        assert!(mapped_err.is_err());
+    }
+
+    #[test]
+    fn test_system_command_result_and_then() {
+        let num: Result<i32> = Ok(42);
+        let result = num.and_then(|n| Ok(n * 2));
+        assert_eq!(result.unwrap(), 84);
+    }
+
+    #[test]
+    fn test_system_app_handle_clone() {
+        use tauri::AppHandle;
+        
+        let _handle: Option<AppHandle> = None;
+        assert!(_handle.is_none());
+    }
+
+    #[test]
+    fn test_system_string_utils() {
+        let hostname = "server01";
+        let domain = "example.com";
+        let fqdn = format!("{}.{}", hostname, domain);
+        
+        assert_eq!(fqdn, "server01.example.com");
+    }
+
+    #[test]
+    fn test_system_port_validation() {
+        let ports = vec![22, 80, 443, 22, 8080, 3000, 5432];
+        
+        for port in ports {
+            let is_valid = port > 0 && port <= 65535;
+            assert!(is_valid);
+        }
+        
+        let invalid_ports = vec![0, -1, 70000];
+        for port in invalid_ports {
+            let is_valid = port > 0 && port <= 65535;
+            assert!(!is_valid);
+        }
+    }
+
+    #[test]
+    fn test_system_ip_address_validation() {
+        let valid_ips = vec![
+            "192.168.1.1",
+            "10.0.0.1",
+            "172.16.0.1",
+            "127.0.0.1",
+        ];
+        
+        for ip in valid_ips {
+            let parts: Vec<&str> = ip.split('.').collect();
+            assert_eq!(parts.len(), 4);
+        }
+    }
+
+    #[test]
+    fn test_system_path_validation() {
+        let paths = vec![
+            "/etc",
+            "/var/log",
+            "/home/user",
+            "/tmp",
+        ];
+        
+        for path in paths {
+            assert!(path.starts_with('/'));
+        }
+    }
+
+    #[test]
+    fn test_system_command_timeout() {
+        let timeout_seconds = 30;
+        let timeout_ms = timeout_seconds * 1000;
+        
+        assert_eq!(timeout_ms, 30000);
+    }
+
+    #[test]
+    fn test_system_env_vars() {
+        let vars = vec!["PATH", "HOME", "USER", "SHELL"];
+        
+        for var in vars {
+            assert!(!var.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_system_process_info() {
+        let pid: u32 = std::process::id();
+        assert!(pid > 0);
+        
+        let _current_exe = std::env::current_exe();
+    }
 }

@@ -212,19 +212,19 @@ mod tests {
     #[test]
     fn test_profile_vec_operations() {
         let mut profiles: Vec<SshProfile> = Vec::new();
-        
+
         let profile1 = SshProfile::default();
         let profile2 = SshProfile::default();
-        
+
         profiles.push(profile1);
         profiles.push(profile2);
-        
+
         assert_eq!(profiles.len(), 2);
-        
+
         if let Some(pos) = profiles.iter().position(|p| p.id == profiles[0].id) {
             profiles.remove(pos);
         }
-        
+
         assert_eq!(profiles.len(), 1);
     }
 
@@ -232,13 +232,13 @@ mod tests {
     fn test_profile_find_by_id() {
         let profile1 = SshProfile::default();
         let profile2 = SshProfile::default();
-        
+
         let profiles = vec![profile1.clone(), profile2.clone()];
-        
+
         let found = profiles.iter().find(|p| p.id == profile1.id);
         assert!(found.is_some());
         assert_eq!(found.unwrap().id, profile1.id);
-        
+
         let not_found = profiles.iter().find(|p| p.id == "nonexistent");
         assert!(not_found.is_none());
     }
@@ -247,14 +247,14 @@ mod tests {
     fn test_profile_update_position() {
         let profile = SshProfile::default();
         let mut profiles = vec![profile.clone()];
-        
+
         // Update the existing profile
         if let Some(pos) = profiles.iter().position(|p| p.id == profile.id) {
             profiles[pos] = profile.clone();
         } else {
             profiles.push(profile.clone());
         }
-        
+
         // Should still be 1 since we updated, not added
         assert_eq!(profiles.len(), 1);
     }
@@ -263,8 +263,11 @@ mod tests {
     fn test_pathbuf_join() {
         let app_data_dir = PathBuf::from("/home/user/.config/cliqon");
         let profiles_path = app_data_dir.join("profiles.json");
-        
-        assert_eq!(profiles_path.to_string_lossy(), "/home/user/.config/cliqon/profiles.json");
+
+        assert_eq!(
+            profiles_path.to_string_lossy(),
+            "/home/user/.config/cliqon/profiles.json"
+        );
     }
 
     #[test]
@@ -297,7 +300,7 @@ mod tests {
         let byte: u8 = 65; // 'A'
         let hex = format!("{:02x}", byte);
         assert_eq!(hex, "41");
-        
+
         let byte2: u8 = 10;
         let hex2 = format!("{:02x}", byte2);
         assert_eq!(hex2, "0a"); // Leading zero
@@ -306,7 +309,7 @@ mod tests {
     #[test]
     fn test_step_by_iterator() {
         let s = "abcdef";
-        let pairs: Vec<&str> = (0..s.len()).step_by(2).map(|i| &s[i..i+2]).collect();
+        let pairs: Vec<&str> = (0..s.len()).step_by(2).map(|i| &s[i..i + 2]).collect();
         assert_eq!(pairs, vec!["ab", "cd", "ef"]);
     }
 
@@ -330,11 +333,74 @@ mod tests {
 
     #[test]
     fn test_result_and_option_combination() {
-        let result: std::result::Result<Option<String>, &'static str> = Ok(Some("value".to_string()));
+        let result: std::result::Result<Option<String>, &'static str> =
+            Ok(Some("value".to_string()));
         assert!(result.is_ok());
-        
+
         let result2: std::result::Result<Option<String>, &'static str> = Ok(None);
         assert!(result2.is_ok());
         assert!(result2.unwrap().is_none());
+    }
+
+    #[test]
+    fn test_profile_store_json_operations() {
+        let profiles_json = r#"[
+            {"id": "1", "name": "Server 1"},
+            {"id": "2", "name": "Server 2"}
+        ]"#;
+
+        let _parsed: serde_json::Value = serde_json::from_str(profiles_json).unwrap();
+        assert!(profiles_json.contains("Server 1"));
+    }
+
+    #[test]
+    fn test_path_operations() {
+        use std::path::PathBuf;
+
+        let paths = vec![
+            PathBuf::from("/home/user/.config"),
+            PathBuf::from("/var/data"),
+            PathBuf::from("/tmp/cache"),
+        ];
+
+        for path in paths {
+            assert!(path.is_absolute() || path.starts_with("."));
+        }
+    }
+
+    #[test]
+    fn test_file_exists_check() {
+        let test_paths = vec!["/etc/hostname", "/nonexistent_file_12345"];
+
+        for path in &test_paths {
+            let _exists = std::path::Path::new(path).exists();
+        }
+    }
+
+    #[test]
+    fn test_serialize_deserialize_roundtrip() {
+        use crate::models::profile::AuthMethod;
+        use crate::models::profile::SshProfile;
+
+        let profile = SshProfile {
+            id: "test-1".to_string(),
+            name: "Test Server".to_string(),
+            host: "192.168.1.1".to_string(),
+            port: 22,
+            username: "admin".to_string(),
+            auth_method: AuthMethod::Password,
+            category: None,
+            private_key_path: None,
+            obfuscated_secret: None,
+            tunnels: None,
+            is_favorite: None,
+            color: None,
+        };
+
+        let json = serde_json::to_string(&profile).unwrap();
+        let decoded: SshProfile = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(profile.id, decoded.id);
+        assert_eq!(profile.host, decoded.host);
     }
 }

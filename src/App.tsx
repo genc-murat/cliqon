@@ -4,7 +4,6 @@ import { TopBar, TabData } from "./components/layout/TopBar";
 import { TitleBar } from "./components/layout/TitleBar";
 import { SplitView, Pane } from './components/terminal/SplitView';
 import { ManagementPanel, ManagementTab } from './components/terminal/ManagementPanel';
-import { Logo } from './components/layout/Logo';
 import { useTheme } from "./hooks/useTheme";
 import { SshProfile } from "./types/connection";
 import { api } from "./services/api";
@@ -15,6 +14,7 @@ import { SharingPanel } from './components/ui/SharingPanel';
 import { useConnections } from './hooks/useConnections';
 import { useUpdater } from './hooks/useUpdater';
 import { CommandPalette } from './components/ui/CommandPalette';
+import { Dashboard } from './components/ui/Dashboard';
 
 interface SessionTab extends TabData {
   profile: SshProfile;
@@ -27,7 +27,7 @@ interface SessionTab extends TabData {
 function App() {
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
-  const { profiles, refresh } = useConnections();
+  const { profiles, refresh, recordUsage } = useConnections();
 
   // Refs to allow keyboard shortcuts to trigger sidebar actions
   const openAddModalRef = useRef<(() => void) | null>(null);
@@ -86,6 +86,7 @@ function App() {
       managementPanelOpen: autoOpenMonitor,
       activeManagementTab: 'monitor',
     };
+    recordUsage(profile.id);
     setTabs(prev => [...prev, newTab]);
     setActiveTab(sessionId);
   };
@@ -297,14 +298,14 @@ function App() {
   return (
     <div className="relative flex flex-col h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-main)] transition-colors duration-200">
       {/* Gradient Background Overlay */}
-      <div 
+      <div
         className="theme-gradient-overlay gradient-diagonal"
         style={{
           '--gradient-from': 'var(--gradient-from)',
           '--gradient-to': 'var(--gradient-to)',
         } as React.CSSProperties}
       />
-      
+
       <TitleBar />
       <div className="flex flex-1 min-h-0">
         <Sidebar
@@ -335,10 +336,16 @@ function App() {
             {isTimedOut && <SessionTimeoutOverlay onReconnect={resetTimeout} onClose={handleCloseActiveTabAndUnlock} />}
 
             {!isTimedOut && tabs.length === 0 ? (
-              <div className="absolute inset-0 flex items-center justify-center text-[var(--text-muted)] opacity-50 flex-col gap-6 select-none animate-in fade-in duration-1000">
-                <Logo size={96} className="grayscale brightness-125 transition-all duration-700" style={{ filter: 'grayscale(1) opacity(0.2)' }} />
-                <p className="text-sm font-medium tracking-wide uppercase">Cliqon terminal</p>
-              </div>
+              <Dashboard
+                profiles={profiles}
+                onConnect={handleConnect}
+                onNewConnection={() => openAddModalRef.current?.()}
+                onOpenSettings={() => window.dispatchEvent(new CustomEvent('cliqon:open-settings'))}
+                onViewAll={() => focusSearchRef.current?.()}
+                onToggleSharing={() => window.dispatchEvent(new CustomEvent('cliqon:toggle-sharing'))}
+                onOpenImport={() => window.dispatchEvent(new CustomEvent('cliqon:open-import'))}
+                onCheckUpdates={() => checkForUpdates()}
+              />
             ) : !isTimedOut && (
               tabs.map((tab) => (
                 <div key={tab.id} className={`absolute inset-0 flex flex-col ${activeTab === tab.id ? '' : 'hidden'}`}>

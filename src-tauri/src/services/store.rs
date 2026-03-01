@@ -395,6 +395,7 @@ mod tests {
             tunnels: None,
             is_favorite: None,
             color: None,
+            last_used: None,
         };
 
         let json = serde_json::to_string(&profile).unwrap();

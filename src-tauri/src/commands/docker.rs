@@ -782,6 +782,7 @@ mod tests {
             tunnels: None,
             is_favorite: Some(true),
             color: None,
+            last_used: None,
         };
         
         let _secret: Option<String> = None;

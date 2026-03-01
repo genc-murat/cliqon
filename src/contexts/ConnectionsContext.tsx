@@ -9,6 +9,7 @@ interface ConnectionsContextType {
     saveProfile: (profile: SshProfile, secret?: string | null) => Promise<void>;
     deleteProfile: (id: string) => Promise<void>;
     refresh: () => Promise<void>;
+    recordUsage: (id: string) => Promise<void>;
 }
 
 const ConnectionsContext = createContext<ConnectionsContextType | undefined>(undefined);
@@ -56,13 +57,23 @@ export const ConnectionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
     };
 
+    const recordUsage = async (id: string) => {
+        try {
+            await api.recordUsage(id);
+            await loadProfiles();
+        } catch (err: any) {
+            console.error("Failed to record usage:", err);
+        }
+    };
+
     const value = {
         profiles,
         isLoading,
         error,
         saveProfile,
         deleteProfile,
-        refresh: loadProfiles
+        refresh: loadProfiles,
+        recordUsage
     };
 
     return (

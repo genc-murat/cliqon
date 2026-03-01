@@ -50,6 +50,7 @@ pub fn run() {
             save_profile,
             delete_profile,
             get_profile_secret,
+            record_usage,
             import_profiles,
             test_ssh_connection,
             connect_ssh,

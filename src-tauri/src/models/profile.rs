@@ -40,6 +40,7 @@ pub struct SshProfile {
     pub tunnels: Option<Vec<TunnelConfig>>,
     pub is_favorite: Option<bool>,
     pub color: Option<String>,
+    pub last_used: Option<i64>,
 }
 
 impl Default for SshProfile {
@@ -57,6 +58,7 @@ impl Default for SshProfile {
             tunnels: Some(Vec::new()),
             is_favorite: Some(false),
             color: None,
+            last_used: None,
         }
     }
 }
@@ -131,6 +133,7 @@ mod tests {
             }]),
             is_favorite: Some(true),
             color: Some("#00ff00".to_string()),
+            last_used: None,
         };
 
         let json = serde_json::to_string(&profile).unwrap();

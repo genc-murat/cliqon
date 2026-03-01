@@ -21,6 +21,7 @@ export interface SshProfile {
     tunnels?: TunnelConfig[];
     is_favorite?: boolean;
     color?: string;
+    last_used?: number;
 }
 
 export type TunnelType = 'Local' | 'Remote' | 'Dynamic';

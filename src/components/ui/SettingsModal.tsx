@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Palette, Terminal as TerminalIcon, Monitor, Info, Check, Activity, Shield, Zap, HardDrive, Key } from 'lucide-react';
+import { X, Palette, Terminal as TerminalIcon, Monitor, Info, Check, Activity, Shield, Zap, HardDrive, Key, Plus, Settings, RefreshCw, Users, Upload } from 'lucide-react';
 import { save } from '@tauri-apps/plugin-dialog';
 import { Logo } from '../layout/Logo';
 import { KeyStore } from '../settings/KeyStore';
@@ -14,7 +14,7 @@ interface SettingsModalProps {
     onClose: () => void;
 }
 
-type SettingsSection = 'appearance' | 'terminal' | 'performance' | 'general' | 'keys' | 'snippets' | 'backup' | 'about';
+type SettingsSection = 'appearance' | 'terminal' | 'dashboard' | 'performance' | 'general' | 'keys' | 'snippets' | 'backup' | 'about';
 
 interface DbStats {
     profiles: number;
@@ -34,7 +34,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         terminalCursorStyle, setTerminalCursorStyle,
         autoOpenMonitor, setAutoOpenMonitor,
         sessionTimeout, setSessionTimeout,
-        terminalPerformance, setTerminalPerformance
+        terminalPerformance, setTerminalPerformance,
+        dashboardQuickActions, setDashboardQuickActions
     } = useTheme();
 
     const { status: updateStatus, checkForUpdates, installUpdate, manifest, error: updateError } = useUpdater();
@@ -103,6 +104,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     const navItems = [
         { id: 'appearance', label: 'Appearance', icon: Palette },
         { id: 'terminal', label: 'Terminal', icon: TerminalIcon },
+        { id: 'dashboard', label: 'Dashboard', icon: Monitor },
         { id: 'performance', label: 'Performance', icon: Zap },
         { id: 'general', label: 'General', icon: Monitor },
         { id: 'keys', label: 'Keys', icon: Key },
@@ -229,6 +231,67 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                             </section>
                         )}
 
+                        {activeSection === 'dashboard' && (
+                            <section className="space-y-8 animate-in slide-in-from-bottom-4 duration-300">
+                                <div>
+                                    <h3 className="text-lg font-bold text-[var(--text-main)] mb-1">Dashboard Settings</h3>
+                                    <p className="text-sm text-[var(--text-muted)] mb-6">Customize the content and behavior of your dashboard.</p>
+
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-4 uppercase tracking-wider">Quick Actions</h4>
+                                            <p className="text-xs text-[var(--text-muted)] mb-4">Select which actions you want to see on your dashboard.</p>
+
+                                            <div className="grid grid-cols-1 gap-3">
+                                                {[
+                                                    { id: 'new-connection', label: 'New Connection', icon: Plus },
+                                                    { id: 'sharing', label: 'Network Sharing', icon: Users },
+                                                    { id: 'import', label: 'Import Connections', icon: Upload },
+                                                    { id: 'keys', label: 'Key Manager', icon: Key },
+                                                    { id: 'settings', label: 'Settings', icon: Settings },
+                                                    { id: 'updates', label: 'Check for Updates', icon: RefreshCw },
+                                                ].map((action) => {
+                                                    const isActive = dashboardQuickActions.includes(action.id);
+                                                    return (
+                                                        <div
+                                                            key={action.id}
+                                                            className="flex items-center justify-between p-4 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-2xl hover:border-[var(--text-muted)] transition-all group"
+                                                        >
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="p-2 bg-[var(--accent-color)]/10 rounded-xl text-[var(--accent-color)]">
+                                                                    <action.icon size={20} />
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="text-sm font-bold text-[var(--text-main)]">{action.label}</h4>
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (isActive) {
+                                                                        setDashboardQuickActions(dashboardQuickActions.filter(id => id !== action.id));
+                                                                    } else {
+                                                                        setDashboardQuickActions([...dashboardQuickActions, action.id]);
+                                                                    }
+                                                                }}
+                                                                className={`
+                                                                    relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none
+                                                                    ${isActive ? 'bg-[var(--accent-color)]' : 'bg-[var(--hover-color)]'}
+                                                                `}
+                                                            >
+                                                                <div className={`
+                                                                    absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200
+                                                                    ${isActive ? 'translate-x-6' : 'translate-x-0'}
+                                                                `} />
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        )}
                         {activeSection === 'terminal' && (
                             <section className="space-y-10 max-w-2xl animate-in slide-in-from-bottom-4 duration-300">
                                 {/* Terminal Colors */}

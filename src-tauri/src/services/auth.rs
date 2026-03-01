@@ -91,6 +91,7 @@ mod tests {
             tunnels: None,
             is_favorite: Some(false),
             color: None,
+            last_used: None,
         };
 
         assert_eq!(profile.auth_method, AuthMethod::Password);
@@ -112,6 +113,7 @@ mod tests {
             tunnels: None,
             is_favorite: Some(true),
             color: Some("#ff0000".to_string()),
+            last_used: None,
         };
 
         assert_eq!(profile.auth_method, AuthMethod::PrivateKey);
@@ -133,6 +135,7 @@ mod tests {
             tunnels: None,
             is_favorite: None,
             color: None,
+            last_used: None,
         };
 
         assert_eq!(profile.auth_method, AuthMethod::Agent);
@@ -202,6 +205,7 @@ mod tests {
             tunnels: None,
             is_favorite: Some(false),
             color: None,
+            last_used: None,
         };
 
         let cloned = original.clone();

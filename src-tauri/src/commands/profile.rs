@@ -31,6 +31,23 @@ pub async fn get_profile_secret(state: State<'_, AppState>, id: String) -> Resul
     let store = state.profile_store.lock().unwrap();
     store.get_profile_secret(&id)
 }
+#[tauri::command]
+pub async fn record_usage(state: State<'_, AppState>, id: String) -> Result<()> {
+    let store = state.profile_store.lock().unwrap();
+    let mut profiles = store.get_all_profiles()?;
+    
+    if let Some(pos) = profiles.iter().position(|p| p.id == id) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        
+        profiles[pos].last_used = Some(now);
+        store.save_profiles(&profiles)?;
+    }
+    
+    Ok(())
+}
 
 #[tauri::command]
 pub async fn import_profiles(
@@ -212,6 +229,7 @@ mod tests {
             tunnels: None,
             is_favorite: Some(true),
             color: None,
+            last_used: None,
         };
         
         let json = serde_json::to_string(&profile).unwrap();
@@ -294,6 +312,7 @@ mod tests {
             tunnels: None,
             is_favorite: None,
             color: None,
+            last_used: None,
         };
         
         let cloned = original.clone();

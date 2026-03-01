@@ -39,6 +39,8 @@ interface ThemeContextType {
     setSessionTimeout: (timeout: number) => void;
     terminalPerformance: TerminalPerformanceSettings;
     setTerminalPerformance: (settings: Partial<TerminalPerformanceSettings>) => void;
+    dashboardQuickActions: string[];
+    setDashboardQuickActions: (actions: string[]) => void;
     isLoading: boolean;
 }
 
@@ -46,7 +48,7 @@ export const ThemeContext = createContext<ThemeContextType | undefined>(undefine
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
-    
+
     const [theme, setThemeState] = useState<Theme>(themes.modernDark);
     const [terminalTheme, setTerminalThemeState] = useState<TerminalTheme>(terminalThemes.appTheme);
     const [terminalFont, setTerminalFontState] = useState<TerminalFont>(defaultTerminalFont);
@@ -54,51 +56,55 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [autoOpenMonitor, setAutoOpenMonitorState] = useState<boolean>(false);
     const [sessionTimeout, setSessionTimeoutState] = useState<number>(30);
     const [terminalPerformance, setTerminalPerformanceState] = useState<TerminalPerformanceSettings>(defaultPerformanceSettings);
+    const [dashboardQuickActions, setDashboardQuickActionsState] = useState<string[]>(['new-connection', 'sharing', 'import', 'settings']);
 
     useEffect(() => {
         let mounted = true;
-        
+
         const initialize = async () => {
             try {
                 await checkAndMigrate();
                 await storage.initialize();
-                
+
                 if (!mounted) return;
-                
+
                 const savedTheme = storage.getCached<string>('cliqon-theme', 'modernDark');
                 if (savedTheme && themes[savedTheme]) {
                     setThemeState(themes[savedTheme]);
                 }
-                
+
                 const savedTerminalTheme = storage.getCached<string>('cliqon-terminal-theme', 'appTheme');
                 if (savedTerminalTheme && terminalThemes[savedTerminalTheme]) {
                     setTerminalThemeState(terminalThemes[savedTerminalTheme]);
                 }
-                
+
                 const savedFont = storage.getCached<Partial<TerminalFont>>('cliqon-terminal-font', {});
                 if (Object.keys(savedFont).length > 0) {
                     setTerminalFontState({ ...defaultTerminalFont, ...savedFont });
                 }
-                
+
                 const savedCursor = storage.getCached<string>('cliqon-terminal-cursor', 'block');
                 if (savedCursor === 'block' || savedCursor === 'underline' || savedCursor === 'bar') {
                     setTerminalCursorStyleState(savedCursor);
                 }
-                
+
                 const savedAutoOpen = storage.getCached<string>('cliqon-auto-open-monitor', 'false');
                 setAutoOpenMonitorState(savedAutoOpen === 'true');
-                
+
                 const savedTimeout = storage.getCached<string>('cliqon-session-timeout', '30');
                 const parsed = parseInt(savedTimeout, 10);
                 if (!isNaN(parsed)) {
                     setSessionTimeoutState(parsed);
                 }
-                
+
                 const savedPerf = storage.getCached<Partial<TerminalPerformanceSettings>>('cliqon-terminal-performance', {});
                 if (Object.keys(savedPerf).length > 0) {
                     setTerminalPerformanceState({ ...defaultPerformanceSettings, ...savedPerf });
                 }
-                
+
+                const savedQuickActions = storage.getCached<string[]>('cliqon-dashboard-quick-actions', ['new-connection', 'sharing', 'import', 'settings']);
+                setDashboardQuickActionsState(savedQuickActions);
+
             } catch (err) {
                 console.error('Failed to initialize theme context:', err);
             } finally {
@@ -107,9 +113,9 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 }
             }
         };
-        
+
         initialize();
-        
+
         return () => {
             mounted = false;
         };
@@ -160,6 +166,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         });
     }, []);
 
+    const setDashboardQuickActions = useCallback((actions: string[]) => {
+        setDashboardQuickActionsState(actions);
+        storage.set('cliqon-dashboard-quick-actions', actions);
+    }, []);
+
     useEffect(() => {
         if (isLoading) return;
 
@@ -179,7 +190,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             root.style.setProperty('--gradient-from', theme.gradient.from);
             root.style.setProperty('--gradient-to', theme.gradient.to);
             root.style.setProperty('--gradient-direction', theme.gradient.direction || 'to bottom');
-            
+
             // Apply gradient animation class based on animated property
             const body = document.body;
             if (theme.gradient.animated) {
@@ -219,6 +230,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             setSessionTimeout,
             terminalPerformance,
             setTerminalPerformance,
+            dashboardQuickActions,
+            setDashboardQuickActions,
             isLoading
         }}>
             {children}

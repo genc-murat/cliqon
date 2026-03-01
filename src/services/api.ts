@@ -19,6 +19,10 @@ export const api = {
         return await invoke<string | null>('get_profile_secret', { id });
     },
 
+    recordUsage: async (id: string): Promise<void> => {
+        return await invoke('record_usage', { id });
+    },
+
     connectSsh: async (profile: SshProfile, sessionId: string): Promise<void> => {
         return await invoke('connect_ssh', { profile, sessionId });
     },

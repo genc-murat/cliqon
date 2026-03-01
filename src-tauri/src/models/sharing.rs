@@ -98,6 +98,7 @@ impl ShareableProfile {
             tunnels: Some(Vec::new()),
             is_favorite: self.is_favorite,
             color: self.color.clone(),
+            last_used: None,
         }
     }
 }
@@ -159,6 +160,7 @@ mod tests {
             tunnels: None,
             is_favorite: Some(true),
             color: Some("#ff5500".to_string()),
+            last_used: None,
         }
     }
 
@@ -300,6 +302,7 @@ mod tests {
             tunnels: None,
             is_favorite: Some(false),
             color: Some("#0000ff".to_string()),
+            last_used: None,
         };
 
         let shareable = ShareableProfile::from_profile(&profile, None);

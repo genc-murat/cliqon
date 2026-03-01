@@ -57,6 +57,7 @@ impl ImportService {
             tunnels: Some(Vec::new()),
             is_favorite: Some(false),
             color: None,
+            last_used: None,
         })
     }
 
@@ -115,6 +116,7 @@ impl ImportService {
             tunnels: Some(Vec::new()),
             is_favorite: Some(false),
             color: None,
+            last_used: None,
         })
     }
 }

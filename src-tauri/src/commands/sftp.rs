@@ -647,7 +647,6 @@ mod tests {
 
     #[test]
     fn test_sftp_transfer_progress() {
-        let progress: f64 = 0.0;
         let total: f64 = 100.0;
         
         for i in 0..=10 {
@@ -705,7 +704,7 @@ mod tests {
             ("link", FileType::Symlink),
         ];
         
-        for (name, expected_type) in types {
+        for (name, _expected_type) in types {
             let detected = if name.contains('.') { FileType::Regular } 
                 else { FileType::Directory };
             let _ = detected;

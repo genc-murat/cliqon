@@ -957,7 +957,7 @@ mod tests {
             ("8080:8080", 8080, 8080),
         ];
 
-        for (mapping, start, end) in ports {
+        for (_mapping, start, end) in ports {
             assert!(start > 0 && start <= 65535);
             assert!(end > 0 && end <= 65535);
             assert!(start <= end);

@@ -807,6 +807,7 @@ mod tests {
             tunnels: None,
             is_favorite: None,
             color: Some("#FF5500".to_string()),
+            last_used: None,
         };
         
         assert!(matches!(profile.auth_method, crate::models::profile::AuthMethod::Password));
@@ -827,6 +828,7 @@ mod tests {
             tunnels: None,
             is_favorite: Some(false),
             color: None,
+            last_used: None,
         };
         
         assert!(matches!(profile.auth_method, crate::models::profile::AuthMethod::PrivateKey));

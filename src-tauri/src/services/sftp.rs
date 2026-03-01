@@ -1222,7 +1222,7 @@ mod tests {
     #[test]
     fn test_sftp_watch_state() {
         let mut watch_dir: Option<String> = None;
-        let mut last_mtime: u64 = 0;
+        let  last_mtime: u64 = 0;
 
         assert!(watch_dir.is_none());
         assert_eq!(last_mtime, 0);

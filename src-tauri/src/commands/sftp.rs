@@ -534,7 +534,7 @@ mod tests {
         ];
         
         for (bytes, _display) in sizes {
-            assert!(bytes >= 0);
+            let _ = bytes;
         }
     }
 
@@ -695,7 +695,6 @@ mod tests {
             Regular,
             Directory,
             Symlink,
-            Unknown,
         }
         
         let types = vec![
@@ -722,7 +721,7 @@ mod tests {
         ];
         
         for (bytes, _expected) in conversions {
-            assert!(bytes >= 0);
+            let _ = bytes;
         }
     }
 

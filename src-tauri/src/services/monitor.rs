@@ -38,6 +38,12 @@ pub struct MonitorManager {
     monitors: Arc<Mutex<HashMap<String, MonitorThread>>>,
 }
 
+impl Default for MonitorManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MonitorManager {
     pub fn new() -> Self {
         Self {
@@ -190,13 +196,11 @@ impl MonitorManager {
 
 fn exec_command(session: &Session, cmd: &str) -> Result<String> {
     session.set_blocking(true);
-    let mut channel = session.channel_session().map_err(|e| AppError::Ssh(e))?;
-    channel.exec(cmd).map_err(|e| AppError::Ssh(e))?;
+    let mut channel = session.channel_session().map_err(AppError::Ssh)?;
+    channel.exec(cmd).map_err(AppError::Ssh)?;
 
     let mut output = String::new();
-    channel
-        .read_to_string(&mut output)
-        .map_err(|e| AppError::Io(e))?;
+    channel.read_to_string(&mut output).map_err(AppError::Io)?;
 
     channel.wait_close().ok();
     Ok(output)

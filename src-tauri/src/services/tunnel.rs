@@ -24,6 +24,12 @@ pub struct TunnelService {
     active_tunnels: Arc<Mutex<HashMap<String, ActiveTunnel>>>,
 }
 
+impl Default for TunnelService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TunnelService {
     pub fn new() -> Self {
         Self {
@@ -559,12 +565,12 @@ mod tests {
     #[test]
     fn test_atomic_bool_operations() {
         let flag = Arc::new(AtomicBool::new(true));
-        
+
         assert!(flag.load(Ordering::Relaxed));
-        
+
         flag.store(false, Ordering::Relaxed);
         assert!(!flag.load(Ordering::Relaxed));
-        
+
         flag.store(true, Ordering::Relaxed);
         assert!(flag.load(Ordering::Relaxed));
     }
@@ -573,7 +579,7 @@ mod tests {
     fn test_atomic_bool_clone() {
         let flag = Arc::new(AtomicBool::new(true));
         let cloned = Arc::clone(&flag);
-        
+
         flag.store(false, Ordering::Relaxed);
         assert!(!cloned.load(Ordering::Relaxed));
     }
@@ -603,7 +609,10 @@ mod tests {
             remote_port: None,
         };
 
-        let remote_host = config.remote_host.clone().unwrap_or_else(|| "127.0.0.1".to_string());
+        let remote_host = config
+            .remote_host
+            .clone()
+            .unwrap_or_else(|| "127.0.0.1".to_string());
         assert_eq!(remote_host, "127.0.0.1");
     }
 
@@ -633,7 +642,10 @@ mod tests {
             remote_port: Some(443),
         };
 
-        let remote_host = config.remote_host.clone().unwrap_or_else(|| "127.0.0.1".to_string());
+        let remote_host = config
+            .remote_host
+            .clone()
+            .unwrap_or_else(|| "127.0.0.1".to_string());
         let remote_port = config.remote_port.unwrap_or(80);
 
         assert_eq!(remote_host, "192.168.1.1");
@@ -643,7 +655,7 @@ mod tests {
     #[test]
     fn test_tunnel_config_port_ranges() {
         let valid_ports = vec![22, 80, 443, 3306, 5432, 8080, 3000, 65535];
-        
+
         for port in valid_ports {
             assert!(port > 0);
             assert!(port <= 65535);
@@ -668,11 +680,11 @@ mod tests {
     #[test]
     fn test_tunnel_service_mutex_access() {
         let service = TunnelService::new();
-        
+
         let tunnels = service.active_tunnels.lock().unwrap();
         assert!(tunnels.is_empty());
         drop(tunnels);
-        
+
         let tunnels2 = service.active_tunnels.lock().unwrap();
         assert!(tunnels2.is_empty());
     }
@@ -681,10 +693,10 @@ mod tests {
     fn test_tunnel_service_arc_clone() {
         let service = Arc::new(TunnelService::new());
         let cloned = Arc::clone(&service);
-        
+
         let ids = service.get_all_tunnel_ids();
         assert!(ids.is_empty());
-        
+
         let ids2 = cloned.get_all_tunnel_ids();
         assert!(ids2.is_empty());
     }
@@ -692,10 +704,10 @@ mod tests {
     #[test]
     fn test_get_active_tunnels_filter() {
         let service = TunnelService::new();
-        
+
         let tunnels_session1 = service.get_active_tunnels("session-1");
         let tunnels_session2 = service.get_active_tunnels("session-2");
-        
+
         assert!(tunnels_session1.is_empty());
         assert!(tunnels_session2.is_empty());
     }
@@ -703,7 +715,7 @@ mod tests {
     #[test]
     fn test_is_tunnel_active_with_different_ids() {
         let service = TunnelService::new();
-        
+
         assert!(!service.is_tunnel_active("tunnel-1"));
         assert!(!service.is_tunnel_active("tunnel-2"));
         assert!(!service.is_tunnel_active(""));
@@ -712,11 +724,11 @@ mod tests {
     #[test]
     fn test_stop_tunnel_multiple_times() {
         let service = TunnelService::new();
-        
+
         let result1 = service.stop_tunnel("nonexistent");
         let result2 = service.stop_tunnel("nonexistent");
         let result3 = service.stop_tunnel("another");
-        
+
         assert!(result1.is_ok());
         assert!(result2.is_ok());
         assert!(result3.is_ok());
@@ -726,7 +738,7 @@ mod tests {
     fn test_get_all_tunnel_ids_returns_vec() {
         let service = TunnelService::new();
         let ids = service.get_all_tunnel_ids();
-        
+
         assert!(ids.is_empty());
         assert_eq!(ids.len(), 0);
     }
@@ -822,7 +834,7 @@ mod tests {
     #[test]
     fn test_error_already_active() {
         let service = TunnelService::new();
-        
+
         // Try to stop a non-existent tunnel - should succeed
         let result = service.stop_tunnel("nonexistent");
         assert!(result.is_ok());
@@ -858,15 +870,15 @@ mod tests {
     #[test]
     fn test_hashmap_operations() {
         let mut map: HashMap<String, i32> = HashMap::new();
-        
+
         map.insert("key1".to_string(), 1);
         map.insert("key2".to_string(), 2);
-        
+
         assert_eq!(map.len(), 2);
         assert!(map.contains_key("key1"));
         assert!(map.contains_key("key2"));
         assert!(!map.contains_key("key3"));
-        
+
         map.remove("key1");
         assert_eq!(map.len(), 1);
         assert!(!map.contains_key("key1"));
@@ -876,7 +888,7 @@ mod tests {
     fn test_hashmap_clone() {
         let mut map: HashMap<String, String> = HashMap::new();
         map.insert("key1".to_string(), "value1".to_string());
-        
+
         let cloned = map.clone();
         assert_eq!(map.len(), cloned.len());
         assert_eq!(map.get("key1"), cloned.get("key1"));
@@ -886,7 +898,7 @@ mod tests {
     fn test_vec_filter_and_collect() {
         let items = vec![1, 2, 3, 4, 5, 6];
         let evens: Vec<i32> = items.into_iter().filter(|x| x % 2 == 0).collect();
-        
+
         assert_eq!(evens.len(), 3);
         assert_eq!(evens, vec![2, 4, 6]);
     }
@@ -895,7 +907,7 @@ mod tests {
     fn test_vec_map_and_collect() {
         let items = vec![1, 2, 3];
         let doubled: Vec<i32> = items.into_iter().map(|x| x * 2).collect();
-        
+
         assert_eq!(doubled, vec![2, 4, 6]);
     }
 
@@ -931,17 +943,17 @@ mod tests {
         let start = std::time::Instant::now();
         thread::sleep(std::time::Duration::from_millis(10));
         let elapsed = start.elapsed();
-        
+
         assert!(elapsed >= std::time::Duration::from_millis(10));
     }
 
     #[test]
     fn test_ordering_relaxed() {
         let flag = AtomicBool::new(false);
-        
+
         flag.store(true, Ordering::Relaxed);
         assert!(flag.load(Ordering::Relaxed));
-        
+
         flag.store(false, Ordering::Relaxed);
         assert!(!flag.load(Ordering::Relaxed));
     }
@@ -950,7 +962,7 @@ mod tests {
     fn test_arc_new_and_clone() {
         let arc = Arc::new(42);
         let cloned = Arc::clone(&arc);
-        
+
         assert_eq!(*arc, 42);
         assert_eq!(*cloned, 42);
         assert!(Arc::ptr_eq(&arc, &cloned));
@@ -960,19 +972,19 @@ mod tests {
     fn test_mutex_new_and_lock() {
         let mutex = Mutex::new(42);
         let guard = mutex.lock().unwrap();
-        
+
         assert_eq!(*guard, 42);
     }
 
     #[test]
     fn test_arc_mutex_pattern() {
         let data: Arc<Mutex<Vec<i32>>> = Arc::new(Mutex::new(vec![1, 2, 3]));
-        
+
         {
             let mut guard = data.lock().unwrap();
             guard.push(4);
         }
-        
+
         let guard2 = data.lock().unwrap();
         assert_eq!(guard2.len(), 4);
         assert_eq!(guard2[3], 4);
@@ -987,11 +999,7 @@ mod tests {
 
     #[test]
     fn test_session_id_formats() {
-        let session_ids = vec![
-            "session-1",
-            "tunnel-abc",
-            "ssh-xyz",
-        ];
+        let session_ids = vec!["session-1", "tunnel-abc", "ssh-xyz"];
 
         for id in session_ids {
             assert!(!id.is_empty());
@@ -1000,12 +1008,7 @@ mod tests {
 
     #[test]
     fn test_tunnel_id_formats() {
-        let tunnel_ids = vec![
-            "tunnel-1",
-            "local-forward",
-            "remote-8080",
-            "dynamic-socks",
-        ];
+        let tunnel_ids = vec!["tunnel-1", "local-forward", "remote-8080", "dynamic-socks"];
 
         for id in tunnel_ids {
             assert!(!id.is_empty());

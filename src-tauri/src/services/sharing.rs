@@ -24,6 +24,12 @@ pub struct SharingService {
     http_server: Arc<Mutex<Option<tiny_http::Server>>>,
 }
 
+impl Default for SharingService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SharingService {
     pub fn new() -> Self {
         let machine_name = hostname::get()

@@ -42,6 +42,12 @@ pub struct SftpManager {
     active_sessions: Arc<Mutex<std::collections::HashMap<String, ActiveSftp>>>,
 }
 
+impl Default for SftpManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SftpManager {
     pub fn new() -> Self {
         Self {
@@ -647,7 +653,7 @@ impl SftpManager {
         session.handshake()?;
         crate::services::auth::authenticate_session(&mut session, profile, secret)?;
 
-        let mut channel = session.channel_session().map_err(|e| AppError::Ssh(e))?;
+        let mut channel = session.channel_session().map_err(AppError::Ssh)?;
 
         // Use bash to echo the password into sudo -S cat <path>
         // The -S flag reads the password from standard input.
@@ -657,11 +663,9 @@ impl SftpManager {
 
         let cmd = format!("echo '{}' | sudo -S cat '{}' 2>&1", safe_pass, safe_path);
 
-        channel.exec(&cmd).map_err(|e| AppError::Ssh(e))?;
+        channel.exec(&cmd).map_err(AppError::Ssh)?;
         let mut output = String::new();
-        channel
-            .read_to_string(&mut output)
-            .map_err(|e| AppError::Io(e))?;
+        channel.read_to_string(&mut output).map_err(AppError::Io)?;
         channel.wait_close().ok();
 
         Ok(output)
@@ -680,7 +684,7 @@ impl SftpManager {
         session.handshake()?;
         crate::services::auth::authenticate_session(&mut session, profile, secret)?;
 
-        let mut channel = session.channel_session().map_err(|e| AppError::Ssh(e))?;
+        let mut channel = session.channel_session().map_err(AppError::Ssh)?;
 
         // We write the content using tee. We pipe the password into sudo -S,
         // however, if we also need to pipe the content, it gets tricky.
@@ -696,19 +700,17 @@ impl SftpManager {
             "echo '{}' | sudo -S sh -c 'cat > '{}''",
             safe_pass, safe_path
         );
-        channel.exec(&cmd).map_err(|e| AppError::Ssh(e))?;
+        channel.exec(&cmd).map_err(AppError::Ssh)?;
 
         // Write the actual file content to the command's stdin
         channel
             .write_all(content.as_bytes())
-            .map_err(|e| AppError::Io(e))?;
+            .map_err(AppError::Io)?;
         // Send EOF
-        channel.send_eof().map_err(|e| AppError::Ssh(e))?;
+        channel.send_eof().map_err(AppError::Ssh)?;
 
         let mut output = String::new();
-        channel
-            .read_to_string(&mut output)
-            .map_err(|e| AppError::Io(e))?;
+        channel.read_to_string(&mut output).map_err(AppError::Io)?;
         channel.wait_close().ok();
 
         // Check if output contains typical sudo errors like "incorrect password"
@@ -1222,7 +1224,7 @@ mod tests {
     #[test]
     fn test_sftp_watch_state() {
         let mut watch_dir: Option<String> = None;
-        let  last_mtime: u64 = 0;
+        let last_mtime: u64 = 0;
 
         assert!(watch_dir.is_none());
         assert_eq!(last_mtime, 0);
@@ -1433,7 +1435,7 @@ mod tests {
         let sizes = vec![0u64, 1, 1024, 1024 * 1024, 1024 * 1024 * 100];
 
         for size in sizes {
-            assert!(size >= 0);
+            let _ = size;
         }
 
         assert_eq!(1024u64 * 1024, 1048576);

@@ -43,6 +43,12 @@ pub struct SshManager {
     active_sessions: Arc<Mutex<std::collections::HashMap<String, ActiveSession>>>,
 }
 
+impl Default for SshManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SshManager {
     pub fn new() -> Self {
         Self {

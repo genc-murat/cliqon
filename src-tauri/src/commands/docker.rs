@@ -1135,9 +1135,6 @@ mod tests {
             Running,
             Exited,
             Paused,
-            Created,
-            Restarting,
-            Dead,
         }
         
         let states = vec![

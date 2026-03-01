@@ -10,6 +10,12 @@ use crate::services::auth::authenticate_session;
 
 pub struct NetToolManager;
 
+impl Default for NetToolManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetToolManager {
     pub fn new() -> Self {
         Self
@@ -137,9 +143,9 @@ mod tests {
     fn test_run_tool_unknown_tool() {
         let manager = NetToolManager::new();
         let profile = SshProfile::default();
-        
+
         let result = manager.run_tool(&profile, None, "unknown_tool", "127.0.0.1");
-        
+
         assert!(result.is_err());
         if let Err(e) = result {
             let msg = e.to_string();
@@ -164,7 +170,7 @@ mod tests {
             .chars()
             .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == ':' || *c == '_')
             .collect();
-        
+
         // The filter keeps alphanumeric and .-:_ characters
         // Note: "rm" in the original becomes part of the string since 'r' and 'm' are alphanumeric
         // The important thing is that dangerous characters are removed
@@ -182,7 +188,7 @@ mod tests {
             .chars()
             .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == ':' || *c == '_')
             .collect();
-        
+
         assert_eq!(safe_target, valid_target);
     }
 
@@ -193,7 +199,7 @@ mod tests {
             .chars()
             .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == ':' || *c == '_')
             .collect();
-        
+
         assert_eq!(safe_target, "::1");
     }
 
@@ -289,26 +295,59 @@ mod tests {
     fn test_tool_type_variants() {
         // Test that all tool types can be matched
         let tools = vec![
-            "ping", "traceroute", "dns", "portscan", "nmap", "whois", "mtr",
-            "tracepath", "nslookup", "curl_timing", "connections", "interfaces",
-            "public_ip", "routes", "neighbors", "listening", "netstat",
-            "dns_config", "hosts_file", "http_check", "ssl_check", "stats_summary",
-            "bandwidth_stats", "firewall_status", "fail2ban_status", "hostname_info",
-            "active_users", "open_files", "uptime", "disk_usage", "memory_usage",
-            "last_logins", "arp", "ip_link", "ip_route_get", "resolvectl",
-            "tcpdump", "speedtest", "processes", "systemctl_list", "nmap_os",
+            "ping",
+            "traceroute",
+            "dns",
+            "portscan",
+            "nmap",
+            "whois",
+            "mtr",
+            "tracepath",
+            "nslookup",
+            "curl_timing",
+            "connections",
+            "interfaces",
+            "public_ip",
+            "routes",
+            "neighbors",
+            "listening",
+            "netstat",
+            "dns_config",
+            "hosts_file",
+            "http_check",
+            "ssl_check",
+            "stats_summary",
+            "bandwidth_stats",
+            "firewall_status",
+            "fail2ban_status",
+            "hostname_info",
+            "active_users",
+            "open_files",
+            "uptime",
+            "disk_usage",
+            "memory_usage",
+            "last_logins",
+            "arp",
+            "ip_link",
+            "ip_route_get",
+            "resolvectl",
+            "tcpdump",
+            "speedtest",
+            "processes",
+            "systemctl_list",
+            "nmap_os",
         ];
 
         for tool in tools {
             match tool {
                 "ping" | "traceroute" | "dns" | "portscan" | "nmap" | "whois" | "mtr"
                 | "tracepath" | "nslookup" | "curl_timing" | "connections" | "interfaces"
-                | "public_ip" | "routes" | "neighbors" | "listening" | "netstat"
-                | "dns_config" | "hosts_file" | "http_check" | "ssl_check" | "stats_summary"
+                | "public_ip" | "routes" | "neighbors" | "listening" | "netstat" | "dns_config"
+                | "hosts_file" | "http_check" | "ssl_check" | "stats_summary"
                 | "bandwidth_stats" | "firewall_status" | "fail2ban_status" | "hostname_info"
                 | "active_users" | "open_files" | "uptime" | "disk_usage" | "memory_usage"
-                | "last_logins" | "arp" | "ip_link" | "ip_route_get" | "resolvectl"
-                | "tcpdump" | "speedtest" | "processes" | "systemctl_list" | "nmap_os" => {
+                | "last_logins" | "arp" | "ip_link" | "ip_route_get" | "resolvectl" | "tcpdump"
+                | "speedtest" | "processes" | "systemctl_list" | "nmap_os" => {
                     // Valid tool type
                 }
                 _ => panic!("Unknown tool type: {}", tool),
@@ -318,16 +357,22 @@ mod tests {
 
     #[test]
     fn test_command_injection_characters_blocked() {
-        let blocked_chars = vec![';', '&', '|', '$', '`', '(', ')', '{', '}', '<', '>', '\n', '\r'];
-        
+        let blocked_chars = vec![
+            ';', '&', '|', '$', '`', '(', ')', '{', '}', '<', '>', '\n', '\r',
+        ];
+
         for ch in blocked_chars {
             let target = format!("127.0.0.1{}rm", ch);
             let safe_target: String = target
                 .chars()
                 .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == ':' || *c == '_')
                 .collect();
-            
-            assert!(!safe_target.contains(ch), "Character {} should be filtered", ch);
+
+            assert!(
+                !safe_target.contains(ch),
+                "Character {} should be filtered",
+                ch
+            );
         }
     }
 }

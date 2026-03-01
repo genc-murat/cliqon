@@ -6,6 +6,12 @@ use std::net::TcpStream;
 
 pub struct SystemService;
 
+impl Default for SystemService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SystemService {
     pub fn new() -> Self {
         Self
@@ -23,14 +29,12 @@ impl SystemService {
 
     fn exec_command(&self, session: &Session, cmd: &str) -> Result<String> {
         session.set_blocking(true);
-        let mut channel = session.channel_session().map_err(|e| AppError::Ssh(e))?;
-        channel.exec(cmd).map_err(|e| AppError::Ssh(e))?;
+        let mut channel = session.channel_session().map_err(AppError::Ssh)?;
+        channel.exec(cmd).map_err(AppError::Ssh)?;
 
         let mut output = String::new();
         use std::io::Read;
-        channel
-            .read_to_string(&mut output)
-            .map_err(|e| AppError::Io(e))?;
+        channel.read_to_string(&mut output).map_err(AppError::Io)?;
 
         channel.wait_close().ok();
         Ok(output)

@@ -6,7 +6,7 @@ use crate::state::app_state::AppState;
 #[tauri::command]
 pub async fn start_sharing(state: State<'_, AppState>) -> Result<SharingStatus> {
     let service = state.sharing_service.lock().unwrap();
-    service.start().map_err(|e| crate::error::AppError::Custom(e))?;
+    service.start().map_err(crate::error::AppError::Custom)?;
     Ok(service.get_status())
 }
 
@@ -81,7 +81,7 @@ pub async fn share_items_with_peer(
 
     let peer_clone = peer.clone();
     service.share_with_peer(&peer_clone, shareable_profiles, shareable_snippets)
-        .map_err(|e| crate::error::AppError::Custom(e))
+        .map_err(crate::error::AppError::Custom)
 }
 
 #[tauri::command]
@@ -138,7 +138,7 @@ pub async fn reject_share(
 #[tauri::command]
 pub async fn ping_peer(state: State<'_, AppState>, ip: String, port: u16) -> Result<PeerInfo> {
     let service = state.sharing_service.lock().unwrap();
-    let peer = service.ping_peer(&ip, port).map_err(|e| crate::error::AppError::Custom(e))?;
+    let peer = service.ping_peer(&ip, port).map_err(crate::error::AppError::Custom)?;
     service.add_manual_peer(peer.clone());
     Ok(peer)
 }

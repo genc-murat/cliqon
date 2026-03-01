@@ -36,7 +36,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         sessionTimeout, setSessionTimeout,
         terminalPerformance, setTerminalPerformance,
         dashboardQuickActions, setDashboardQuickActions,
-        dashboardWidgets, setDashboardWidgets
+        dashboardWidgets, setDashboardWidgets,
+        showResourceMonitor, setShowResourceMonitor
     } = useTheme();
 
     const { status: updateStatus, checkForUpdates, installUpdate, manifest, error: updateError } = useUpdater();
@@ -578,6 +579,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
                                         <div className="flex items-center justify-between p-4 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-2xl">
                                             <div>
+                                                <h4 className="text-sm font-bold text-[var(--text-main)]">Resource Monitor</h4>
+                                                <p className="text-xs text-[var(--text-muted)]">Show real-time CPU, RAM, and Disk stats in terminal</p>
+                                            </div>
+                                            <button
+                                                onClick={() => setShowResourceMonitor(!showResourceMonitor)}
+                                                className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${showResourceMonitor ? 'bg-emerald-500' : 'bg-[var(--hover-color)]'
+                                                    }`}
+                                            >
+                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${showResourceMonitor ? 'translate-x-6' : 'translate-x-0'
+                                                    }`} />
+                                            </button>
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-4 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-2xl">
+                                            <div>
                                                 <h4 className="text-sm font-bold text-[var(--text-main)]">Show FPS Counter</h4>
                                                 <p className="text-xs text-[var(--text-muted)]">Display rendering stats in terminal corner</p>
                                             </div>
@@ -760,7 +776,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 </div>
                                 <div className="space-y-2 pt-4">
                                     <div className="px-4 py-2 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-full text-xs font-bold text-[var(--text-main)] shadow-sm">
-                                        Version 0.9.2
+                                        Version 0.9.5
                                     </div>
 
                                     <div className="pt-4 flex flex-col items-center gap-3">

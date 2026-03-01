@@ -121,6 +121,7 @@ pub fn run() {
             start_tunnel,
             stop_tunnel,
             get_active_tunnels,
+            get_tunnel_stats,
             get_snippets,
             save_snippet,
             delete_snippet,

@@ -43,6 +43,8 @@ interface ThemeContextType {
     setDashboardQuickActions: (actions: string[]) => void;
     dashboardWidgets: string[];
     setDashboardWidgets: (widgets: string[]) => void;
+    showResourceMonitor: boolean;
+    setShowResourceMonitor: (show: boolean) => void;
     isLoading: boolean;
 }
 
@@ -60,6 +62,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [terminalPerformance, setTerminalPerformanceState] = useState<TerminalPerformanceSettings>(defaultPerformanceSettings);
     const [dashboardQuickActions, setDashboardQuickActionsState] = useState<string[]>(['new-connection', 'sharing', 'import', 'settings']);
     const [dashboardWidgets, setDashboardWidgetsState] = useState<string[]>(['favorites', 'recent', 'snippets', 'stats']);
+    const [showResourceMonitor, setShowResourceMonitorState] = useState<boolean>(true);
 
     useEffect(() => {
         let mounted = true;
@@ -110,6 +113,9 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
                 const savedWidgets = storage.getCached<string[]>('cliqon-dashboard-widgets', ['favorites', 'recent', 'snippets', 'stats']);
                 setDashboardWidgetsState(savedWidgets);
+
+                const savedShowMonitor = storage.getCached<string>('cliqon-show-resource-monitor', 'true');
+                setShowResourceMonitorState(savedShowMonitor === 'true');
 
             } catch (err) {
                 console.error('Failed to initialize theme context:', err);
@@ -182,6 +188,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         storage.set('cliqon-dashboard-widgets', widgets);
     }, []);
 
+    const setShowResourceMonitor = useCallback((show: boolean) => {
+        setShowResourceMonitorState(show);
+        storage.set('cliqon-show-resource-monitor', String(show));
+    }, []);
+
     useEffect(() => {
         if (isLoading) return;
 
@@ -245,6 +256,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             setDashboardQuickActions,
             dashboardWidgets,
             setDashboardWidgets,
+            showResourceMonitor,
+            setShowResourceMonitor,
             isLoading
         }}>
             {children}

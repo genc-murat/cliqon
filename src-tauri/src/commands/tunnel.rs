@@ -37,6 +37,13 @@ pub async fn get_active_tunnels(
 ) -> Result<Vec<TunnelConfig>> {
     Ok(state.tunnel_service.get_active_tunnels(&session_id))
 }
+#[tauri::command]
+pub async fn get_tunnel_stats(
+    session_id: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<crate::services::tunnel::TunnelStats>> {
+    Ok(state.tunnel_service.get_tunnel_stats(&session_id))
+}
 
 #[cfg(test)]
 mod tests {

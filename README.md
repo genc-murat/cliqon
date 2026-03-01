@@ -196,6 +196,8 @@ Share SSH connection profiles and global snippets with teammates on the same loc
 ### SSH Tunneling (Port Forwarding)
 - **Local & Remote Forwarding** — Securely expose local services to the remote host, or access remote internal services on your local machine.
 - **Dynamic Port Forwarding (SOCKS5)** — Route your browser traffic securely through the SSH connection without complex command line flags.
+- **Visual Tunnel Map** — New interactive diagram-view that visualizes the connection between local and remote endpoints with animated traffic flows.
+- **Live Traffic Monitoring** — Real-time tracking of bytes sent and received for all active tunnels, helping you monitor data transfer at a glance.
 - **Dedicated Management Panel** — Add, edit, and toggle tunnels directly from a new "Tunnels" tab without opening a terminal session.
 - **Background Execution** — Tunnels run in lightweight Rust threads, ensuring high throughput and resilience.
  

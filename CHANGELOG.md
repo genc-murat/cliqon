@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.5] - 2026-03-01
+
+### Added
+- **Visual Tunnel & Port Forwarding Manager**:
+  - **Live Traffic Monitoring**: Added real-time tracking of bytes sent and received for all active SSH tunnels (Local, Remote, and Dynamic).
+  - **Visual Tunnel Map**: New diagram-style view that visualizes connections between local and remote hosts with animated traffic flow indicators.
+  - **Enhanced Backend Performance**: Refactored tunnel service with optimized thread-safe atomic counters for high-frequency traffic updates.
+  - **Unified Management UI**: Seamlessly toggle between a detailed list view and a visual map view for complex forwarding setups.
+
+### Fixed
+- **Tunnel Threading**: Resolved critical ownership issues and duplicate method definitions in the tunnel service, improving stability during heavy network load.
+
+
 ## [0.9.2] - 2026-03-01
 
 ### Added

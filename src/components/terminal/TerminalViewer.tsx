@@ -14,6 +14,7 @@ import { FileBrowser } from './FileBrowser';
 import { SnippetManager } from './SnippetManager';
 import { TerminalSearchBar } from './TerminalSearchBar';
 import { TerminalHistorySearch } from './TerminalHistorySearch';
+import { ResourceMonitor } from './ResourceMonitor';
 import '@xterm/xterm/css/xterm.css';
 
 interface TerminalViewerProps {
@@ -38,7 +39,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
     const [connected, setConnected] = useState(false);
     const connectedRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
-    const { theme, terminalTheme, terminalFont, terminalCursorStyle, terminalPerformance } = useTheme();
+    const { theme, terminalTheme, terminalFont, terminalCursorStyle, terminalPerformance, showResourceMonitor } = useTheme();
     const [gpuInfo, setGpuInfo] = useState<GpuInfo | null>(null);
     const [rendererActive, setRendererActive] = useState<'webgl' | 'canvas' | null>(null);
 
@@ -494,6 +495,12 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                         {rendererActive}: {gpuInfo.renderer}
                     </div>
                 )}
+
+                <ResourceMonitor
+                    profile={profile}
+                    sessionId={sessionId}
+                    show={showResourceMonitor}
+                />
             </div>
 
             {!paneMode && <SnippetManager sessionId={sessionId} isActive={isActive} />}

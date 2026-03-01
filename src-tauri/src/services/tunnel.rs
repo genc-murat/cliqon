@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -16,6 +16,16 @@ pub struct ActiveTunnel {
     pub config: TunnelConfig,
     pub session_id: String,
     pub is_running: Arc<AtomicBool>,
+    pub bytes_sent: Arc<AtomicU64>,
+    pub bytes_received: Arc<AtomicU64>,
+}
+
+#[derive(serde::Serialize, Clone, Debug)]
+pub struct TunnelStats {
+    pub tunnel_id: String,
+    pub bytes_sent: u64,
+    pub bytes_received: u64,
+    pub is_active: bool,
 }
 
 #[derive(Debug)]
@@ -51,6 +61,8 @@ impl TunnelService {
         }
 
         let is_running = Arc::new(AtomicBool::new(true));
+        let bytes_sent = Arc::new(AtomicU64::new(0));
+        let bytes_received = Arc::new(AtomicU64::new(0));
 
         match config.tunnel_type {
             TunnelType::Local => {
@@ -67,6 +79,8 @@ impl TunnelService {
                 let cloned_session = session.clone();
                 let running_flag = Arc::clone(&is_running);
 
+                let bs = Arc::clone(&bytes_sent);
+                let br = Arc::clone(&bytes_received);
                 thread::spawn(move || {
                     for stream in listener.incoming() {
                         if !running_flag.load(Ordering::Relaxed) {
@@ -87,6 +101,7 @@ impl TunnelService {
                                     let mut channel_clone = channel.clone();
 
                                     // TCP -> SSH
+                                    let tx_sent = Arc::clone(&bs);
                                     thread::spawn(move || {
                                         let mut buf = [0u8; 8192];
                                         while let Ok(n) = tcp_stream.read(&mut buf) {
@@ -96,11 +111,13 @@ impl TunnelService {
                                             if channel.write_all(&buf[..n]).is_err() {
                                                 break;
                                             }
+                                            tx_sent.fetch_add(n as u64, Ordering::Relaxed);
                                         }
                                         let _ = channel.send_eof();
                                     });
 
                                     // SSH -> TCP
+                                    let tx_received = Arc::clone(&br);
                                     thread::spawn(move || {
                                         let mut buf = [0u8; 8192];
                                         while let Ok(n) = channel_clone.read(&mut buf) {
@@ -110,6 +127,7 @@ impl TunnelService {
                                             if tcp_stream_clone.write_all(&buf[..n]).is_err() {
                                                 break;
                                             }
+                                            tx_received.fetch_add(n as u64, Ordering::Relaxed);
                                         }
                                     });
                                 }
@@ -137,6 +155,8 @@ impl TunnelService {
 
                 let running_flag = Arc::clone(&is_running);
 
+                let bs = Arc::clone(&bytes_sent);
+                let br = Arc::clone(&bytes_received);
                 thread::spawn(move || {
                     while running_flag.load(Ordering::Relaxed) {
                         // accept() may block, but we can't easily interrupt it other than closing the session/channel
@@ -149,6 +169,7 @@ impl TunnelService {
                                     let mut channel_clone = channel.clone();
 
                                     // TCP -> SSH
+                                    let tx_sent = Arc::clone(&bs);
                                     thread::spawn(move || {
                                         let mut buf = [0u8; 8192];
                                         while let Ok(n) = tcp_stream.read(&mut buf) {
@@ -158,11 +179,13 @@ impl TunnelService {
                                             if channel.write_all(&buf[..n]).is_err() {
                                                 break;
                                             }
+                                            tx_sent.fetch_add(n as u64, Ordering::Relaxed);
                                         }
                                         let _ = channel.send_eof();
                                     });
 
                                     // SSH -> TCP
+                                    let tx_received = Arc::clone(&br);
                                     thread::spawn(move || {
                                         let mut buf = [0u8; 8192];
                                         while let Ok(n) = channel_clone.read(&mut buf) {
@@ -172,6 +195,7 @@ impl TunnelService {
                                             if tcp_stream_clone.write_all(&buf[..n]).is_err() {
                                                 break;
                                             }
+                                            tx_received.fetch_add(n as u64, Ordering::Relaxed);
                                         }
                                     });
                                 }
@@ -192,6 +216,8 @@ impl TunnelService {
                 let cloned_session = session.clone();
                 let running_flag = Arc::clone(&is_running);
 
+                let bs = Arc::clone(&bytes_sent);
+                let br = Arc::clone(&bytes_received);
                 thread::spawn(move || {
                     for stream in listener.incoming() {
                         if !running_flag.load(Ordering::Relaxed) {
@@ -201,6 +227,8 @@ impl TunnelService {
                         match stream {
                             Ok(mut tcp_stream) => {
                                 let session_for_thread = cloned_session.clone();
+                                let tx_sent_outer = Arc::clone(&bs);
+                                let tx_received_outer = Arc::clone(&br);
 
                                 thread::spawn(move || {
                                     let mut buf = [0u8; 512];
@@ -268,6 +296,7 @@ impl TunnelService {
                                         let mut channel_clone = channel.clone();
 
                                         // TCP -> SSH
+                                        let tx_sent = Arc::clone(&tx_sent_outer);
                                         thread::spawn(move || {
                                             let mut b = [0u8; 8192];
                                             while let Ok(n) = tcp_stream.read(&mut b) {
@@ -277,11 +306,13 @@ impl TunnelService {
                                                 if channel.write_all(&b[..n]).is_err() {
                                                     break;
                                                 }
+                                                tx_sent.fetch_add(n as u64, Ordering::Relaxed);
                                             }
                                             let _ = channel.send_eof();
                                         });
 
                                         // SSH -> TCP
+                                        let tx_received = Arc::clone(&tx_received_outer);
                                         let mut b = [0u8; 8192];
                                         while let Ok(n) = channel_clone.read(&mut b) {
                                             if n == 0 {
@@ -290,6 +321,7 @@ impl TunnelService {
                                             if tcp_stream_clone.write_all(&b[..n]).is_err() {
                                                 break;
                                             }
+                                            tx_received.fetch_add(n as u64, Ordering::Relaxed);
                                         }
                                     } else {
                                         // Reply general failure
@@ -316,6 +348,8 @@ impl TunnelService {
                 config,
                 session_id,
                 is_running,
+                bytes_sent,
+                bytes_received,
             },
         );
 
@@ -336,6 +370,20 @@ impl TunnelService {
             .values()
             .filter(|t| t.session_id == session_id)
             .map(|t| t.config.clone())
+            .collect()
+    }
+
+    pub fn get_tunnel_stats(&self, session_id: &str) -> Vec<TunnelStats> {
+        let tunnels = self.active_tunnels.lock().unwrap();
+        tunnels
+            .values()
+            .filter(|t| t.session_id == session_id)
+            .map(|t| TunnelStats {
+                tunnel_id: t.config.id.clone(),
+                bytes_sent: t.bytes_sent.load(Ordering::Relaxed),
+                bytes_received: t.bytes_received.load(Ordering::Relaxed),
+                is_active: t.is_running.load(Ordering::Relaxed),
+            })
             .collect()
     }
 

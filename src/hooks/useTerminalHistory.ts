@@ -1,6 +1,7 @@
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, RefObject } from 'react';
 import { CommandPredictor } from '../ml/CommandPredictor';
 import { storage } from '../lib/storage';
+import { Terminal } from '@xterm/xterm';
 
 const predictorCache: Map<string, CommandPredictor> = new Map();
 
@@ -15,10 +16,14 @@ function getOrCreatePredictor(profileId: string): CommandPredictor {
 
 import { useSnippets } from './useSnippets';
 
-export function useTerminalHistory(profileId: string) {
+export function useTerminalHistory(profileId: string, xtermRef: RefObject<Terminal | null>) {
     const predictorRef = useRef<CommandPredictor>(getOrCreatePredictor(profileId));
     const { snippets } = useSnippets();
-    const inputBufferRef = useRef<string>('');
+
+    // Exact buffer synchronization state
+    const promptStartXRef = useRef<number>(-1);
+    const promptStartYRef = useRef<number>(-1);
+
     const isInteractiveRef = useRef<boolean>(false);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isLoadedRef = useRef<boolean>(false);
@@ -66,75 +71,78 @@ export function useTerminalHistory(profileId: string) {
         }
     }, []);
 
-    const processKeystroke = useCallback((data: string): { consumed: boolean; suggestion: string | null } => {
-        if (isInteractiveRef.current) {
-            return { consumed: false, suggestion: null };
+    const extractCurrentCommand = useCallback((): string => {
+        const term = xtermRef.current;
+        if (!term || promptStartXRef.current === -1 || promptStartYRef.current === -1) {
+            return '';
         }
 
-        const charCode = data.charCodeAt(0);
+        let cmd = '';
+        let currentY = promptStartYRef.current;
+        const buffer = term.buffer.active;
 
+        while (currentY < buffer.length) {
+            const line = buffer.getLine(currentY);
+            if (!line) break;
+
+            const startX = currentY === promptStartYRef.current ? promptStartXRef.current : 0;
+            const text = line.translateToString(true, startX);
+            cmd += text;
+
+            if (!line.isWrapped) break;
+            currentY++;
+        }
+
+        return cmd;
+    }, [xtermRef]);
+
+    const processKeystroke = useCallback((data: string) => {
+        if (isInteractiveRef.current) return;
+        const term = xtermRef.current;
+        if (!term) return;
+
+        // Reset or set prompt start markers
         if (data === '\r' || data === '\n') {
-            const cmd = inputBufferRef.current.trim();
-            if (cmd.length >= 2) {
-                predictorRef.current.learn(cmd);
+            const cmd = extractCurrentCommand();
+            if (cmd.trim().length >= 2) {
+                predictorRef.current.learn(cmd.trim());
                 scheduleSave();
             }
-            inputBufferRef.current = '';
-            return { consumed: false, suggestion: null };
+            promptStartXRef.current = -1;
+            promptStartYRef.current = -1;
+            return;
         }
 
-        if (data === '\x03') {
-            inputBufferRef.current = '';
-            return { consumed: false, suggestion: null };
+        if (data === '\x03' || data === '\x15') { // Ctrl+C or Ctrl+U
+            promptStartXRef.current = -1;
+            promptStartYRef.current = -1;
+            return;
         }
 
-        if (data === '\x15') {
-            inputBufferRef.current = '';
-            return { consumed: false, suggestion: null };
+        if (promptStartXRef.current === -1) {
+            promptStartXRef.current = term.buffer.active.cursorX;
+            promptStartYRef.current = term.buffer.active.cursorY + term.buffer.active.baseY;
+        }
+    }, [extractCurrentCommand, scheduleSave, xtermRef]);
+
+    const updatePrediction = useCallback((): { ghostText: string | null; activeSuggestion: string | null } => {
+        if (isInteractiveRef.current || promptStartXRef.current === -1) {
+            return { ghostText: null, activeSuggestion: null };
         }
 
-        if (charCode === 127 || data === '\b') {
-            inputBufferRef.current = inputBufferRef.current.slice(0, -1);
-            const suggestion = inputBufferRef.current.length >= 2
-                ? predictorRef.current.getBestSuggestion(inputBufferRef.current)
-                : null;
-            return { consumed: false, suggestion };
+        const input = extractCurrentCommand();
+        if (input.length < 2) {
+            return { ghostText: null, activeSuggestion: null };
         }
 
-        if (data.startsWith('\x1b')) {
-            return { consumed: false, suggestion: null };
+        const suggestion = predictorRef.current.getBestSuggestion(input);
+        if (suggestion && suggestion.startsWith(input) && suggestion !== input) {
+            const remainder = suggestion.slice(input.length);
+            return { ghostText: remainder, activeSuggestion: suggestion };
         }
 
-        if (data === '\t') {
-            return { consumed: false, suggestion: null };
-        }
-
-        if (charCode >= 32 && charCode < 127) {
-            inputBufferRef.current += data;
-            const suggestion = inputBufferRef.current.length >= 2
-                ? predictorRef.current.getBestSuggestion(inputBufferRef.current)
-                : null;
-            return { consumed: false, suggestion };
-        }
-
-        return { consumed: false, suggestion: null };
-    }, [scheduleSave]);
-
-    const getCurrentInput = useCallback((): string => {
-        return inputBufferRef.current;
-    }, []);
-
-    const clearBuffer = useCallback(() => {
-        inputBufferRef.current = '';
-    }, []);
-
-    const getSuggestionRemainder = useCallback((suggestion: string): string => {
-        const current = inputBufferRef.current;
-        if (suggestion.startsWith(current)) {
-            return suggestion.slice(current.length);
-        }
-        return '';
-    }, []);
+        return { ghostText: null, activeSuggestion: null };
+    }, [extractCurrentCommand]);
 
     useEffect(() => {
         return () => {
@@ -149,9 +157,8 @@ export function useTerminalHistory(profileId: string) {
     return {
         processKeystroke,
         processOutput,
-        getCurrentInput,
-        clearBuffer,
-        getSuggestionRemainder,
+        updatePrediction,
+        extractCurrentCommand,
         predictor: predictorRef.current,
         isLoaded: isLoadedRef.current,
     };

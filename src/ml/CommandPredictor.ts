@@ -218,8 +218,26 @@ export class CommandPredictor {
      */
     private normalizeForMarkov(cmd: string): string {
         const parts = cmd.trim().split(/\s+/);
-        // Keep first 2 parts for context (e.g., "git commit", "docker compose")
-        return parts.slice(0, Math.min(parts.length, 2)).join(' ').toLowerCase();
+        if (parts.length === 0) return '';
+
+        const base = parts[0].toLowerCase();
+
+        // Commands that use subcommands (we want to keep the context)
+        const subCommandBases = new Set([
+            'git', 'docker', 'npm', 'yarn', 'pnpm', 'cargo', 'apt', 'apt-get',
+            'systemctl', 'journalctl', 'kubectl', 'ip', 'go', 'rustup', 'composer', 'php'
+        ]);
+
+        if (subCommandBases.has(base) && parts.length > 1) {
+            // Include the subcommand if it's not a flag
+            if (!parts[1].startsWith('-')) {
+                return `${base} ${parts[1].toLowerCase()}`;
+            }
+        }
+
+        // For everything else (cd, ls, rm, ssh, etc.), just use the base command
+        // This prevents Markov keys from being fragmented by paths or flags
+        return base;
     }
 
     /**
@@ -289,7 +307,14 @@ export class CommandPredictor {
             }
 
             this.history.clear();
+            const now = Date.now();
+            const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
             for (const entry of data.history) {
+                // Aggressive TTL Background Pruning: drop entries unused for > 30 days
+                if (now - entry.lastUsed > TTL_MS) {
+                    continue;
+                }
                 this.history.set(entry.command, entry);
             }
 

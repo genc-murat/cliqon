@@ -299,7 +299,7 @@ Experience a smarter terminal that learns how you work. Cliqon includes a built-
 - **Predictive Suggestions** — As you type, a light ghost-text suggestion appears ahead of your cursor.
 - **Context-Aware Learning** — Uses a **Markov Chain + N-gram** model to learn your common command sequences (e.g., it learns that `git add .` is often followed by `git commit`).
 - **Frecency Algorithm** — Suggestions are ranked based on frequency and recency, ensuring your most relevant commands are always at your fingertips.
-- **Tab to Accept** — Press `Tab` or `→` to instantly complete the suggestion; press `Esc` to dismiss.
+- **Tab to Accept** — Press `Tab` or `→` to instantly complete the suggestion. Press **`Alt + →`** to complete the suggestion word-by-word. Press `Esc` to dismiss.
 - **Interactive Detection** — Automatically pauses suggestions when you're in full-screen programs like `vim`, `nano`, or `htop`.
 - **Local & Private** — All learning and prediction happens entirely on your machine; no command history is ever sent to the cloud.
 

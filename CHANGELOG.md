@@ -1,7 +1,16 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
- 
+
+## [0.9.2] - 2026-03-01
+
+### Added
+- **ML-Powered Autocomplete Enhancements**:
+  - **Exact Buffer Sync**: Model now reads directly from the active rendering buffer of xterm.js instead of tracking keystrokes, completely eliminating text desynchronization on cursor movements, backspaces, and paste events.
+  - **Smart Argument Parsing**: The Markov prediction logic now intelligently identifies subcommands (e.g. `docker compose`, `git commit`) while abstracting away flags and variable paths for simpler commands (e.g. `cd`, `ls`), drastically improving contextual prediction accuracy.
+  - **Word-by-word Completion**: Added support for `Alt+RightArrow` to accept ghost text suggestions one word at a time, instead of only accepting the entire command with `Tab`.
+  - **Time-to-Live Pruning**: The ML model now silently trims history entries that haven't been used in over 30 days during boot, keeping the prediction engine lean and lightning fast.
+
 ## [0.9.0] - 2026-02-28
  
 ### Added

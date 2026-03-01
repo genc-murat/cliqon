@@ -42,9 +42,10 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
     const [gpuInfo, setGpuInfo] = useState<GpuInfo | null>(null);
     const [rendererActive, setRendererActive] = useState<'webgl' | 'canvas' | null>(null);
 
-    const { processKeystroke, processOutput, getSuggestionRemainder, predictor } = useTerminalHistory(profile.id);
+    const { processKeystroke, processOutput, updatePrediction, predictor } = useTerminalHistory(profile.id, xtermRef);
     const [ghostText, setGhostText] = useState<string | null>(null);
     const ghostRef = useRef<HTMLDivElement>(null);
+    const ghostTextRef = useRef<string | null>(null);
     const activeSuggestionRef = useRef<string | null>(null);
 
     const [showSearchBar, setShowSearchBar] = useState(false);
@@ -88,7 +89,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         if (!terminalRef.current) return;
 
         const scrollback = getScrollbackLines();
-        
+
         const term = new Terminal({
             cursorBlink: true,
             cursorStyle: terminalCursorStyle,
@@ -122,7 +123,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         term.open(terminalRef.current);
 
         const shouldTryWebgl = terminalPerformance.rendererMode !== 'canvas';
-        
+
         if (shouldTryWebgl) {
             try {
                 const webglAddon = new WebglAddon();
@@ -133,7 +134,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                 });
                 term.loadAddon(webglAddon);
                 setRendererActive('webgl');
-                
+
                 const gl = (webglAddon as unknown as { _gl?: WebGLRenderingContext })._gl;
                 if (gl && terminalPerformance.showFpsCounter) {
                     const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
@@ -202,9 +203,15 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                 unlistenRxRef.current = await listen<number[]>(`ssh_data_rx_${sessionId}`, (event) => {
                     if (xtermRef.current) {
                         const data = new Uint8Array(event.payload);
-                        xtermRef.current.write(data);
-                        const decoded = new TextDecoder().decode(data);
-                        processOutput(decoded);
+                        xtermRef.current.write(data, () => {
+                            const decoded = new TextDecoder().decode(data);
+                            processOutput(decoded);
+
+                            const { ghostText, activeSuggestion } = updatePrediction();
+                            setGhostText(ghostText);
+                            ghostTextRef.current = ghostText;
+                            activeSuggestionRef.current = activeSuggestion;
+                        });
                     }
                 });
 
@@ -244,39 +251,40 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
             const encoder = new TextEncoder();
 
             if ((data === '\t' || data === '\x1b[C') && activeSuggestionRef.current) {
-                const remainder = activeSuggestionRef.current;
+                const remainder = ghostTextRef.current;
                 if (remainder) {
                     const bytes = Array.from(encoder.encode(remainder));
                     api.writeToPty(sessionId, bytes).catch(console.error);
                     activeSuggestionRef.current = null;
+                    ghostTextRef.current = null;
                     setGhostText(null);
                     return;
                 }
             }
 
-            if (data === '\x1b' && activeSuggestionRef.current) {
-                activeSuggestionRef.current = null;
-                setGhostText(null);
-            }
-
-            const { suggestion } = processKeystroke(data);
-
-            if (suggestion) {
-                const currentInput = data === '\r' ? '' : undefined;
-                if (currentInput !== '') {
-                    const remainder = getSuggestionRemainder(suggestion);
-                    if (remainder) {
-                        activeSuggestionRef.current = remainder;
-                        setGhostText(remainder);
-                    } else {
-                        activeSuggestionRef.current = null;
-                        setGhostText(null);
+            // Alt+RightArrow for partial (word-by-word) completion
+            if ((data === '\x1b[1;3C' || data === '\x1bf') && activeSuggestionRef.current) {
+                const remainder = ghostTextRef.current;
+                if (remainder) {
+                    // Match the next word including trailing spaces
+                    const match = remainder.match(/^(\s*\S+\s*)/);
+                    if (match) {
+                        const word = match[0];
+                        const bytes = Array.from(encoder.encode(word));
+                        api.writeToPty(sessionId, bytes).catch(console.error);
+                        // Do not clear the suggestion here; let the next PTY echo trigger an updatePrediction
+                        return;
                     }
                 }
-            } else {
+            }
+
+            if (data === '\x1b' && activeSuggestionRef.current) {
                 activeSuggestionRef.current = null;
+                ghostTextRef.current = null;
                 setGhostText(null);
             }
+
+            processKeystroke(data);
 
             const bytes = Array.from(encoder.encode(data));
             api.writeToPty(sessionId, bytes).catch(console.error);
@@ -480,7 +488,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                         </div>
                     </div>
                 )}
-                
+
                 {terminalPerformance.showFpsCounter && gpuInfo && (
                     <div className="absolute bottom-2 right-2 text-[10px] text-[var(--text-muted)] opacity-50 pointer-events-none">
                         {rendererActive}: {gpuInfo.renderer}

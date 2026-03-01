@@ -452,6 +452,8 @@ mod tests {
             config: config.clone(),
             session_id: "session-1".to_string(),
             is_running: is_running.clone(),
+            bytes_sent: Arc::new(AtomicU64::new(0)),
+            bytes_received: Arc::new(AtomicU64::new(0)),
         };
 
         assert_eq!(tunnel.config.id, "tunnel-1");
@@ -475,6 +477,8 @@ mod tests {
             config,
             session_id: "session-1".to_string(),
             is_running: is_running.clone(),
+            bytes_sent: Arc::new(AtomicU64::new(0)),
+            bytes_received: Arc::new(AtomicU64::new(0)),
         };
 
         assert!(tunnel.is_running.load(Ordering::Relaxed));
@@ -596,6 +600,8 @@ mod tests {
             config,
             session_id: "session-1".to_string(),
             is_running,
+            bytes_sent: Arc::new(AtomicU64::new(0)),
+            bytes_received: Arc::new(AtomicU64::new(0)),
         };
 
         let debug_str = format!("{:?}", tunnel);
@@ -872,6 +878,8 @@ mod tests {
             config: config.clone(),
             session_id: "session-1".to_string(),
             is_running: Arc::clone(&is_running),
+            bytes_sent: Arc::new(AtomicU64::new(0)),
+            bytes_received: Arc::new(AtomicU64::new(0)),
         };
 
         assert_eq!(tunnel.config.id, config.id);

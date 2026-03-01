@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Palette, Terminal as TerminalIcon, Monitor, Info, Check, Activity, Shield, Zap, HardDrive, Key, Plus, Settings, RefreshCw, Users, Upload } from 'lucide-react';
+import { X, Palette, Terminal as TerminalIcon, Monitor, Info, Check, Activity, Shield, Zap, HardDrive, Key, Plus, Settings, RefreshCw, Users, Upload, Star, Clock } from 'lucide-react';
 import { save } from '@tauri-apps/plugin-dialog';
 import { Logo } from '../layout/Logo';
 import { KeyStore } from '../settings/KeyStore';
@@ -35,7 +35,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         autoOpenMonitor, setAutoOpenMonitor,
         sessionTimeout, setSessionTimeout,
         terminalPerformance, setTerminalPerformance,
-        dashboardQuickActions, setDashboardQuickActions
+        dashboardQuickActions, setDashboardQuickActions,
+        dashboardWidgets, setDashboardWidgets
     } = useTheme();
 
     const { status: updateStatus, checkForUpdates, installUpdate, manifest, error: updateError } = useUpdater();
@@ -242,7 +243,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                             <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-4 uppercase tracking-wider">Quick Actions</h4>
                                             <p className="text-xs text-[var(--text-muted)] mb-4">Select which actions you want to see on your dashboard.</p>
 
-                                            <div className="grid grid-cols-1 gap-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 {[
                                                     { id: 'new-connection', label: 'New Connection', icon: Plus },
                                                     { id: 'sharing', label: 'Network Sharing', icon: Users },
@@ -253,37 +254,63 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                                 ].map((action) => {
                                                     const isActive = dashboardQuickActions.includes(action.id);
                                                     return (
-                                                        <div
+                                                        <button
                                                             key={action.id}
-                                                            className="flex items-center justify-between p-4 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-2xl hover:border-[var(--text-muted)] transition-all group"
+                                                            onClick={() => {
+                                                                if (isActive) {
+                                                                    setDashboardQuickActions(dashboardQuickActions.filter(id => id !== action.id));
+                                                                } else {
+                                                                    setDashboardQuickActions([...dashboardQuickActions, action.id]);
+                                                                }
+                                                            }}
+                                                            className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isActive ? 'bg-[var(--accent-color)]/5 border-[var(--accent-color)]/50' : 'bg-[var(--bg-sidebar)] border-[var(--border-color)] opacity-60'}`}
                                                         >
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="p-2 bg-[var(--accent-color)]/10 rounded-xl text-[var(--accent-color)]">
-                                                                    <action.icon size={20} />
-                                                                </div>
-                                                                <div>
-                                                                    <h4 className="text-sm font-bold text-[var(--text-main)]">{action.label}</h4>
-                                                                </div>
+                                                            <div className="flex items-center gap-3">
+                                                                <action.icon size={16} className={isActive ? 'text-[var(--accent-color)]' : ''} />
+                                                                <span className="text-xs font-bold">{action.label}</span>
                                                             </div>
-                                                            <button
-                                                                onClick={() => {
-                                                                    if (isActive) {
-                                                                        setDashboardQuickActions(dashboardQuickActions.filter(id => id !== action.id));
-                                                                    } else {
-                                                                        setDashboardQuickActions([...dashboardQuickActions, action.id]);
-                                                                    }
-                                                                }}
-                                                                className={`
-                                                                    relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none
-                                                                    ${isActive ? 'bg-[var(--accent-color)]' : 'bg-[var(--hover-color)]'}
-                                                                `}
-                                                            >
-                                                                <div className={`
-                                                                    absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200
-                                                                    ${isActive ? 'translate-x-6' : 'translate-x-0'}
-                                                                `} />
-                                                            </button>
-                                                        </div>
+                                                            {isActive && <Check size={14} className="text-[var(--accent-color)]" />}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-6 border-t border-[var(--border-color)]">
+                                            <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-4 uppercase tracking-wider">Dashboard Widgets</h4>
+                                            <p className="text-xs text-[var(--text-muted)] mb-4">Enable or disable main dashboard sections.</p>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                {[
+                                                    { id: 'favorites', label: 'Favorite Connections', icon: Star, desc: 'Pinned connections for quick access' },
+                                                    { id: 'recent', label: 'Recent Activity', icon: Clock, desc: 'Your last connected systems' },
+                                                    { id: 'snippets', label: 'Quick Snippets', icon: Zap, desc: 'One-click command execution' },
+                                                    { id: 'stats', label: 'System Stats', icon: Activity, desc: 'Profile and network counters' },
+                                                ].map((widget) => {
+                                                    const isActive = dashboardWidgets.includes(widget.id);
+                                                    return (
+                                                        <button
+                                                            key={widget.id}
+                                                            onClick={() => {
+                                                                if (isActive) {
+                                                                    setDashboardWidgets(dashboardWidgets.filter(id => id !== widget.id));
+                                                                } else {
+                                                                    setDashboardWidgets([...dashboardWidgets, widget.id]);
+                                                                }
+                                                            }}
+                                                            className={`flex flex-col gap-2 p-4 rounded-2xl border transition-all text-left ${isActive ? 'bg-[var(--accent-color)]/5 border-[var(--accent-color)]/50' : 'bg-[var(--bg-sidebar)] border-[var(--border-color)] opacity-60'}`}
+                                                        >
+                                                            <div className="flex items-center justify-between">
+                                                                <div className={`p-2 rounded-xl ${isActive ? 'bg-[var(--accent-color)]/10 text-[var(--accent-color)]' : 'bg-white/5 text-[var(--text-muted)]'}`}>
+                                                                    <widget.icon size={18} />
+                                                                </div>
+                                                                {isActive && <div className="w-5 h-5 rounded-full bg-[var(--accent-color)] flex items-center justify-center shadow-lg"><Check size={12} className="text-white" /></div>}
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="text-xs font-bold text-[var(--text-main)]">{widget.label}</h4>
+                                                                <p className="text-[10px] text-[var(--text-muted)] mt-1">{widget.desc}</p>
+                                                            </div>
+                                                        </button>
                                                     );
                                                 })}
                                             </div>

@@ -41,6 +41,8 @@ interface ThemeContextType {
     setTerminalPerformance: (settings: Partial<TerminalPerformanceSettings>) => void;
     dashboardQuickActions: string[];
     setDashboardQuickActions: (actions: string[]) => void;
+    dashboardWidgets: string[];
+    setDashboardWidgets: (widgets: string[]) => void;
     isLoading: boolean;
 }
 
@@ -57,6 +59,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [sessionTimeout, setSessionTimeoutState] = useState<number>(30);
     const [terminalPerformance, setTerminalPerformanceState] = useState<TerminalPerformanceSettings>(defaultPerformanceSettings);
     const [dashboardQuickActions, setDashboardQuickActionsState] = useState<string[]>(['new-connection', 'sharing', 'import', 'settings']);
+    const [dashboardWidgets, setDashboardWidgetsState] = useState<string[]>(['favorites', 'recent', 'snippets', 'stats']);
 
     useEffect(() => {
         let mounted = true;
@@ -104,6 +107,9 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
                 const savedQuickActions = storage.getCached<string[]>('cliqon-dashboard-quick-actions', ['new-connection', 'sharing', 'import', 'settings']);
                 setDashboardQuickActionsState(savedQuickActions);
+
+                const savedWidgets = storage.getCached<string[]>('cliqon-dashboard-widgets', ['favorites', 'recent', 'snippets', 'stats']);
+                setDashboardWidgetsState(savedWidgets);
 
             } catch (err) {
                 console.error('Failed to initialize theme context:', err);
@@ -171,6 +177,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         storage.set('cliqon-dashboard-quick-actions', actions);
     }, []);
 
+    const setDashboardWidgets = useCallback((widgets: string[]) => {
+        setDashboardWidgetsState(widgets);
+        storage.set('cliqon-dashboard-widgets', widgets);
+    }, []);
+
     useEffect(() => {
         if (isLoading) return;
 
@@ -232,6 +243,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             setTerminalPerformance,
             dashboardQuickActions,
             setDashboardQuickActions,
+            dashboardWidgets,
+            setDashboardWidgets,
             isLoading
         }}>
             {children}

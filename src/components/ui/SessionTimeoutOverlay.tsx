@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ShieldAlert, X } from 'lucide-react';
+import { Lock, X } from 'lucide-react';
 
 interface SessionTimeoutOverlayProps {
     onReconnect: () => void;
@@ -24,47 +24,46 @@ export const SessionTimeoutOverlay: React.FC<SessionTimeoutOverlayProps> = ({ on
 
     return (
         <div className="absolute inset-0 z-[200] flex items-center justify-center p-4">
-            {/* Backdrop with heavy blur and dark overlay */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-md transition-all duration-500 animate-in fade-in" />
+            {/* Minimal backdrop */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-all duration-500 animate-in fade-in" />
 
-            {/* Close Button - Top Right */}
+            {/* Close Button */}
             <button
                 onClick={onClose}
-                className="absolute top-6 right-6 z-[210] p-2 bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-500 border border-white/10 hover:border-red-500/30 rounded-full transition-all duration-300 hover:rotate-90 active:scale-90"
+                className="absolute top-6 right-6 z-[210] p-2 text-white/40 hover:text-white transition-colors duration-200"
                 title="Close Tab (Esc)"
             >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
             </button>
 
-            {/* Content Card */}
-            <div className="relative bg-[var(--bg-primary)] border border-red-500/30 rounded-2xl shadow-[0_20px_50px_rgba(255,0,0,0.1)] w-full max-w-lg p-8 flex flex-col items-center text-center animate-in fade-in zoom-in duration-300">
-                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
-                    <ShieldAlert className="w-10 h-10 text-red-500 animate-pulse" />
+            {/* Minimal Content */}
+            <div className="relative z-[210] flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-400">
+                <div className="mb-6 flex items-center justify-center w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white/60">
+                    <Lock className="w-5 h-5" strokeWidth={1.5} />
                 </div>
 
-                <h2 className="text-2xl font-black text-[var(--text-main)] mb-2 tracking-tight">
+                <h2 className="text-xl font-medium text-white/90 mb-2 tracking-wide">
                     Session Locked
                 </h2>
 
-                <p className="text-[var(--text-muted)] mb-8 text-sm">
-                    For your security, active connections have been closed due to inactivity.
-                    Reconnecting will re-establish secure channels.
+                <p className="text-white/50 mb-8 text-sm max-w-xs font-light">
+                    Connection paused due to inactivity.
                 </p>
 
-                <div className="flex items-center gap-3">
-                    <span className="text-[var(--text-main)] font-medium">Press</span>
-                    <div className="px-3 py-1.5 bg-[var(--bg-sidebar)] border border-red-500/30 rounded-lg shadow-inner flex items-center justify-center text-red-400 font-mono font-bold text-lg">
-                        R
-                    </div>
-                    <span className="text-[var(--text-main)] font-medium">to reconnect</span>
-                </div>
+                <div className="flex flex-col items-center gap-5">
+                    <button
+                        onClick={onReconnect}
+                        className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-medium transition-colors duration-200 backdrop-blur-md"
+                    >
+                        Reconnect
+                    </button>
 
-                <button
-                    onClick={onReconnect}
-                    className="mt-8 px-6 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 rounded-xl text-sm font-bold transition-all active:scale-95"
-                >
-                    Reconnect Manually
-                </button>
+                    <div className="flex items-center gap-2 text-[11px] text-white/30 uppercase tracking-widest">
+                        <span>Press</span>
+                        <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-white/50 font-sans font-medium">R</kbd>
+                        <span>to resume</span>
+                    </div>
+                </div>
             </div>
         </div>
     );

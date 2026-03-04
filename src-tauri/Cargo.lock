@@ -581,7 +581,7 @@ dependencies = [
 
 [[package]]
 name = "cliqon"
-version = "0.9.5"
+version = "0.9.6"
 dependencies = [
  "chrono",
  "crossbeam-channel",

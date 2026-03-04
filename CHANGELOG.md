@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.6] - 2026-03-04
+
+### Changed
+- **Session Timeout UX Refinement**:
+  - Completely redesigned the "Session Locked" overlay to feature a premium, immersive frosted glass effect.
+  - Replaced the static layout with an animated, cyber-security themed lock core that pulsates.
+  - Redesigned the "Reconnect" action into an interactive glassmorphism button with dynamic light sweep effects on hover.
+  - Enhanced the typography to embrace a more cinematic, modern-terminal aesthetic.
+
 ## [0.9.5] - 2026-03-01
 
 ### Added

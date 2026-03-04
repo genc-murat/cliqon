@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "cliqon",
-  "version": "0.9.5",
-  "identifier": "com.murat.cliqon",
+  "version": "0.9.6",
+  "identifier": "com.cliqon.dev",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",

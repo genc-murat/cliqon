@@ -24,43 +24,46 @@ export const SessionTimeoutOverlay: React.FC<SessionTimeoutOverlayProps> = ({ on
 
     return (
         <div className="absolute inset-0 z-[200] flex items-center justify-center p-4">
-            {/* Minimal backdrop */}
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-all duration-500 animate-in fade-in" />
+            {/* Theme-compatible darker blur behind the card */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-md transition-all duration-500 animate-in fade-in" />
 
-            {/* Close Button */}
-            <button
-                onClick={onClose}
-                className="absolute top-6 right-6 z-[210] p-2 text-white/40 hover:text-white transition-colors duration-200"
-                title="Close Tab (Esc)"
-            >
-                <X className="w-5 h-5" />
-            </button>
+            {/* Content Card with App Theme colors */}
+            <div className="relative z-[210] flex flex-col items-center text-center p-8 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-color)] shadow-2xl animate-in fade-in zoom-in-95 duration-400 w-full max-w-sm">
 
-            {/* Minimal Content */}
-            <div className="relative z-[210] flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-400">
-                <div className="mb-6 flex items-center justify-center w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white/60">
-                    <Lock className="w-5 h-5" strokeWidth={1.5} />
+                {/* Close Button */}
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 p-2 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--hover-color)] rounded-full transition-all duration-200"
+                    title="Close Tab (Esc)"
+                >
+                    <X className="w-5 h-5" />
+                </button>
+
+                <div className="mb-6 flex items-center justify-center w-14 h-14 rounded-full bg-[var(--hover-color)] border border-[var(--border-color)] text-[var(--text-main)] shadow-inner">
+                    <Lock className="w-6 h-6 opacity-80" strokeWidth={1.5} />
                 </div>
 
-                <h2 className="text-xl font-medium text-white/90 mb-2 tracking-wide">
+                <h2 className="text-xl font-semibold text-[var(--text-main)] mb-2 tracking-wide">
                     Session Locked
                 </h2>
 
-                <p className="text-white/50 mb-8 text-sm max-w-xs font-light">
-                    Connection paused due to inactivity.
+                <p className="text-[var(--text-muted)] mb-8 text-sm leading-relaxed px-2">
+                    Connection suspended due to inactivity.
                 </p>
 
-                <div className="flex flex-col items-center gap-5">
+                <div className="flex flex-col items-center gap-4 w-full">
                     <button
                         onClick={onReconnect}
-                        className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-medium transition-colors duration-200 backdrop-blur-md"
+                        className="w-full py-2.5 bg-[var(--accent-color)] hover:opacity-90 text-white rounded-xl text-sm font-medium transition-all duration-200 shadow-lg shadow-[var(--accent-color)]/20 active:scale-[0.98]"
                     >
-                        Reconnect
+                        Reconnect Now
                     </button>
 
-                    <div className="flex items-center gap-2 text-[11px] text-white/30 uppercase tracking-widest">
+                    <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-2">
                         <span>Press</span>
-                        <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-white/50 font-sans font-medium">R</kbd>
+                        <kbd className="px-2 py-0.5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-md shadow-sm text-[var(--text-main)] font-mono font-medium">
+                            R
+                        </kbd>
                         <span>to resume</span>
                     </div>
                 </div>

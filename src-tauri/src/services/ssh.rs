@@ -1,5 +1,5 @@
 use std::io::{Read, Write};
-use std::net::TcpStream;
+use std::net::{TcpStream, ToSocketAddrs};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -57,7 +57,12 @@ impl SshManager {
     }
 
     pub fn test_connection(&self, profile: &SshProfile, secret: Option<&str>) -> Result<()> {
-        let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
+        let addr = format!("{}:{}", profile.host, profile.port)
+            .to_socket_addrs()
+            .map_err(|e| AppError::Custom(format!("Invalid address: {}", e)))?
+            .next()
+            .ok_or_else(|| AppError::Custom("Could not resolve address".to_string()))?;
+        let tcp = TcpStream::connect_timeout(&addr, Duration::from_secs(5))?;
         let _ = tcp.set_read_timeout(Some(Duration::from_secs(5)));
         let _ = tcp.set_write_timeout(Some(Duration::from_secs(5)));
 
@@ -77,34 +82,135 @@ impl SshManager {
         secret: Option<String>,
         session_id: String,
     ) -> Result<()> {
-        let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
-        let mut session = Session::new()?;
-        session.set_tcp_stream(tcp);
-        session.handshake()?;
-
-        authenticate_session(&mut session, &profile, secret.as_deref())?;
-
-        let mut channel = session.channel_session()?;
-        channel.request_pty("xterm", None, None)?;
-        channel.exec("bash -l").or_else(|_| channel.shell())?;
-
-        let (tx, rx) = unbounded::<Vec<u8>>();
-        let (resize_tx, resize_rx) = unbounded::<(u32, u32)>();
-
-        let active_session = ActiveSession {
-            profile_id: profile.id.clone(),
-            session_id: session_id.clone(),
-            session: session.clone(),
-            tx,
-            resize_tx,
-        };
-
-        self.active_sessions
-            .lock()
-            .unwrap()
-            .insert(session_id.clone(), active_session);
+        let active_sessions = self.active_sessions.clone();
 
         thread::spawn(move || {
+            let status_event = format!("ssh_status_{}", session_id);
+
+            // ── TCP Connect ─────────────────────────────────────
+            let _ = app.emit(&status_event, serde_json::json!({
+                "status": "connecting",
+                "message": format!("Connecting to {}:{}...", profile.host, profile.port)
+            }));
+
+            let addr = match format!("{}:{}", profile.host, profile.port)
+                .to_socket_addrs()
+                .map_err(|e| format!("Invalid address: {}", e))
+                .and_then(|mut addrs| addrs.next().ok_or_else(|| "Could not resolve address".to_string()))
+            {
+                Ok(a) => a,
+                Err(e) => {
+                    let _ = app.emit(&status_event, serde_json::json!({
+                        "status": "error",
+                        "message": e
+                    }));
+                    return;
+                }
+            };
+
+            let tcp = match TcpStream::connect_timeout(&addr, Duration::from_secs(10)) {
+                Ok(tcp) => tcp,
+                Err(e) => {
+                    let _ = app.emit(&status_event, serde_json::json!({
+                        "status": "error",
+                        "message": format!("Connection failed: {}", e)
+                    }));
+                    return;
+                }
+            };
+
+            // ── SSH Handshake ────────────────────────────────────
+            let _ = app.emit(&status_event, serde_json::json!({
+                "status": "handshake",
+                "message": "SSH handshake..."
+            }));
+
+            let mut session = match Session::new() {
+                Ok(s) => s,
+                Err(e) => {
+                    let _ = app.emit(&status_event, serde_json::json!({
+                        "status": "error",
+                        "message": format!("Session error: {}", e)
+                    }));
+                    return;
+                }
+            };
+            session.set_tcp_stream(tcp);
+
+            if let Err(e) = session.handshake() {
+                let _ = app.emit(&status_event, serde_json::json!({
+                    "status": "error",
+                    "message": format!("Handshake failed: {}", e)
+                }));
+                return;
+            }
+
+            // ── Authentication ───────────────────────────────────
+            let _ = app.emit(&status_event, serde_json::json!({
+                "status": "authenticating",
+                "message": "Authenticating..."
+            }));
+
+            if let Err(e) = authenticate_session(&mut session, &profile, secret.as_deref()) {
+                let _ = app.emit(&status_event, serde_json::json!({
+                    "status": "error",
+                    "message": format!("Authentication failed: {}", e)
+                }));
+                return;
+            }
+
+            // ── Channel Setup ────────────────────────────────────
+            let mut channel = match session.channel_session() {
+                Ok(ch) => ch,
+                Err(e) => {
+                    let _ = app.emit(&status_event, serde_json::json!({
+                        "status": "error",
+                        "message": format!("Channel error: {}", e)
+                    }));
+                    return;
+                }
+            };
+
+            if let Err(e) = channel.request_pty("xterm", None, None) {
+                let _ = app.emit(&status_event, serde_json::json!({
+                    "status": "error",
+                    "message": format!("PTY error: {}", e)
+                }));
+                return;
+            }
+
+            if let Err(e) = channel.exec("bash -l").or_else(|_| channel.shell()) {
+                let _ = app.emit(&status_event, serde_json::json!({
+                    "status": "error",
+                    "message": format!("Shell error: {}", e)
+                }));
+                return;
+            }
+
+            // ── Register active session ──────────────────────────
+            let (tx, rx) = unbounded::<Vec<u8>>();
+            let (resize_tx, resize_rx) = unbounded::<(u32, u32)>();
+
+            let active_session = ActiveSession {
+                profile_id: profile.id.clone(),
+                session_id: session_id.clone(),
+                session: session.clone(),
+                tx,
+                resize_tx,
+            };
+
+            active_sessions
+                .lock()
+                .unwrap()
+                .insert(session_id.clone(), active_session);
+
+            // ── Emit connected ───────────────────────────────────
+            let _ = app.emit(&status_event, serde_json::json!({
+                "status": "connected",
+                "message": "Connected successfully."
+            }));
+
+            // ── I/O Loop ─────────────────────────────────────────
             let mut buf = [0u8; 4096];
             let mut output_buffer: Vec<u8> = Vec::with_capacity(OUTPUT_BATCH_MAX_SIZE);
             let mut last_flush = Instant::now();

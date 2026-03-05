@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.7] - 2026-03-05
+
+### Added
+- **Non-Blocking SSH Terminal Connections**:
+  - Moved all blocking network I/O (TCP connection, SSH handshake, and authentication) to background threads.
+  - Implemented real-time connection status reporting (Connecting -> Handshake -> Authenticating -> Connected) in the terminal view.
+  - Added a 10-second TCP connection timeout to prevent indefinite hangs.
+  - Performance: The main UI thread and JS event loop remain completely responsive during the entire connection lifecycle.
+
 ## [0.9.6] - 2026-03-04
 
 ### Changed

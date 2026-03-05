@@ -193,55 +193,60 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
 
     useEffect(() => {
         let isMounted = true;
+        let unlistenStatus: UnlistenFn | null = null;
 
         const setupConnection = async () => {
             if (!xtermRef.current) return;
             const term = xtermRef.current;
 
-            try {
-                term.writeln(`\x1b[36mConnecting to ${profile.username}@${profile.host}:${profile.port}...\x1b[0m`);
+            // Listen for connection status events (non-blocking lifecycle)
+            unlistenStatus = await listen<{ status: string; message: string }>(`ssh_status_${sessionId}`, (event) => {
+                if (!isMounted || !xtermRef.current) return;
+                const { status, message } = event.payload;
 
-                unlistenRxRef.current = await listen<number[]>(`ssh_data_rx_${sessionId}`, (event) => {
-                    if (xtermRef.current) {
-                        const data = new Uint8Array(event.payload);
-                        xtermRef.current.write(data, () => {
-                            const decoded = new TextDecoder().decode(data);
-                            processOutput(decoded);
-
-                            const { ghostText, activeSuggestion } = updatePrediction();
-                            setGhostText(ghostText);
-                            ghostTextRef.current = ghostText;
-                            activeSuggestionRef.current = activeSuggestion;
-                        });
-                    }
-                });
-
-                unlistenCloseRef.current = await listen(`ssh_close_${sessionId}`, () => {
-                    if (xtermRef.current) {
-                        xtermRef.current.writeln('\r\n\x1b[31mConnection closed by remote host.\x1b[0m');
-                    }
-                    setConnected(false);
-                });
-
-                await api.connectSsh(profile, sessionId);
-
-                if (isMounted) {
+                if (status === 'connected') {
                     setConnected(true);
-                    term.writeln(`\r\x1b[32mConnected successfully.\x1b[0m\r\n`);
-
+                    term.writeln(`\r\x1b[32m${message}\x1b[0m\r\n`);
                     if (fitAddonRef.current) {
                         const dims = fitAddonRef.current.proposeDimensions();
                         if (dims) {
                             api.resizePty(sessionId, dims.cols, dims.rows).catch(console.error);
                         }
                     }
+                } else if (status === 'error') {
+                    setError(message);
+                    term.writeln(`\r\n\x1b[31mError: ${message}\x1b[0m`);
+                } else {
+                    // connecting, handshake, authenticating
+                    term.writeln(`\x1b[36m${message}\x1b[0m`);
                 }
-            } catch (err: any) {
-                if (isMounted) {
-                    setError(err.toString());
-                    term.writeln(`\r\n\x1b[31mError: ${err.toString()}\x1b[0m`);
+            });
+
+            // Listen for data and close events
+            unlistenRxRef.current = await listen<number[]>(`ssh_data_rx_${sessionId}`, (event) => {
+                if (xtermRef.current) {
+                    const data = new Uint8Array(event.payload);
+                    xtermRef.current.write(data, () => {
+                        const decoded = new TextDecoder().decode(data);
+                        processOutput(decoded);
+
+                        const { ghostText, activeSuggestion } = updatePrediction();
+                        setGhostText(ghostText);
+                        ghostTextRef.current = ghostText;
+                        activeSuggestionRef.current = activeSuggestion;
+                    });
                 }
-            }
+            });
+
+            unlistenCloseRef.current = await listen(`ssh_close_${sessionId}`, () => {
+                if (xtermRef.current) {
+                    xtermRef.current.writeln('\r\n\x1b[31mConnection closed by remote host.\x1b[0m');
+                }
+                setConnected(false);
+            });
+
+            // Fire-and-forget: connection runs in background thread
+            api.connectSsh(profile, sessionId).catch(() => { });
         };
 
         setupConnection();
@@ -299,6 +304,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
 
         return () => {
             isMounted = false;
+            if (unlistenStatus) unlistenStatus();
             onDataDisposable?.dispose();
             onResizeDisposable?.dispose();
         };

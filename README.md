@@ -6,6 +6,7 @@
 [![License](https://img.shields.io/github/license/genc-murat/cliqon?style=flat-square)](LICENSE)
 [![Changelog](https://img.shields.io/badge/changelog-CHANGELOG.md-brightgreen?style=flat-square)](https://github.com/genc-murat/cliqon/blob/main/CHANGELOG.md)
 [![Platform](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-blue?style=flat-square)](https://github.com/genc-murat/cliqon/releases)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/genc-murat/cliqon)
 
 Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the desktop. Built with **Tauri 2** (Rust backend) and a **React + TypeScript** frontend, it offers a premium, modern experience for developers and DevOps engineers.
 

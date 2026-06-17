@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar, TabData } from "./components/layout/TopBar";
-import { TitleBar } from "./components/layout/TitleBar";
 import { SplitView, Pane } from './components/terminal/SplitView';
 import { ManagementPanel, ManagementTab } from './components/terminal/ManagementPanel';
 import { useTheme } from "./hooks/useTheme";
@@ -306,7 +305,6 @@ function App() {
         } as React.CSSProperties}
       />
 
-      <TitleBar />
       <div className="flex flex-1 min-h-0">
         <Sidebar
           onConnect={handleConnect}

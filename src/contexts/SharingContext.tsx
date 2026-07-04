@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { api } from '../services/api';
 import { PeerInfo, PendingShare, SharingStatus } from '../types/sharing';
 
@@ -115,7 +115,7 @@ export const SharingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return peer;
     }, []);
 
-    const value = {
+    const value = useMemo(() => ({
         isPanelOpen,
         status,
         peers,
@@ -130,7 +130,21 @@ export const SharingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         handleShareItems,
         pingPeer,
         refreshStatus
-    };
+    }), [
+        isPanelOpen,
+        status,
+        peers,
+        pendingShares,
+        displayName,
+        togglePanel,
+        toggleSharing,
+        saveDisplayName,
+        handleAccept,
+        handleReject,
+        handleShareItems,
+        pingPeer,
+        refreshStatus
+    ]);
 
     return (
         <SharingContext.Provider value={value}>

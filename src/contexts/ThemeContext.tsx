@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { Theme, themes, TerminalTheme, terminalThemes, TerminalFont, defaultTerminalFont } from '../lib/themes';
 import { storage } from '../lib/storage';
 import { checkAndMigrate } from '../lib/migration';
@@ -234,32 +234,61 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
     }, [theme, isLoading]);
 
+    const availableThemesArray = useMemo(() => Object.values(themes), []);
+    const availableTerminalThemesArray = useMemo(() => Object.values(terminalThemes), []);
+
+    const value = useMemo(() => ({
+        theme,
+        setTheme,
+        terminalTheme,
+        setTerminalTheme,
+        terminalFont,
+        setTerminalFont,
+        terminalCursorStyle,
+        setTerminalCursorStyle,
+        availableThemes: availableThemesArray,
+        availableTerminalThemes: availableTerminalThemesArray,
+        autoOpenMonitor,
+        setAutoOpenMonitor,
+        sessionTimeout,
+        setSessionTimeout,
+        terminalPerformance,
+        setTerminalPerformance,
+        dashboardQuickActions,
+        setDashboardQuickActions,
+        dashboardWidgets,
+        setDashboardWidgets,
+        showResourceMonitor,
+        setShowResourceMonitor,
+        isLoading
+    }), [
+        theme,
+        setTheme,
+        terminalTheme,
+        setTerminalTheme,
+        terminalFont,
+        setTerminalFont,
+        terminalCursorStyle,
+        setTerminalCursorStyle,
+        availableThemesArray,
+        availableTerminalThemesArray,
+        autoOpenMonitor,
+        setAutoOpenMonitor,
+        sessionTimeout,
+        setSessionTimeout,
+        terminalPerformance,
+        setTerminalPerformance,
+        dashboardQuickActions,
+        setDashboardQuickActions,
+        dashboardWidgets,
+        setDashboardWidgets,
+        showResourceMonitor,
+        setShowResourceMonitor,
+        isLoading
+    ]);
+
     return (
-        <ThemeContext.Provider value={{
-            theme,
-            setTheme,
-            terminalTheme,
-            setTerminalTheme,
-            terminalFont,
-            setTerminalFont,
-            terminalCursorStyle,
-            setTerminalCursorStyle,
-            availableThemes: Object.values(themes),
-            availableTerminalThemes: Object.values(terminalThemes),
-            autoOpenMonitor,
-            setAutoOpenMonitor,
-            sessionTimeout,
-            setSessionTimeout,
-            terminalPerformance,
-            setTerminalPerformance,
-            dashboardQuickActions,
-            setDashboardQuickActions,
-            dashboardWidgets,
-            setDashboardWidgets,
-            showResourceMonitor,
-            setShowResourceMonitor,
-            isLoading
-        }}>
+        <ThemeContext.Provider value={value}>
             {children}
         </ThemeContext.Provider>
     );

@@ -265,7 +265,7 @@ pub async fn list_local_keys() -> Result<Vec<SshKey>> {
         let entry = entry?;
         let path = entry.path();
         
-        if path.extension().map_or(false, |e| e == "pub") {
+        if path.extension().is_some_and(|e| e == "pub") {
             let name = path.file_stem()
                 .and_then(|s| s.to_str())
                 .unwrap_or("")
@@ -347,7 +347,7 @@ pub async fn add_remote_authorized_key(
     let store = state.profile_store.lock().unwrap();
     let secret = store.get_profile_secret(&profile.id)?;
 
-    exec_on_remote(&profile, secret.as_deref(), &format!("mkdir -p ~/.ssh && chmod 700 ~/.ssh"))?;
+    exec_on_remote(&profile, secret.as_deref(), "mkdir -p ~/.ssh && chmod 700 ~/.ssh")?;
     
     let add_key_cmd = format!(
         "echo '{}' >> ~/.ssh/authorized_keys && chmod 644 ~/.ssh/authorized_keys",
@@ -546,8 +546,7 @@ mod tests {
 
     #[test]
     fn test_file_extension_check() {
-        let path = PathBuf::from("key.pub");
-        let has_pub_extension = path.extension().map_or(false, |e| e == "pub");
+        let path = PathBuf::from("key.pub");            let has_pub_extension = path.extension().is_some_and(|e| e == "pub");
         assert!(has_pub_extension);
 
         let path2 = PathBuf::from("key");
@@ -870,8 +869,7 @@ mod tests {
 
     #[test]
     fn test_ssh_key_file_extension_check() {
-        let path = PathBuf::from("key.pub");
-        let has_pub_extension = path.extension().map_or(false, |e| e == "pub");
+        let path = PathBuf::from("key.pub");            let has_pub_extension = path.extension().is_some_and(|e| e == "pub");
         assert!(has_pub_extension);
 
         let path2 = PathBuf::from("key");

@@ -18,6 +18,7 @@ export interface SshProfile {
     auth_method: AuthMethod;
     category: string | null;
     private_key_path?: string;
+    obfuscated_secret?: string;
     tunnels?: TunnelConfig[];
     is_favorite?: boolean;
     color?: string;

@@ -67,6 +67,11 @@ export const api = {
         return await invoke('delete_sftp', { sessionId, path, isDir });
     },
 
+    /**
+     * Request file/directory metadata via SFTP.
+     * Result arrives as a Tauri event: `sftp_stat_rx_${sessionId}`
+     * On error: `sftp_stat_error_${sessionId}`
+     */
     statSftp: async (sessionId: string, path: string): Promise<void> => {
         return await invoke('stat_sftp', { sessionId, path });
     },
@@ -75,10 +80,20 @@ export const api = {
         return await invoke('chmod_sftp', { sessionId, path, mode });
     },
 
+    /**
+     * Request file content via SFTP.
+     * Result arrives as a Tauri event: `sftp_readfile_rx_${sessionId}`
+     * On error: `sftp_readfile_error_${sessionId}`
+     */
     readSftpFile: async (sessionId: string, path: string): Promise<void> => {
         return await invoke('read_sftp_file', { sessionId, path });
     },
 
+    /**
+     * Write content to a remote file via SFTP.
+     * Result arrives as a Tauri event: `sftp_writefile_done_${sessionId}`
+     * On error: `sftp_writefile_error_${sessionId}`
+     */
     writeSftpFile: async (sessionId: string, path: string, content: string): Promise<void> => {
         return await invoke('write_sftp_file', { sessionId, path, content });
     },

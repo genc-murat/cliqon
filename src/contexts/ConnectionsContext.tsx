@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { SshProfile } from '../types/connection';
 import { api } from '../services/api';
 
@@ -37,7 +37,7 @@ export const ConnectionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         loadProfiles();
     }, [loadProfiles]);
 
-    const saveProfile = async (profile: SshProfile, secret: string | null = null) => {
+    const saveProfile = useCallback(async (profile: SshProfile, secret: string | null = null) => {
         try {
             await api.saveProfile(profile, secret);
             await loadProfiles();
@@ -45,9 +45,9 @@ export const ConnectionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
             console.error("Failed to save profile:", err);
             throw err;
         }
-    };
+    }, [loadProfiles]);
 
-    const deleteProfile = async (id: string) => {
+    const deleteProfile = useCallback(async (id: string) => {
         try {
             await api.deleteProfile(id);
             await loadProfiles();
@@ -55,18 +55,18 @@ export const ConnectionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
             console.error("Failed to delete profile:", err);
             throw err;
         }
-    };
+    }, [loadProfiles]);
 
-    const recordUsage = async (id: string) => {
+    const recordUsage = useCallback(async (id: string) => {
         try {
             await api.recordUsage(id);
             await loadProfiles();
         } catch (err: any) {
             console.error("Failed to record usage:", err);
         }
-    };
+    }, [loadProfiles]);
 
-    const value = {
+    const value = useMemo(() => ({
         profiles,
         isLoading,
         error,
@@ -74,7 +74,7 @@ export const ConnectionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         deleteProfile,
         refresh: loadProfiles,
         recordUsage
-    };
+    }), [profiles, isLoading, error, saveProfile, deleteProfile, loadProfiles, recordUsage]);
 
     return (
         <ConnectionsContext.Provider value={value}>

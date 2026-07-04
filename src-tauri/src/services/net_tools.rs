@@ -133,13 +133,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_net_tool_manager_new() {
-        let manager = NetToolManager::new();
-        // NetToolManager is a unit struct, just verify it can be created
-        let _ = manager;
-    }
-
-    #[test]
     fn test_run_tool_unknown_tool() {
         let manager = NetToolManager::new();
         let profile = SshProfile::default();
@@ -289,70 +282,6 @@ mod tests {
         );
         assert!(cmd.contains("openssl s_client"));
         assert!(cmd.contains(":443"));
-    }
-
-    #[test]
-    fn test_tool_type_variants() {
-        // Test that all tool types can be matched
-        let tools = vec![
-            "ping",
-            "traceroute",
-            "dns",
-            "portscan",
-            "nmap",
-            "whois",
-            "mtr",
-            "tracepath",
-            "nslookup",
-            "curl_timing",
-            "connections",
-            "interfaces",
-            "public_ip",
-            "routes",
-            "neighbors",
-            "listening",
-            "netstat",
-            "dns_config",
-            "hosts_file",
-            "http_check",
-            "ssl_check",
-            "stats_summary",
-            "bandwidth_stats",
-            "firewall_status",
-            "fail2ban_status",
-            "hostname_info",
-            "active_users",
-            "open_files",
-            "uptime",
-            "disk_usage",
-            "memory_usage",
-            "last_logins",
-            "arp",
-            "ip_link",
-            "ip_route_get",
-            "resolvectl",
-            "tcpdump",
-            "speedtest",
-            "processes",
-            "systemctl_list",
-            "nmap_os",
-        ];
-
-        for tool in tools {
-            match tool {
-                "ping" | "traceroute" | "dns" | "portscan" | "nmap" | "whois" | "mtr"
-                | "tracepath" | "nslookup" | "curl_timing" | "connections" | "interfaces"
-                | "public_ip" | "routes" | "neighbors" | "listening" | "netstat" | "dns_config"
-                | "hosts_file" | "http_check" | "ssl_check" | "stats_summary"
-                | "bandwidth_stats" | "firewall_status" | "fail2ban_status" | "hostname_info"
-                | "active_users" | "open_files" | "uptime" | "disk_usage" | "memory_usage"
-                | "last_logins" | "arp" | "ip_link" | "ip_route_get" | "resolvectl" | "tcpdump"
-                | "speedtest" | "processes" | "systemctl_list" | "nmap_os" => {
-                    // Valid tool type
-                }
-                _ => panic!("Unknown tool type: {}", tool),
-            }
-        }
     }
 
     #[test]

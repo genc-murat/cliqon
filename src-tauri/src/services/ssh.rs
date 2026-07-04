@@ -344,8 +344,7 @@ mod tests {
     #[test]
     fn test_ssh_manager_new() {
         let manager = SshManager::new();
-        let lock = manager.active_sessions.lock().unwrap();
-        assert!(lock.is_empty());
+        assert!(manager.active_sessions.lock().unwrap().is_empty());
     }
 
     #[test]
@@ -354,7 +353,6 @@ mod tests {
             session_id: "test-session".to_string(),
             data: vec![1, 2, 3, 4],
         };
-
         let cloned = payload.clone();
         assert_eq!(cloned.session_id, "test-session");
         assert_eq!(cloned.data, vec![1, 2, 3, 4]);
@@ -363,7 +361,6 @@ mod tests {
     #[test]
     fn test_active_session_write_data() {
         let (tx, rx) = unbounded::<Vec<u8>>();
-
         let session = ActiveSession {
             profile_id: "profile-1".to_string(),
             session_id: "session-1".to_string(),
@@ -373,16 +370,12 @@ mod tests {
         };
 
         session.write_data(vec![1, 2, 3]);
-
-        let received = rx.try_recv();
-        assert!(received.is_ok());
-        assert_eq!(received.unwrap(), vec![1, 2, 3]);
+        assert_eq!(rx.try_recv().unwrap(), vec![1, 2, 3]);
     }
 
     #[test]
     fn test_active_session_resize() {
         let (resize_tx, _) = unbounded::<(u32, u32)>();
-
         let session = ActiveSession {
             profile_id: "profile-1".to_string(),
             session_id: "session-1".to_string(),
@@ -390,70 +383,21 @@ mod tests {
             tx: unbounded().0,
             resize_tx,
         };
-
-        session.resize(80, 24);
-
-        // Note: resize_tx is moved to session, so we can't directly test the receiver
-        // This test just verifies the method doesn't panic
+        session.resize(80, 24); // Should not panic
     }
 
     #[test]
-    fn test_write_to_session_not_found() {
+    fn test_ssh_manager_session_not_found() {
         let manager = SshManager::new();
-        let result = manager.write_to_session("nonexistent", vec![1, 2, 3]);
 
-        assert!(result.is_err());
-        if let Err(e) = result {
-            let msg = e.to_string();
-            assert!(msg.contains("Session not found"));
-        }
-    }
+        let err = manager.write_to_session("nonexistent", vec![1, 2, 3]);
+        assert!(err.unwrap_err().to_string().contains("Session not found"));
 
-    #[test]
-    fn test_resize_session_not_found() {
-        let manager = SshManager::new();
-        let result = manager.resize_session("nonexistent", 80, 24);
+        let err2 = manager.resize_session("nonexistent", 80, 24);
+        assert!(err2.unwrap_err().to_string().contains("Session not found"));
 
-        assert!(result.is_err());
-        if let Err(e) = result {
-            let msg = e.to_string();
-            assert!(msg.contains("Session not found"));
-        }
-    }
-
-    #[test]
-    fn test_close_session_nonexistent() {
-        let manager = SshManager::new();
-        manager.close_session("nonexistent");
-        // Should not panic
-    }
-
-    #[test]
-    fn test_get_session_nonexistent() {
-        let manager = SshManager::new();
-        let session = manager.get_session("nonexistent");
-        assert!(session.is_none());
-    }
-
-    #[test]
-    fn test_ssh_manager_empty_sessions() {
-        let manager = SshManager::new();
-        let lock = manager.active_sessions.lock().unwrap();
-        assert_eq!(lock.len(), 0);
-    }
-
-    #[test]
-    fn test_output_batch_interval_constant() {
-        // Verify the constant is defined and has a reasonable value
-        assert!(OUTPUT_BATCH_INTERVAL_MS > 0);
-        assert!(OUTPUT_BATCH_INTERVAL_MS < 1000);
-    }
-
-    #[test]
-    fn test_output_batch_max_size_constant() {
-        // Verify the constant is defined and has a reasonable value
-        assert!(OUTPUT_BATCH_MAX_SIZE > 0);
-        assert!(OUTPUT_BATCH_MAX_SIZE >= 1024);
+        manager.close_session("nonexistent"); // Should not panic
+        assert!(manager.get_session("nonexistent").is_none());
     }
 
     #[test]
@@ -471,16 +415,10 @@ mod tests {
     }
 
     #[test]
-    fn test_ssh_manager_mutex_access() {
-        let manager = SshManager::new();
-
-        // Test that we can lock and unlock the mutex
-        let lock = manager.active_sessions.lock().unwrap();
-        drop(lock);
-
-        // Should be able to lock again
-        let lock2 = manager.active_sessions.lock().unwrap();
-        assert!(lock2.is_empty());
+    fn test_output_batch_constants() {
+        assert!(OUTPUT_BATCH_INTERVAL_MS > 0 && OUTPUT_BATCH_INTERVAL_MS < 1000);
+        assert!(OUTPUT_BATCH_MAX_SIZE > 0 && OUTPUT_BATCH_MAX_SIZE >= 1024);
+        assert!(!Duration::from_millis(OUTPUT_BATCH_INTERVAL_MS).is_zero());
     }
 
     #[test]
@@ -489,84 +427,18 @@ mod tests {
             session_id: "session-123".to_string(),
             data: vec![1, 2, 3, 4, 5],
         };
-
         assert_eq!(payload.session_id, "session-123");
         assert_eq!(payload.data.len(), 5);
     }
 
     #[test]
-    fn test_duration_constants() {
-        let duration = Duration::from_millis(OUTPUT_BATCH_INTERVAL_MS);
-        assert!(!duration.is_zero());
-    }
-
-    #[test]
-    fn test_channel_operations() {
+    fn test_crossbeam_channel_operations() {
         let (tx, rx): (Sender<i32>, _) = unbounded();
-
         tx.send(42).unwrap();
-        let val = rx.recv().unwrap();
-        assert_eq!(val, 42);
+        assert_eq!(rx.recv().unwrap(), 42);
 
         tx.send(100).unwrap();
         tx.send(200).unwrap();
-
-        let vals: Vec<i32> = rx.try_iter().collect();
-        assert_eq!(vals, vec![100, 200]);
-    }
-
-    #[test]
-    fn test_instant_elapsed() {
-        let start = Instant::now();
-        std::thread::sleep(std::time::Duration::from_millis(1));
-        let elapsed = start.elapsed();
-
-        assert!(!elapsed.is_zero());
-    }
-
-    #[test]
-    fn test_ssh_session_id_format() {
-        let session_id = format!("ssh_{}", uuid::Uuid::new_v4());
-        assert!(session_id.starts_with("ssh_"));
-        assert!(session_id.len() > 36);
-    }
-
-    #[test]
-    fn test_ssh_output_batch_size() {
-        let max_size = OUTPUT_BATCH_MAX_SIZE;
-        let test_data = vec![0u8; 1000];
-
-        assert!(test_data.len() < max_size);
-    }
-
-    #[test]
-    fn test_ssh_output_batch_interval() {
-        let interval_ms = OUTPUT_BATCH_INTERVAL_MS;
-        assert!(interval_ms > 0);
-        assert!(interval_ms < 1000);
-    }
-
-    #[test]
-    fn test_ssh_session_profile_matching() {
-        let profile_ids = vec!["profile-1", "profile-2", "profile-3"];
-
-        for pid in &profile_ids {
-            assert!(!pid.is_empty());
-        }
-
-        let matching = profile_ids.iter().filter(|p| p.contains("profile")).count();
-        assert_eq!(matching, 3);
-    }
-
-    #[test]
-    fn test_ssh_terminal_dimensions() {
-        let dimensions = vec![(80, 24), (120, 40), (200, 60)];
-
-        for (cols, rows) in dimensions {
-            assert!(cols > 0);
-            assert!(rows > 0);
-            assert!(cols <= 500);
-            assert!(rows <= 500);
-        }
+        assert_eq!(rx.try_iter().collect::<Vec<_>>(), vec![100, 200]);
     }
 }

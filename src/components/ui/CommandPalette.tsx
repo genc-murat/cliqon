@@ -442,7 +442,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                     <div className="flex items-center gap-3">
                         <span className="flex items-center gap-1"><span className="px-1 py-0.5 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]">↑↓</span> to navigate</span>
                         <span className="flex items-center gap-1"><span className="px-1 py-0.5 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]">Enter</span> to select</span>
-                        <span className="flex items-center gap-1"><span className="px-1 py-0.5 rounded bg-[var(--bg-primary)] border border(--border-color)]">Esc</span> to close</span>
+                        <span className="flex items-center gap-1"><span className="px-1 py-0.5 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]">Esc</span> to close</span>
                     </div>
                     <div>{filteredResults.length} commands found</div>
                 </div>

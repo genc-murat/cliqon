@@ -4,11 +4,13 @@ export function useSessionTimeout(timeoutMinutes: number) {
     const [isTimedOut, setIsTimedOut] = useState(false);
     const lastActivityRef = useRef(Date.now());
     const lastMousePosRef = useRef({ x: 0, y: 0 });
+    const isTimedOutRef = useRef(false);
 
     useEffect(() => {
         // If timeout is 0 or less, feature is disabled
         if (timeoutMinutes <= 0) {
             setIsTimedOut(false);
+            isTimedOutRef.current = false;
             return;
         }
 
@@ -35,8 +37,9 @@ export function useSessionTimeout(timeoutMinutes: number) {
             const now = Date.now();
             const elapsed = now - lastActivityRef.current;
 
-            if (elapsed > timeoutMinutes * 60 * 1000 && !isTimedOut) {
+            if (elapsed > timeoutMinutes * 60 * 1000 && !isTimedOutRef.current) {
                 console.log(`[SessionTimeout] Triggered after ${Math.round(elapsed / 1000)}s of inactivity`);
+                isTimedOutRef.current = true;
                 setIsTimedOut(true);
             }
         }, 10000); // Check every 10 seconds
@@ -49,10 +52,11 @@ export function useSessionTimeout(timeoutMinutes: number) {
             window.removeEventListener('wheel', updateActivity);
             clearInterval(interval);
         };
-    }, [timeoutMinutes, isTimedOut]);
+    }, [timeoutMinutes]);
 
     const resetTimeout = () => {
         lastActivityRef.current = Date.now();
+        isTimedOutRef.current = false;
         setIsTimedOut(false);
     };
 

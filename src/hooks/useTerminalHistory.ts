@@ -4,20 +4,45 @@ import { storage } from '../lib/storage';
 import { Terminal } from '@xterm/xterm';
 
 const predictorCache: Map<string, CommandPredictor> = new Map();
+const refCounts: Map<string, number> = new Map();
 
-function getOrCreatePredictor(profileId: string): CommandPredictor {
+function acquirePredictor(profileId: string): CommandPredictor {
     let predictor = predictorCache.get(profileId);
     if (!predictor) {
         predictor = new CommandPredictor();
         predictorCache.set(profileId, predictor);
     }
+    const count = refCounts.get(profileId) || 0;
+    refCounts.set(profileId, count + 1);
     return predictor;
+}
+
+function releasePredictor(profileId: string) {
+    const count = refCounts.get(profileId) || 0;
+    if (count <= 1) {
+        refCounts.delete(profileId);
+        predictorCache.delete(profileId);
+    } else {
+        refCounts.set(profileId, count - 1);
+    }
 }
 
 import { useSnippets } from './useSnippets';
 
 export function useTerminalHistory(profileId: string, xtermRef: RefObject<Terminal | null>) {
-    const predictorRef = useRef<CommandPredictor>(getOrCreatePredictor(profileId));
+    const lastProfileIdRef = useRef<string>(profileId);
+    const predictorRef = useRef<CommandPredictor>(acquirePredictor(profileId));
+
+    useEffect(() => {
+        if (lastProfileIdRef.current !== profileId) {
+            releasePredictor(lastProfileIdRef.current);
+            predictorRef.current = acquirePredictor(profileId);
+            lastProfileIdRef.current = profileId;
+        }
+        return () => {
+            releasePredictor(lastProfileIdRef.current);
+        };
+    }, [profileId]);
     const { snippets } = useSnippets();
 
     // Exact buffer synchronization state

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     Users, Wifi, WifiOff, Send, Check, X,
     Monitor, Shield, RefreshCw, Inbox, User, Radio, Plus
@@ -31,10 +31,21 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
     const [isPinging, setIsPinging] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const nameInputRef = useRef<HTMLInputElement>(null);
+    const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const showToast = useCallback((message: string, type: 'success' | 'error') => {
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
         setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
+        toastTimerRef.current = setTimeout(() => {
+            setToast(null);
+            toastTimerRef.current = null;
+        }, 3000);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        };
     }, []);
 
     const toggleSharingAction = async () => {

@@ -1,5 +1,4 @@
 pub mod auth;
-pub mod connection_pool;
 pub mod docker;
 pub mod import;
 pub mod logging;

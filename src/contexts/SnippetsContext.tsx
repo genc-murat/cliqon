@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Snippet } from '../types/connection';
 
@@ -68,15 +68,17 @@ export const SnippetsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         loadSnippets();
     }, [loadSnippets]);
 
+    const value = useMemo(() => ({
+        snippets,
+        isLoading,
+        error,
+        loadSnippets,
+        saveSnippet,
+        deleteSnippet
+    }), [snippets, isLoading, error, loadSnippets, saveSnippet, deleteSnippet]);
+
     return (
-        <SnippetsContext.Provider value={{
-            snippets,
-            isLoading,
-            error,
-            loadSnippets,
-            saveSnippet,
-            deleteSnippet
-        }}>
+        <SnippetsContext.Provider value={value}>
             {children}
         </SnippetsContext.Provider>
     );

@@ -122,7 +122,7 @@ impl SftpManager {
                                     let modified_at = stat.mtime.unwrap_or(0);
                                     nodes.push(FileNode {
                                         name,
-                                        path: p.to_string_lossy().into_owned().replace("\\", "/"),
+                                        path: p.to_string_lossy().into_owned().replace("\\\\", "/"),
                                         is_dir,
                                         size,
                                         modified_at,
@@ -132,7 +132,7 @@ impl SftpManager {
                                 let real_path = if path == "." {
                                     match sftp.realpath(Path::new(".")) {
                                         Ok(p) => {
-                                            p.to_string_lossy().into_owned().replace("\\", "/")
+                                            p.to_string_lossy().into_owned().replace("\\\\", "/")
                                         }
                                         Err(_) => ".".to_string(),
                                     }
@@ -187,13 +187,13 @@ impl SftpManager {
                                 Ok(())
                             })();
 
-                            if res.is_ok() {
+                            if let Err(e) = res {
+                                let _ = app.emit(&format!("sftp_transfer_error_{}", sid), serde_json::json!({ "id": transfer_id, "error": e.to_string() }));
+                            } else {
                                 let _ = app.emit(
                                     &format!("sftp_transfer_done_{}", sid),
                                     serde_json::json!({ "id": transfer_id }),
                                 );
-                            } else {
-                                let _ = app.emit(&format!("sftp_transfer_error_{}", sid), serde_json::json!({ "id": transfer_id, "error": res.unwrap_err().to_string() }));
                             }
                         }
 
@@ -235,23 +235,23 @@ impl SftpManager {
                                 Ok(())
                             })();
 
-                            if res.is_ok() {
+                            if let Err(e) = res {
+                                let _ = app.emit(&format!("sftp_transfer_error_{}", sid), serde_json::json!({ "id": transfer_id, "error": e.to_string() }));
+                            } else {
                                 let _ = app.emit(
                                     &format!("sftp_transfer_done_{}", sid),
                                     serde_json::json!({ "id": transfer_id }),
                                 );
-                            } else {
-                                let _ = app.emit(&format!("sftp_transfer_error_{}", sid), serde_json::json!({ "id": transfer_id, "error": res.unwrap_err().to_string() }));
                             }
                         }
 
                         SftpCommand::Rename(old_path, new_path) => {
                             let res = sftp.rename(Path::new(&old_path), Path::new(&new_path), None);
-                            if res.is_ok() {
-                                let _ = app.emit(&format!("sftp_rename_done_{}", sid), &new_path);
-                            } else {
-                                let err = res.unwrap_err().to_string();
+                            if let Err(e) = res {
+                                let err = e.to_string();
                                 let _ = app.emit(&format!("sftp_rename_error_{}", sid), err);
+                            } else {
+                                let _ = app.emit(&format!("sftp_rename_done_{}", sid), &new_path);
                             }
                         }
 
@@ -261,11 +261,11 @@ impl SftpManager {
                             } else {
                                 sftp.unlink(Path::new(&path))
                             };
-                            if res.is_ok() {
-                                let _ = app.emit(&format!("sftp_delete_done_{}", sid), &path);
-                            } else {
-                                let err = res.unwrap_err().to_string();
+                            if let Err(e) = res {
+                                let err = e.to_string();
                                 let _ = app.emit(&format!("sftp_delete_error_{}", sid), err);
+                            } else {
+                                let _ = app.emit(&format!("sftp_delete_done_{}", sid), &path);
                             }
                         }
 
@@ -307,11 +307,11 @@ impl SftpManager {
                                 mtime: None,
                             };
                             let res = sftp.setstat(Path::new(&path), stat);
-                            if res.is_ok() {
-                                let _ = app.emit(&format!("sftp_chmod_done_{}", sid), &path);
-                            } else {
-                                let err = res.unwrap_err().to_string();
+                            if let Err(e) = res {
+                                let err = e.to_string();
                                 let _ = app.emit(&format!("sftp_chmod_error_{}", sid), err);
+                            } else {
+                                let _ = app.emit(&format!("sftp_chmod_done_{}", sid), &path);
                             }
                         }
 
@@ -341,13 +341,13 @@ impl SftpManager {
                                 remote_f.write_all(content.as_bytes())?;
                                 Ok(())
                             })();
-                            if res.is_ok() {
-                                let _ = app.emit(&format!("sftp_writefile_done_{}", sid), &path);
-                            } else {
+                            if let Err(e) = res {
                                 let _ = app.emit(
                                     &format!("sftp_writefile_error_{}", sid),
-                                    res.unwrap_err().to_string(),
+                                    e.to_string(),
                                 );
+                            } else {
+                                let _ = app.emit(&format!("sftp_writefile_done_{}", sid), &path);
                             }
                         }
 
@@ -380,7 +380,7 @@ impl SftpManager {
                                                     let p_str = p
                                                         .to_string_lossy()
                                                         .into_owned()
-                                                        .replace("\\", "/");
+                                                        .replace("\\\\", "/");
                                                     let fname = p
                                                         .file_name()
                                                         .unwrap_or_default()
@@ -397,7 +397,7 @@ impl SftpManager {
                                                             .unwrap_or(Path::new(""))
                                                             .to_string_lossy()
                                                             .into_owned()
-                                                            .replace("\\", "/");
+                                                            .replace("\\\\", "/");
                                                         let zip_path = if parent.is_empty() {
                                                             p_str.clone()
                                                         } else {
@@ -448,37 +448,37 @@ impl SftpManager {
                                 Ok(())
                             })();
 
-                            if res.is_ok() {
+                            if let Err(e) = res {
+                                let _ = app.emit(&format!("sftp_transfer_error_{}", sid), serde_json::json!({ "id": transfer_id, "error": e.to_string() }));
+                            } else {
                                 let _ = app.emit(
                                     &format!("sftp_transfer_done_{}", sid),
                                     serde_json::json!({ "id": transfer_id }),
                                 );
-                            } else {
-                                let _ = app.emit(&format!("sftp_transfer_error_{}", sid), serde_json::json!({ "id": transfer_id, "error": res.unwrap_err().to_string() }));
                             }
                         }
 
                         SftpCommand::CreateDir(path) => {
                             let res = sftp.mkdir(Path::new(&path), 0o755);
-                            if res.is_ok() {
-                                let _ = app.emit(&format!("sftp_createdir_done_{}", sid), &path);
-                            } else {
-                                let err = res.unwrap_err().to_string();
+                            if let Err(e) = res {
+                                let err = e.to_string();
                                 let _ = app.emit(&format!("sftp_createdir_error_{}", sid), err);
+                            } else {
+                                let _ = app.emit(&format!("sftp_createdir_done_{}", sid), &path);
                             }
                         }
 
-                        SftpCommand::CreateFile(path, _content) => {
+                        SftpCommand::CreateFile(path, content) => {
                             let res = (|| -> Result<()> {
                                 let mut f = sftp.create(Path::new(&path))?;
-                                f.write_all(b"")?;
+                                f.write_all(content.as_bytes())?;
                                 Ok(())
                             })();
-                            if res.is_ok() {
-                                let _ = app.emit(&format!("sftp_createfile_done_{}", sid), &path);
-                            } else {
-                                let err = res.unwrap_err().to_string();
+                            if let Err(e) = res {
+                                let err = e.to_string();
                                 let _ = app.emit(&format!("sftp_createfile_error_{}", sid), err);
+                            } else {
+                                let _ = app.emit(&format!("sftp_createfile_done_{}", sid), &path);
                             }
                         }
 
@@ -491,27 +491,27 @@ impl SftpManager {
                                 dst.write_all(&content)?;
                                 Ok(())
                             })();
-                            if res.is_ok() {
+                            if let Err(e) = res {
+                                let err = e.to_string();
+                                let _ = app.emit(&format!("sftp_copy_error_{}", sid), err);
+                            } else {
                                 let _ = app.emit(
                                     &format!("sftp_copy_done_{}", sid),
                                     serde_json::json!({ "source": source, "dest": dest }),
                                 );
-                            } else {
-                                let err = res.unwrap_err().to_string();
-                                let _ = app.emit(&format!("sftp_copy_error_{}", sid), err);
                             }
                         }
 
                         SftpCommand::Move(source, dest) => {
                             let res = sftp.rename(Path::new(&source), Path::new(&dest), None);
-                            if res.is_ok() {
+                            if let Err(e) = res {
+                                let err = e.to_string();
+                                let _ = app.emit(&format!("sftp_move_error_{}", sid), err);
+                            } else {
                                 let _ = app.emit(
                                     &format!("sftp_move_done_{}", sid),
                                     serde_json::json!({ "source": source, "dest": dest }),
                                 );
-                            } else {
-                                let err = res.unwrap_err().to_string();
-                                let _ = app.emit(&format!("sftp_move_error_{}", sid), err);
                             }
                         }
 
@@ -631,15 +631,6 @@ impl SftpManager {
             Err(AppError::Custom("SFTP session not found".to_string()))
         }
     }
-    pub fn read_docker_compose(
-        &self,
-        _profile: &SshProfile,
-        _secret: Option<&str>,
-        _path: &str,
-    ) -> Result<String> {
-        // ... handled elsewhere, but keeping block structure
-        Ok("".to_string())
-    }
 
     pub fn sudo_read_file(
         &self,
@@ -686,25 +677,23 @@ impl SftpManager {
 
         let mut channel = session.channel_session().map_err(AppError::Ssh)?;
 
-        // We write the content using tee. We pipe the password into sudo -S,
-        // however, if we also need to pipe the content, it gets tricky.
-        // A common technique: echo 'pass' | sudo -S sh -c 'cat > file' < input
-        // Since we can write directly to the channel's standard input from rust:
+        // We write the content using tee with sudo -S.
+        // sudo -S reads the password from the first line of stdin,
+        // then passes remaining stdin through to the command (tee).
+        // This avoids shell-pipe quoting issues entirely.
 
         let password = secret.unwrap_or("");
-        let safe_pass = password.replace("'", "'\\''");
         let safe_path = path.replace("\\", "/").replace("'", "'\\''");
 
-        // Command: sudo -S sh -c 'cat > path'
-        let cmd = format!(
-            "echo '{}' | sudo -S sh -c 'cat > '{}''",
-            safe_pass, safe_path
-        );
+        // Run sudo -S tee which reads password from stdin, then content from stdin
+        let cmd = format!("sudo -S tee '{}' > /dev/null", safe_path);
         channel.exec(&cmd).map_err(AppError::Ssh)?;
 
-        // Write the actual file content to the command's stdin
+        // Write password + newline + content to stdin.
+        // sudo -S reads the first line as password, tee reads the rest as file content.
+        let input = format!("{}\n{}\n", password, content);
         channel
-            .write_all(content.as_bytes())
+            .write_all(input.as_bytes())
             .map_err(AppError::Io)?;
         // Send EOF
         channel.send_eof().map_err(AppError::Ssh)?;
@@ -766,21 +755,12 @@ mod tests {
     #[test]
     fn test_sftp_manager_new() {
         let manager = SftpManager::new();
-        // Verify manager can be created with empty sessions
         let sessions = manager.active_sessions.lock().unwrap();
         assert!(sessions.is_empty());
     }
 
     #[test]
-    fn test_sftp_manager_empty_sessions() {
-        let manager = SftpManager::new();
-        let sessions = manager.active_sessions.lock().unwrap();
-        assert_eq!(sessions.len(), 0);
-    }
-
-    #[test]
     fn test_active_sftp_struct() {
-        // Test that ActiveSftp can be created with a sender
         let (tx, _rx) = unbounded::<SftpCommand>();
         let _active_sftp = ActiveSftp { tx };
     }
@@ -1016,41 +996,6 @@ mod tests {
     }
 
     #[test]
-    fn test_sftp_manager_mutex_access() {
-        let manager = SftpManager::new();
-
-        // Test locking and unlocking
-        let sessions = manager.active_sessions.lock().unwrap();
-        assert!(sessions.is_empty());
-        drop(sessions);
-
-        // Can lock again
-        let sessions2 = manager.active_sessions.lock().unwrap();
-        assert!(sessions2.is_empty());
-    }
-
-    #[test]
-    fn test_sftp_session_id_format() {
-        let session_ids = vec!["sftp-1", "session-abc", "transfer-xyz"];
-        for id in session_ids {
-            assert!(!id.is_empty());
-        }
-    }
-
-    #[test]
-    fn test_sftp_path_formats() {
-        let paths = vec![
-            "/home/user/files",
-            "/var/www/html",
-            "./relative/path",
-            "../parent/path",
-        ];
-        for path in paths {
-            assert!(!path.is_empty());
-        }
-    }
-
-    #[test]
     fn test_sftp_file_node_creation() {
         let node = FileNode {
             name: "test.txt".to_string(),
@@ -1059,7 +1004,6 @@ mod tests {
             size: 1024,
             modified_at: 1234567890,
         };
-
         assert_eq!(node.name, "test.txt");
         assert!(!node.is_dir);
         assert_eq!(node.size, 1024);
@@ -1078,7 +1022,6 @@ mod tests {
             uid: 1000,
             gid: 1000,
         };
-
         assert_eq!(props.permissions, 0o755);
         assert_eq!(props.uid, 1000);
     }
@@ -1093,13 +1036,8 @@ mod tests {
 
     #[test]
     fn test_sftp_channel_creation() {
-        // Test that crossbeam channel can be created
         let (tx, rx): (Sender<SftpCommand>, _) = unbounded();
-
-        // Send a command
         tx.send(SftpCommand::StopWatch).unwrap();
-
-        // Receive the command
         let cmd = rx.recv().unwrap();
         match cmd {
             SftpCommand::StopWatch => {}
@@ -1110,24 +1048,19 @@ mod tests {
     #[test]
     fn test_sftp_channel_multiple_commands() {
         let (tx, rx): (Sender<SftpCommand>, _) = unbounded();
-
         tx.send(SftpCommand::ListDir("/home".to_string())).unwrap();
         tx.send(SftpCommand::StopWatch).unwrap();
         tx.send(SftpCommand::Close).unwrap();
 
-        let cmd1 = rx.recv().unwrap();
-        let cmd2 = rx.recv().unwrap();
-        let cmd3 = rx.recv().unwrap();
-
-        match cmd1 {
+        match rx.recv().unwrap() {
             SftpCommand::ListDir(path) => assert_eq!(path, "/home"),
             _ => panic!("Wrong command"),
         }
-        match cmd2 {
+        match rx.recv().unwrap() {
             SftpCommand::StopWatch => {}
             _ => panic!("Wrong command"),
         }
-        match cmd3 {
+        match rx.recv().unwrap() {
             SftpCommand::Close => {}
             _ => panic!("Wrong command"),
         }
@@ -1136,87 +1069,24 @@ mod tests {
     #[test]
     fn test_sftp_try_recv() {
         let (tx, rx): (Sender<SftpCommand>, _) = unbounded();
-
-        // Try to recv without sending - should fail
-        let result = rx.try_recv();
-        assert!(result.is_err());
-
-        // Send and try again
+        assert!(rx.try_recv().is_err());
         tx.send(SftpCommand::Close).unwrap();
-        let result = rx.try_recv();
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_sftp_vec_paths() {
-        let paths: Vec<String> = vec![
-            "/file1.txt".to_string(),
-            "/file2.txt".to_string(),
-            "/file3.txt".to_string(),
-        ];
-
-        assert_eq!(paths.len(), 3);
-        for path in &paths {
-            assert!(path.starts_with('/'));
-        }
-    }
-
-    #[test]
-    fn test_sftp_transfer_id_format() {
-        let transfer_id = format!("dl_{}", uuid::Uuid::new_v4());
-        assert!(transfer_id.starts_with("dl_"));
-        assert!(transfer_id.len() > 30);
-    }
-
-    #[test]
-    fn test_sftp_upload_id_format() {
-        let transfer_id = format!("up_{}", uuid::Uuid::new_v4());
-        assert!(transfer_id.starts_with("up_"));
-    }
-
-    #[test]
-    fn test_sftp_zip_id_format() {
-        let transfer_id = format!("zip_{}", uuid::Uuid::new_v4());
-        assert!(transfer_id.starts_with("zip_"));
-    }
-
-    #[test]
-    fn test_sftp_path_backslash_replacement() {
-        let windows_path = "C:\\Users\\file.txt";
-        let unix_path = windows_path.replace("\\", "/");
-        assert_eq!(unix_path, "C:/Users/file.txt");
+        assert!(rx.try_recv().is_ok());
     }
 
     #[test]
     fn test_sftp_sort_directories_first() {
         let mut nodes = vec![
             FileNode {
-                name: "file1.txt".to_string(),
-                path: "/file1.txt".to_string(),
-                is_dir: false,
-                size: 100,
-                modified_at: 0,
+                name: "file1.txt".to_string(), path: "/file1.txt".to_string(),
+                is_dir: false, size: 100, modified_at: 0,
             },
             FileNode {
-                name: "dir1".to_string(),
-                path: "/dir1".to_string(),
-                is_dir: true,
-                size: 0,
-                modified_at: 0,
-            },
-            FileNode {
-                name: "file2.txt".to_string(),
-                path: "/file2.txt".to_string(),
-                is_dir: false,
-                size: 200,
-                modified_at: 0,
+                name: "dir1".to_string(), path: "/dir1".to_string(),
+                is_dir: true, size: 0, modified_at: 0,
             },
         ];
-
-        // Sort: directories first, then by name
         nodes.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name)));
-
-        // First should be directory
         assert!(nodes[0].is_dir);
         assert_eq!(nodes[0].name, "dir1");
     }
@@ -1224,14 +1094,9 @@ mod tests {
     #[test]
     fn test_sftp_watch_state() {
         let mut watch_dir: Option<String> = None;
-        let last_mtime: u64 = 0;
-
         assert!(watch_dir.is_none());
-        assert_eq!(last_mtime, 0);
-
         watch_dir = Some("/watch/path".to_string());
         assert!(watch_dir.is_some());
-
         watch_dir = None;
         assert!(watch_dir.is_none());
     }
@@ -1239,579 +1104,72 @@ mod tests {
     #[test]
     fn test_sftp_dot_paths_filter() {
         let names = vec![".", "..", "file.txt", "dir"];
-        let filtered: Vec<&str> = names
-            .into_iter()
+        let filtered: Vec<&str> = names.into_iter()
             .filter(|n| *n != "." && *n != "..")
             .collect();
-
         assert_eq!(filtered.len(), 2);
-        assert!(filtered.contains(&"file.txt"));
-        assert!(filtered.contains(&"dir"));
     }
 
     #[test]
-    fn test_sftp_optional_size_handling() {
-        let size: Option<u64> = None;
-        let size_value = size.unwrap_or(0);
-        assert_eq!(size_value, 0);
-
-        let size2: Option<u64> = Some(1024);
-        let size_value2 = size2.unwrap_or(0);
-        assert_eq!(size_value2, 1024);
+    fn test_sftp_path_backslash_replacement() {
+        let windows_path = "C:\\Users\\file.txt";
+        assert_eq!(windows_path.replace("\\", "/"), "C:/Users/file.txt");
     }
 
     #[test]
-    fn test_sftp_optional_mtime_handling() {
-        let mtime: Option<u64> = None;
-        let mtime_value = mtime.unwrap_or(0);
-        assert_eq!(mtime_value, 0);
+    fn test_sftp_file_name_extraction() {
+        let path = Path::new("/home/user/file.txt");
+        assert_eq!(path.file_name().unwrap_or_default().to_string_lossy(), "file.txt");
+    }
 
-        let mtime2: Option<u64> = Some(1234567890);
-        let mtime_value2 = mtime2.unwrap_or(0);
-        assert_eq!(mtime_value2, 1234567890);
+    #[test]
+    fn test_sftp_parent_extraction() {
+        let path = Path::new("/home/user/file.txt");
+        assert_eq!(path.parent().unwrap_or(Path::new("")).to_string_lossy(), "/home/user");
     }
 
     #[test]
     fn test_sftp_real_path_fallback() {
         let path = ".";
-        let real_path = if path == "." {
-            "fallback_path".to_string()
-        } else {
-            path.to_string()
-        };
-
+        let real_path = if path == "." { "fallback_path".to_string() } else { path.to_string() };
         assert_eq!(real_path, "fallback_path");
     }
 
     #[test]
     fn test_sftp_event_channel_format() {
         let sid = "session-123";
-        let event_name = format!("sftp_dir_rx_{}", sid);
-        assert!(event_name.contains("sftp_dir_rx"));
-        assert!(event_name.contains("session-123"));
+        assert!(format!("sftp_dir_rx_{}", sid).contains("sftp_dir_rx"));
     }
 
     #[test]
-    fn test_sftp_path_new() {
-        let path_str = "/home/user/file.txt";
-        let path = Path::new(path_str);
-        assert_eq!(path.to_str(), Some("/home/user/file.txt"));
+    fn test_sftp_transfer_id_format() {
+        assert!(format!("dl_{}", uuid::Uuid::new_v4()).starts_with("dl_"));
     }
 
     #[test]
-    fn test_sftp_file_name_extraction() {
-        let path = Path::new("/home/user/file.txt");
-        let file_name = path.file_name().unwrap_or_default().to_string_lossy();
-        assert_eq!(file_name, "file.txt");
+    fn test_sftp_upload_id_format() {
+        assert!(format!("up_{}", uuid::Uuid::new_v4()).starts_with("up_"));
     }
 
     #[test]
-    fn test_sftp_parent_extraction() {
-        let path = Path::new("/home/user/file.txt");
-        let parent = path.parent().unwrap_or(Path::new("")).to_string_lossy();
-        assert_eq!(parent, "/home/user");
-    }
-
-    #[test]
-    fn test_sftp_arc_mutex_pattern() {
-        let sessions: Arc<Mutex<std::collections::HashMap<String, i32>>> =
-            Arc::new(Mutex::new(std::collections::HashMap::new()));
-
-        let mut map = sessions.lock().unwrap();
-        map.insert("key1".to_string(), 1);
-        drop(map);
-
-        let map2 = sessions.lock().unwrap();
-        assert_eq!(map2.len(), 1);
-    }
-
-    #[test]
-    fn test_sftp_thread_spawn() {
-        let (tx, rx): (Sender<String>, _) = unbounded();
-
-        std::thread::spawn(move || {
-            tx.send("from thread".to_string()).unwrap();
-        });
-
-        let msg = rx.recv().unwrap();
-        assert_eq!(msg, "from thread");
-    }
-
-    #[test]
-    fn test_sftp_duration_from_millis() {
-        let duration = std::time::Duration::from_millis(2000);
-        assert_eq!(duration.as_millis(), 2000);
-    }
-
-    #[test]
-    fn test_sftp_result_ok() {
-        let result: Result<()> = Ok(());
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_sftp_result_err() {
-        let result: Result<()> = Err(AppError::Custom("test error".to_string()));
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_sftp_error_messages() {
-        let errors = vec![
-            "SFTP operation failed",
-            "File not found",
-            "Permission denied",
-            "Connection lost",
-        ];
-
-        for error in errors {
-            let err = AppError::Custom(error.to_string());
-            assert!(err.to_string().contains(error));
-        }
-    }
-
-    #[test]
-    fn test_sftp_command_enum_variants() {
-        use SftpCommand::*;
-
-        let cmd_list = ListDir("/home".to_string());
-        let cmd_download = Download("/remote".to_string(), "/local".to_string());
-        let cmd_upload = Upload("/local".to_string(), "/remote".to_string());
-        let cmd_rename = Rename("/old".to_string(), "/new".to_string());
-        let cmd_delete = Delete("/path".to_string(), true);
-        let cmd_stat = Stat("/path".to_string());
-        let cmd_chmod = Chmod("/path".to_string(), 0o755);
-        let cmd_read = ReadFile("/path".to_string());
-        let cmd_write = WriteFile("/path".to_string(), "content".to_string());
-        let cmd_zip = DownloadMultiZip(vec![], "/output.zip".to_string());
-        let cmd_watch = WatchDir("/path".to_string());
-        let cmd_stop = StopWatch;
-        let cmd_mkdir = CreateDir("/newdir".to_string());
-        let cmd_create = CreateFile("/path".to_string(), "content".to_string());
-        let cmd_copy = Copy("/src".to_string(), "/dst".to_string());
-        let cmd_move = Move("/src".to_string(), "/dst".to_string());
-        let cmd_close = Close;
-
-        let _ = (
-            cmd_list,
-            cmd_download,
-            cmd_upload,
-            cmd_rename,
-            cmd_delete,
-            cmd_stat,
-            cmd_chmod,
-            cmd_read,
-            cmd_write,
-            cmd_zip,
-            cmd_watch,
-            cmd_stop,
-            cmd_mkdir,
-            cmd_create,
-            cmd_copy,
-            cmd_move,
-            cmd_close,
-        );
-    }
-
-    #[test]
-    fn test_file_path_operations() {
-        use std::path::Path;
-
-        let paths = vec![
-            "/home/user/documents/file.txt",
-            "/var/logs/app.log",
-            "/tmp/data.csv",
-        ];
-
-        for path_str in paths {
-            let path = Path::new(path_str);
-            assert!(path.is_absolute());
-            assert!(path.extension().is_some() || path.to_string_lossy().ends_with('/'));
-        }
-    }
-
-    #[test]
-    fn test_file_size_formats() {
-        let sizes = vec![0u64, 1, 1024, 1024 * 1024, 1024 * 1024 * 100];
-
-        for size in sizes {
-            let _ = size;
-        }
-
-        assert_eq!(1024u64 * 1024, 1048576);
-    }
-
-    #[test]
-    fn test_path_join_operations() {
-        use std::path::Path;
-
-        let base = Path::new("/home/user");
-        let file = Path::new("documents/file.txt");
-        let joined = base.join(file);
-
-        assert!(joined.to_string_lossy().contains("documents"));
-    }
-
-    #[test]
-    fn test_permission_octal_parsing() {
-        let perms = vec![0o755, 0o644, 0o600, 0o400, 0o777, 0o500];
-
-        for perm in perms {
-            let readable = (perm & 0o400) != 0;
-            let writable = (perm & 0o200) != 0;
-            let executable = (perm & 0o100) != 0;
-
-            assert!(readable || perm == 0);
-            let _ = (writable, executable);
-        }
-    }
-
-    #[test]
-    fn test_timestamp_conversions() {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-
-        assert!(now > 1609459200); // 2021-01-01
-    }
-
-    #[test]
-    fn test_path_strip_prefix() {
-        use std::path::Path;
-
-        let full = Path::new("/home/user/documents");
-        let stripped = full.strip_prefix("/home/user");
-
-        assert!(stripped.is_ok());
-        assert_eq!(stripped.unwrap().to_string_lossy(), "documents");
-    }
-
-    #[test]
-    fn test_string_trimming() {
-        let paths = vec![
-            "  /path/to/file  ",
-            "/another/path\t",
-            "\t/path/with/tabs\t",
-        ];
-
-        for path in paths {
-            let trimmed = path.trim();
-            assert!(!trimmed.starts_with(' ') || !trimmed.ends_with(' '));
-        }
-    }
-
-    #[test]
-    fn test_extension_extraction() {
-        use std::path::Path;
-
-        let files = vec![
-            ("document.txt", Some("txt")),
-            ("image.png", Some("png")),
-            ("archive.tar.gz", Some("gz")),
-            ("noextension", None),
-        ];
-
-        for (filename, expected_ext) in files {
-            let path = Path::new(filename);
-            let ext = path.extension().map(|e| e.to_string_lossy().to_string());
-            assert_eq!(ext.as_deref(), expected_ext);
-        }
-    }
-
-    #[test]
-    fn test_zip_path_collection() {
-        let paths: Vec<String> = vec![
-            "/home/user/file1.txt".to_string(),
-            "/home/user/file2.txt".to_string(),
-            "/home/user/subdir/file3.txt".to_string(),
-        ];
-
-        assert_eq!(paths.len(), 3);
-
-        let valid_paths: Vec<&String> = paths
-            .iter()
-            .filter(|p| !p.is_empty() && p.starts_with('/'))
-            .collect();
-
-        assert_eq!(valid_paths.len(), 3);
-    }
-
-    #[test]
-    fn test_channel_unbounded() {
-        let (tx, rx): (Sender<i32>, _) = unbounded();
-
-        tx.send(42).unwrap();
-        let received = rx.recv().unwrap();
-
-        assert_eq!(received, 42);
-    }
-
-    #[test]
-    fn test_path_contains_check() {
-        let paths = vec!["/etc/passwd", "/var/www/html", "/home/user/uploads"];
-
-        for path in &paths {
-            assert!(!path.contains(".."));
-            assert!(path.starts_with('/'));
-        }
-    }
-
-    #[test]
-    fn test_arc_clone_behavior() {
-        use std::sync::Arc;
-
-        let original = Arc::new(vec![1, 2, 3]);
-        let cloned = Arc::clone(&original);
-
-        assert_eq!(original.len(), cloned.len());
-        assert!(
-            Arc::ptr_eq(&original, &cloned) || !std::ptr::eq(original.as_ref(), cloned.as_ref())
-        );
-    }
-
-    #[test]
-    fn test_mutex_lock_unlock() {
-        use std::sync::Mutex;
-
-        let mutex = Mutex::new(0);
-
-        {
-            let mut val = mutex.lock().unwrap();
-            *val = 42;
-        }
-
-        let val = mutex.lock().unwrap();
-        assert_eq!(*val, 42);
-    }
-
-    #[test]
-    fn test_chrono_timestamp() {
-        use chrono::Utc;
-
-        let now = Utc::now().timestamp();
-        assert!(now > 1609459200);
-    }
-
-    #[test]
-    fn test_chrono_datetime_format() {
-        use chrono::Utc;
-
-        let dt = Utc::now();
-        let formatted = dt.format("%Y-%m-%d %H:%M:%S").to_string();
-
-        assert!(formatted.len() > 10);
-    }
-
-    #[test]
-    fn test_sftp_path_components() {
-        use std::path::Path;
-
-        let paths = vec![
-            "/home/user/documents/file.txt",
-            "/var/logs/app.log",
-            "/tmp/data/test.csv",
-        ];
-
-        for path_str in paths {
-            let path = Path::new(path_str);
-            let components: Vec<_> = path.components().collect();
-            assert!(!components.is_empty());
-        }
-    }
-
-    #[test]
-    fn test_sftp_path_extension_with_multiple_dots() {
-        use std::path::Path;
-
-        let files = vec!["archive.tar.gz", "document.backup.pdf", "backup.tar.bz2"];
-
-        for file in files {
-            let path = Path::new(file);
-            let ext = path.extension().map(|e| e.to_string_lossy().to_string());
-            assert!(ext.is_some());
-        }
-    }
-
-    #[test]
-    fn test_sftp_is_absolute() {
-        use std::path::Path;
-
-        let paths = vec!["/home/user", "/var/log", "/tmp"];
-
-        for path_str in paths {
-            let path = Path::new(path_str);
-            assert!(path.is_absolute());
-        }
-    }
-
-    #[test]
-    fn test_sftp_file_size_comparison() {
-        let files = vec![
-            ("small.txt", 100u64),
-            ("medium.bin", 1024 * 1024u64),
-            ("large.dat", 1024 * 1024 * 100u64),
-        ];
-
-        for (_name, size) in &files {
-            assert!(*size > 0);
-        }
-
-        assert!(files[0].1 < files[1].1);
-        assert!(files[1].1 < files[2].1);
-    }
-
-    #[test]
-    fn test_sftp_path_with_special_chars() {
-        let paths = vec![
-            "file with spaces.txt",
-            "file-with-dashes.txt",
-            "file_with_underscores.txt",
-            "file.multiple.dots.txt",
-        ];
-
-        for path in paths {
-            let contains_space = path.contains(' ');
-            let contains_dash = path.contains('-');
-            let contains_underscore = path.contains('_');
-            let contains_dot = path.contains('.');
-
-            assert!(contains_dash || contains_underscore || contains_dot || contains_space);
-        }
-    }
-
-    #[test]
-    fn test_sftp_dir_name_extraction() {
-        use std::path::Path;
-
-        let paths = vec!["/home/user/documents", "/var/log/nginx", "/opt/app/data"];
-
-        for path_str in paths {
-            let path = Path::new(path_str);
-            let file_name = path.file_name().map(|n| n.to_string_lossy().to_string());
-            assert!(file_name.is_some());
-        }
-    }
-
-    #[test]
-    fn test_sftp_zip_creation_params() {
-        let output_name = "archive.zip";
-        let base_path = "/home/user";
-
-        assert!(output_name.ends_with(".zip"));
-        assert!(base_path.starts_with('/'));
+    fn test_sftp_zip_id_format() {
+        assert!(format!("zip_{}", uuid::Uuid::new_v4()).starts_with("zip_"));
     }
 
     #[test]
     fn test_sftp_transfer_id_unique() {
         use uuid::Uuid;
-
-        let ids: Vec<String> = (0..100)
-            .map(|_| format!("transfer_{}", Uuid::new_v4()))
-            .collect();
-
+        let ids: Vec<String> = (0..100).map(|_| format!("transfer_{}", Uuid::new_v4())).collect();
         let unique: std::collections::HashSet<_> = ids.iter().collect();
         assert_eq!(ids.len(), unique.len());
     }
 
     #[test]
-    fn test_sftp_command_string_building() {
-        let cmd = format!("ls -la {} | head -n {}", "/home/user", 50);
-        assert!(cmd.contains("ls -la"));
-        assert!(cmd.contains("head -n"));
-    }
-
-    #[test]
-    fn test_sftp_download_progress() {
-        let total_size = 1024u64 * 1024u64; // 1 MB
-        let chunk_size = 8192u64;
-
-        let chunks = (total_size + chunk_size - 1) / chunk_size;
-        assert!(chunks > 0);
-    }
-
-    #[test]
-    fn test_sftp_file_type_detection() {
-        let filenames = vec![
-            ("document.txt", false),
-            ("images", true),
-            ("archive.tar.gz", false),
-            ("scripts", true),
-        ];
-
-        for (name, is_dir) in filenames {
-            let detected_dir = !name.contains('.');
-            assert_eq!(detected_dir, is_dir);
-        }
-    }
-
-    #[test]
-    fn test_sftp_path_depth_calculation() {
-        let paths = vec![
-            "/home/user/documents/file.txt",
-            "/var/log/nginx/access.log",
-            "/tmp/data/test.csv",
-        ];
-
-        for path in paths {
-            let depth = path.matches('/').count();
-            assert!(depth >= 2);
-        }
-    }
-
-    #[test]
-    fn test_sftp_filename_sanitization() {
-        let filenames = vec![
-            ("file.txt", "file.txt"),
-            ("../etc/passwd", ".._etc_passwd"),
-            ("file with spaces.txt", "file_with_spaces.txt"),
-        ];
-
-        for (input, _expected) in filenames {
-            let has_danger = input.contains("..") || input.contains('/');
-            assert!(input.contains('.') || has_danger);
-        }
-    }
-
-    #[test]
-    fn test_sftp_directory_listing_format() {
-        let entries = vec![
-            "drwxr-xr-x  2 user group  4096 Jan  1 12:00 dir",
-            "-rw-r--r--  1 user group  1234 Jan  1 12:00 file.txt",
-        ];
-
-        for entry in entries {
-            assert!(entry.starts_with('d') || entry.starts_with('-'));
-        }
-    }
-
-    #[test]
-    fn test_sftp_timestamp_conversion_from_unix() {
-        let timestamps = vec![1609459200u64, 1640995200u64, 1672531200u64];
-
-        for ts in timestamps {
-            assert!(ts > 0);
-        }
-    }
-
-    #[test]
-    fn test_sftp_mkdir_command() {
-        let path = "/home/user/newdir";
-        let cmd = format!("mkdir -p {}", path);
-        assert!(cmd.starts_with("mkdir"));
-    }
-
-    #[test]
-    fn test_sftp_chmod_values() {
-        let modes = vec![
-            (0o755, "rwxr-xr-x"),
-            (0o644, "rw-r--r--"),
-            (0o600, "rw-------"),
-            (0o777, "rwxrwxrwx"),
-        ];
-
-        for (mode, _perm) in modes {
-            assert!(mode <= 0o777);
-        }
+    fn test_extension_extraction() {
+        use std::path::Path;
+        assert_eq!(Path::new("file.txt").extension().map(|e| e.to_string_lossy().to_string()).as_deref(), Some("txt"));
+        assert_eq!(Path::new("image.png").extension().map(|e| e.to_string_lossy().to_string()).as_deref(), Some("png"));
+        assert_eq!(Path::new("archive.tar.gz").extension().map(|e| e.to_string_lossy().to_string()).as_deref(), Some("gz"));
+        assert!(Path::new("noextension").extension().is_none());
     }
 }

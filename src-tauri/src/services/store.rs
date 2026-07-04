@@ -117,7 +117,7 @@ fn deobfuscate(s: &str) -> Option<String> {
     if s.is_empty() {
         return None;
     }
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         return None;
     }
     let bytes: std::result::Result<Vec<u8>, _> = (0..s.len())
@@ -139,256 +139,65 @@ mod tests {
             "unicode_ğüışöç",
             "spaces and tabs\t\n",
             "a",
+            "",
         ];
 
         for original in cases {
-            let obfuscated = obfuscate(original);
-            let deobfuscated = deobfuscate(&obfuscated);
-            assert_eq!(
-                Some(original.to_string()),
-                deobfuscated,
-                "Failed for input: {:?}",
-                original
-            );
-        }
-    }
-
-    #[test]
-    fn test_obfuscate_produces_hex() {
-        let result = obfuscate("AB");
-        assert!(
-            result.chars().all(|c| c.is_ascii_hexdigit()),
-            "Result should be hex string, got: {}",
-            result
-        );
-    }
-
-    #[test]
-    fn test_obfuscate_empty_string() {
-        assert_eq!(obfuscate(""), "");
-    }
-
-    #[test]
-    fn test_deobfuscate_invalid_hex() {
-        assert!(deobfuscate("ZZZZ").is_none());
-    }
-
-    #[test]
-    fn test_deobfuscate_odd_length() {
-        assert!(deobfuscate("abc").is_none());
-    }
-
-    #[test]
-    fn test_deobfuscate_empty() {
-        assert!(deobfuscate("").is_none());
-    }
-
-    #[test]
-    fn test_obfuscate_simple_string() {
-        let result = obfuscate("test");
-        assert_eq!(result.len(), 8); // 4 chars * 2 hex digits
-    }
-
-    #[test]
-    fn test_obfuscate_consistent_output() {
-        let result1 = obfuscate("same_input");
-        let result2 = obfuscate("same_input");
-        assert_eq!(result1, result2);
-    }
-
-    #[test]
-    fn test_deobfuscate_valid_hex() {
-        // "test" obfuscated and then deobfuscated should return "test"
-        let obfuscated = obfuscate("test");
-        let result = deobfuscate(&obfuscated);
-        assert_eq!(result, Some("test".to_string()));
-    }
-
-    #[test]
-    fn test_keyring_service_constant() {
-        assert_eq!(KEYRING_SERVICE, "cliqon_ssh_profiles");
-    }
-
-    #[test]
-    fn test_profile_vec_operations() {
-        let mut profiles: Vec<SshProfile> = Vec::new();
-
-        let profile1 = SshProfile::default();
-        let profile2 = SshProfile::default();
-
-        profiles.push(profile1);
-        profiles.push(profile2);
-
-        assert_eq!(profiles.len(), 2);
-
-        if let Some(pos) = profiles.iter().position(|p| p.id == profiles[0].id) {
-            profiles.remove(pos);
+            if original.is_empty() {
+                assert_eq!(obfuscate(""), "");
+                assert!(deobfuscate("").is_none());
+            } else {
+                let obfuscated = obfuscate(original);
+                assert!(
+                    obfuscated.chars().all(|c| c.is_ascii_hexdigit()),
+                    "Result should be hex string, got: {}",
+                    obfuscated
+                );
+                assert_eq!(
+                    obfuscated.len(),
+                    original.len() * 2,
+                    "Each byte becomes 2 hex chars"
+                );
+                assert!(deobfuscate(&obfuscated).as_deref() == Some(original));
+            }
         }
 
-        assert_eq!(profiles.len(), 1);
+        // Consistent output
+        assert_eq!(obfuscate("same_input"), obfuscate("same_input"));
     }
 
     #[test]
-    fn test_profile_find_by_id() {
-        let profile1 = SshProfile::default();
-        let profile2 = SshProfile::default();
-
-        let profiles = vec![profile1.clone(), profile2.clone()];
-
-        let found = profiles.iter().find(|p| p.id == profile1.id);
-        assert!(found.is_some());
-        assert_eq!(found.unwrap().id, profile1.id);
-
-        let not_found = profiles.iter().find(|p| p.id == "nonexistent");
-        assert!(not_found.is_none());
+    fn test_deobfuscate_edge_cases() {
+        assert!(deobfuscate("ZZZZ").is_none());   // invalid hex
+        assert!(deobfuscate("abc").is_none());    // odd length
+        assert!(deobfuscate("").is_none());       // empty
     }
 
     #[test]
-    fn test_profile_update_position() {
-        let profile = SshProfile::default();
-        let mut profiles = vec![profile.clone()];
-
-        // Update the existing profile
-        if let Some(pos) = profiles.iter().position(|p| p.id == profile.id) {
-            profiles[pos] = profile.clone();
-        } else {
-            profiles.push(profile.clone());
+    fn test_xor_byte_operation() {
+        for byte in [0x00u8, 0x41, 0xFF, 0x6A] {
+            let xored = byte ^ 0x6A;
+            assert_eq!(xored ^ 0x6A, byte, "XOR should be reversible");
         }
-
-        // Should still be 1 since we updated, not added
-        assert_eq!(profiles.len(), 1);
+        
+        // Format check
+        assert_eq!(format!("{:02x}", 65u8), "41");
+        assert_eq!(format!("{:02x}", 10u8), "0a");
+        
+        // Parse check
+        assert_eq!(u8::from_str_radix("41", 16).unwrap(), 65);
+        assert!(u8::from_str_radix("ZZ", 16).is_err());
     }
 
     #[test]
-    fn test_pathbuf_join() {
-        let app_data_dir = PathBuf::from("/home/user/.config/cliqon");
-        let profiles_path = app_data_dir.join("profiles.json");
-
-        assert_eq!(
-            profiles_path.to_string_lossy(),
-            "/home/user/.config/cliqon/profiles.json"
-        );
-    }
-
-    #[test]
-    fn test_path_exists_check() {
-        let path = PathBuf::from("/tmp/nonexistent_file_12345.json");
-        assert!(!path.exists());
-    }
-
-    #[test]
-    fn test_option_handling() {
-        let secret: Option<String> = None;
-        let result = secret.clone();
-        assert!(result.is_none());
-
-        let secret2: Option<String> = Some("value".to_string());
-        let result2 = secret2.clone();
-        assert!(result2.is_some());
-    }
-
-    #[test]
-    fn test_xor_operation() {
-        let byte: u8 = 0x41; // 'A'
-        let xored = byte ^ 0x6A;
-        let restored = xored ^ 0x6A;
-        assert_eq!(byte, restored);
-    }
-
-    #[test]
-    fn test_hex_format() {
-        let byte: u8 = 65; // 'A'
-        let hex = format!("{:02x}", byte);
-        assert_eq!(hex, "41");
-
-        let byte2: u8 = 10;
-        let hex2 = format!("{:02x}", byte2);
-        assert_eq!(hex2, "0a"); // Leading zero
-    }
-
-    #[test]
-    fn test_step_by_iterator() {
-        let s = "abcdef";
-        let pairs: Vec<&str> = (0..s.len()).step_by(2).map(|i| &s[i..i + 2]).collect();
-        assert_eq!(pairs, vec!["ab", "cd", "ef"]);
-    }
-
-    #[test]
-    fn test_from_str_radix() {
-        let result = u8::from_str_radix("41", 16);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 65);
-
-        let invalid = u8::from_str_radix("ZZ", 16);
-        assert!(invalid.is_err());
-    }
-
-    #[test]
-    fn test_string_from_utf8() {
-        let bytes = vec![65, 66, 67]; // 'A', 'B', 'C'
-        let result = String::from_utf8(bytes);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "ABC");
-    }
-
-    #[test]
-    fn test_result_and_option_combination() {
-        let result: std::result::Result<Option<String>, &'static str> =
-            Ok(Some("value".to_string()));
-        assert!(result.is_ok());
-
-        let result2: std::result::Result<Option<String>, &'static str> = Ok(None);
-        assert!(result2.is_ok());
-        assert!(result2.unwrap().is_none());
-    }
-
-    #[test]
-    fn test_profile_store_json_operations() {
-        let profiles_json = r#"[
-            {"id": "1", "name": "Server 1"},
-            {"id": "2", "name": "Server 2"}
-        ]"#;
-
-        let _parsed: serde_json::Value = serde_json::from_str(profiles_json).unwrap();
-        assert!(profiles_json.contains("Server 1"));
-    }
-
-    #[test]
-    fn test_path_operations() {
-        use std::path::PathBuf;
-
-        let paths = vec![
-            PathBuf::from("/home/user/.config"),
-            PathBuf::from("/var/data"),
-            PathBuf::from("/tmp/cache"),
-        ];
-
-        for path in paths {
-            assert!(path.is_absolute() || path.starts_with("."));
-        }
-    }
-
-    #[test]
-    fn test_file_exists_check() {
-        let test_paths = vec!["/etc/hostname", "/nonexistent_file_12345"];
-
-        for path in &test_paths {
-            let _exists = std::path::Path::new(path).exists();
-        }
-    }
-
-    #[test]
-    fn test_serialize_deserialize_roundtrip() {
-        use crate::models::profile::AuthMethod;
-        use crate::models::profile::SshProfile;
-
+    fn test_profile_serialization_roundtrip() {
         let profile = SshProfile {
             id: "test-1".to_string(),
             name: "Test Server".to_string(),
             host: "192.168.1.1".to_string(),
             port: 22,
             username: "admin".to_string(),
-            auth_method: AuthMethod::Password,
+            auth_method: crate::models::profile::AuthMethod::Password,
             category: None,
             private_key_path: None,
             obfuscated_secret: None,
@@ -400,8 +209,30 @@ mod tests {
 
         let json = serde_json::to_string(&profile).unwrap();
         let decoded: SshProfile = serde_json::from_str(&json).unwrap();
-
         assert_eq!(profile.id, decoded.id);
         assert_eq!(profile.host, decoded.host);
+    }
+
+    #[test]
+    fn test_profile_store_find_replace_pattern() {
+        let profile = SshProfile::default();
+        let mut profiles = vec![profile.clone()];
+
+        // Find and update position
+        if let Some(pos) = profiles.iter().position(|p| p.id == profile.id) {
+            profiles[pos] = profile.clone();
+        } else {
+            profiles.push(profile.clone());
+        }
+        assert_eq!(profiles.len(), 1, "Should update, not add");
+
+        // Find by id
+        assert!(profiles.iter().find(|p| p.id == profile.id).is_some());
+        assert!(profiles.iter().find(|p| p.id == "nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_keyring_service_constant() {
+        assert_eq!(KEYRING_SERVICE, "cliqon_ssh_profiles");
     }
 }

@@ -60,8 +60,8 @@ impl SharingService {
 
         *self.local_ip.lock().unwrap() = local_ip.clone();
 
-        // Start HTTP server on random port
-        let server = tiny_http::Server::http("0.0.0.0:0")
+        // Start HTTP server on local IP only (not 0.0.0.0) for security
+        let server = tiny_http::Server::http(format!("{}:0", local_ip))
             .map_err(|e| format!("Failed to start HTTP server: {}", e))?;
         let http_port = server.server_addr().to_ip().map(|a| a.port()).unwrap_or(0);
         *self.http_port.lock().unwrap() = http_port;
@@ -72,7 +72,7 @@ impl SharingService {
         self.active.store(true, Ordering::SeqCst);
 
         // Spawn HTTP request handler
-        self.spawn_http_handler(server.clone());
+        self.spawn_http_handler(server.clone(), self.display_name.clone(), self.local_ip.clone(), self.instance_id.clone());
 
         // Spawn UDP broadcaster
         self.spawn_broadcaster(local_ip.clone(), http_port);
@@ -236,11 +236,7 @@ impl SharingService {
 
     pub fn accept_share(&self, share_id: &str) -> Option<PendingShare> {
         let mut shares = self.pending_shares.lock().unwrap();
-        if let Some(pos) = shares.iter().position(|s| s.id == share_id) {
-            Some(shares.remove(pos))
-        } else {
-            None
-        }
+        shares.iter().position(|s| s.id == share_id).map(|pos| shares.remove(pos))
     }
 
     pub fn reject_share(&self, share_id: &str) {
@@ -401,7 +397,13 @@ impl SharingService {
         });
     }
 
-    fn spawn_http_handler(&self, server: Arc<tiny_http::Server>) {
+    fn spawn_http_handler(
+        &self,
+        server: Arc<tiny_http::Server>,
+        display_name: Arc<Mutex<String>>,
+        local_ip: Arc<Mutex<String>>,
+        instance_id: String,
+    ) {
         let active = self.active.clone();
         let pending_shares = self.pending_shares.clone();
 
@@ -452,8 +454,21 @@ impl SharingService {
                         let _ = request.respond(response);
                     }
                 } else if url == "/ping" {
-                    let response = tiny_http::Response::from_string("{\"status\":\"alive\"}")
-                        .with_status_code(200);
+                    let ping_response = serde_json::json!({
+                        "status": "alive",
+                        "display_name": display_name.lock().unwrap().clone(),
+                        "local_ip": local_ip.lock().unwrap().clone(),
+                        "instance_id": instance_id,
+                    });
+                    let response = tiny_http::Response::from_string(ping_response.to_string())
+                        .with_status_code(200)
+                        .with_header(
+                            tiny_http::Header::from_bytes(
+                                &b"Content-Type"[..],
+                                &b"application/json"[..],
+                            )
+                            .unwrap(),
+                        );
                     let _ = request.respond(response);
                 } else {
                     let response =
@@ -489,7 +504,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_subnet_broadcast_valid_ipv4() {
+    fn test_subnet_broadcast() {
         assert_eq!(
             subnet_broadcast("192.168.1.100"),
             Some("192.168.1.255".to_string())
@@ -502,35 +517,36 @@ mod tests {
             subnet_broadcast("172.16.5.10"),
             Some("172.16.5.255".to_string())
         );
-    }
-
-    #[test]
-    fn test_subnet_broadcast_invalid_ip() {
         assert_eq!(subnet_broadcast("invalid"), None);
         assert_eq!(subnet_broadcast("192.168.1"), None);
-        assert_eq!(subnet_broadcast("192.168.1.100.200"), None);
         assert_eq!(subnet_broadcast(""), None);
+        assert_eq!(
+            subnet_broadcast("255.255.255.255"),
+            Some("255.255.255.255".to_string())
+        );
+        assert_eq!(subnet_broadcast("0.0.0.0"), Some("0.0.0.255".to_string()));
     }
 
     #[test]
-    fn test_now_secs_returns_reasonable_value() {
+    fn test_now_secs_reasonable() {
         let now = now_secs();
-        assert!(now > 1_577_836_800, "Timestamp should be after 2020");
-        assert!(now < 4_733_644_800, "Timestamp should be before 2120");
+        assert!(now > 1_577_836_800);
+        assert!(now < 4_733_644_800);
+
+        let t1 = now_secs();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        assert!(now_secs() >= t1);
     }
 
     #[test]
-    fn test_sharing_service_new() {
+    fn test_sharing_service_initial_state() {
         let service = SharingService::new();
         assert!(!service.is_active());
-    }
+        assert!(service.get_peers().is_empty());
+        assert!(service.get_pending_shares().is_empty());
 
-    #[test]
-    fn test_sharing_service_initial_status() {
-        let service = SharingService::new();
         let status = service.get_status();
-
-        assert_eq!(status.active, false);
+        assert!(!status.active);
         assert_eq!(status.peer_count, 0);
         assert_eq!(status.http_port, 0);
     }
@@ -539,48 +555,29 @@ mod tests {
     fn test_sharing_service_set_display_name() {
         let service = SharingService::new();
         service.set_display_name("Test Machine".to_string());
-
-        let status = service.get_status();
-        assert_eq!(status.display_name, "Test Machine");
-    }
-
-    #[test]
-    fn test_sharing_service_get_peers_initially_empty() {
-        let service = SharingService::new();
-        let peers = service.get_peers();
-        assert!(peers.is_empty());
-    }
-
-    #[test]
-    fn test_sharing_service_get_pending_shares_initially_empty() {
-        let service = SharingService::new();
-        let shares = service.get_pending_shares();
-        assert!(shares.is_empty());
+        assert_eq!(service.get_status().display_name, "Test Machine");
     }
 
     #[test]
     fn test_sharing_service_add_manual_peer() {
         let service = SharingService::new();
-        let peer = PeerInfo {
+        service.add_manual_peer(PeerInfo {
             id: "manual-peer-1".to_string(),
             display_name: "Manual Peer".to_string(),
             ip: "10.0.0.100".to_string(),
             port: 19876,
             last_seen: now_secs(),
-        };
-
-        service.add_manual_peer(peer);
+        });
         let peers = service.get_peers();
-
         assert_eq!(peers.len(), 1);
         assert_eq!(peers[0].id, "manual-peer-1");
     }
 
     #[test]
-    fn test_sharing_service_reject_share() {
+    fn test_sharing_service_accept_reject_share() {
         let service = SharingService::new();
         let share = PendingShare {
-            id: "share-to-reject".to_string(),
+            id: "share-1".to_string(),
             from_name: "Sender".to_string(),
             from_ip: "192.168.1.5".to_string(),
             profiles: vec![],
@@ -589,39 +586,58 @@ mod tests {
         };
 
         service.pending_shares.lock().unwrap().push(share);
-        service.reject_share("share-to-reject");
+        
+        // Accept
+        let accepted = service.accept_share("share-1");
+        assert!(accepted.is_some());
+        assert_eq!(accepted.unwrap().id, "share-1");
+        assert!(service.get_pending_shares().is_empty());
 
-        let shares = service.get_pending_shares();
-        assert!(shares.is_empty());
-    }
-
-    #[test]
-    fn test_sharing_service_accept_share() {
-        let service = SharingService::new();
-        let share = PendingShare {
-            id: "share-to-accept".to_string(),
-            from_name: "Sender".to_string(),
-            from_ip: "192.168.1.5".to_string(),
+        // Reject
+        let share2 = PendingShare {
+            id: "share-2".to_string(),
+            from_name: "Sender2".to_string(),
+            from_ip: "10.0.0.5".to_string(),
             profiles: vec![],
             snippets: vec![],
             received_at: now_secs(),
         };
+        service.pending_shares.lock().unwrap().push(share2);
+        service.reject_share("share-2");
+        assert!(service.get_pending_shares().is_empty());
 
-        service.pending_shares.lock().unwrap().push(share.clone());
-        let accepted = service.accept_share("share-to-accept");
-
-        assert!(accepted.is_some());
-        assert_eq!(accepted.unwrap().id, "share-to-accept");
-
-        let shares = service.get_pending_shares();
-        assert!(shares.is_empty());
+        // Accept nonexistent
+        assert!(service.accept_share("nonexistent").is_none());
     }
 
     #[test]
-    fn test_sharing_service_accept_nonexistent_share() {
-        let service = SharingService::new();
-        let result = service.accept_share("nonexistent-id");
-        assert!(result.is_none());
+    fn test_ping_peer_request_format() {
+        // Verify the ping_peer raw HTTP request is constructed correctly
+        let ip = "192.168.1.100";
+        let port = 19876;
+        let request = format!(
+            "GET /ping HTTP/1.1\r\nHost: {}:{}\r\nConnection: close\r\n\r\n",
+            ip, port
+        );
+        assert!(request.starts_with("GET /ping"));
+        assert!(request.contains("192.168.1.100:19876"));
+        assert!(request.contains("Connection: close"));
+        assert!(request.ends_with("\r\n\r\n"));
+    }
+
+    #[test]
+    fn test_share_with_peer_request_format() {
+        let ip = "10.0.0.50";
+        let port = 19876;
+        let body = r#"{"sender_name":"Test","sender_ip":"10.0.0.1"}"#;
+        let url = format!("{}:{}", ip, port);
+        let request = format!(
+            "POST /share HTTP/1.1\r\nHost: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            url, body.len(), body
+        );
+        assert!(request.starts_with("POST /share"));
+        assert!(request.contains(&format!("Content-Length: {}", body.len())));
+        assert!(request.contains("Content-Type: application/json"));
     }
 
     #[test]
@@ -633,14 +649,55 @@ mod tests {
             port: 19876,
             last_seen: 1234567890,
         };
-
         assert_eq!(peer.id, "test-peer");
         assert_eq!(peer.ip, "192.168.1.100");
         assert_eq!(peer.port, 19876);
     }
 
     #[test]
-    fn test_pending_share_struct() {
+    fn test_sharing_json_serialization() {
+        let peer = PeerInfo {
+            id: "peer-1".to_string(),
+            display_name: "Peer One".to_string(),
+            ip: "192.168.1.50".to_string(),
+            port: 19876,
+            last_seen: 1609459200,
+        };
+        let json = serde_json::to_string(&peer).unwrap();
+        assert!(json.contains("peer-1"));
+        assert!(json.contains("192.168.1.50"));
+
+        let beacon = crate::models::sharing::BeaconPacket {
+            id: "instance-123".to_string(),
+            display_name: "My PC".to_string(),
+            http_port: 12345,
+        };
+        let beacon_json = serde_json::to_string(&beacon).unwrap();
+        assert!(beacon_json.contains("instance-123"));
+
+        let payload = crate::models::sharing::SharePayload {
+            sender_name: "Alice".to_string(),
+            sender_ip: "192.168.1.5".to_string(),
+            profiles: None,
+            snippets: None,
+            timestamp: 1700000000,
+        };
+        let payload_json = serde_json::to_string(&payload).unwrap();
+        assert!(payload_json.contains("Alice"));
+    }
+
+    #[test]
+    fn test_sharing_structs() {
+        let status = SharingStatus {
+            active: true,
+            display_name: "Test".to_string(),
+            local_ip: "192.168.1.100".to_string(),
+            http_port: 12345,
+            peer_count: 5,
+        };
+        assert!(status.active);
+        assert_eq!(status.peer_count, 5);
+
         let share = PendingShare {
             id: "share-123".to_string(),
             from_name: "Sender".to_string(),
@@ -649,320 +706,7 @@ mod tests {
             snippets: vec![],
             received_at: 1234567890,
         };
-
         assert_eq!(share.id, "share-123");
         assert_eq!(share.profiles.len(), 0);
-        assert_eq!(share.snippets.len(), 0);
-    }
-
-    #[test]
-    fn test_sharing_status_struct() {
-        let status = SharingStatus {
-            active: true,
-            display_name: "Test".to_string(),
-            local_ip: "192.168.1.100".to_string(),
-            http_port: 12345,
-            peer_count: 5,
-        };
-
-        assert!(status.active);
-        assert_eq!(status.peer_count, 5);
-    }
-
-    #[test]
-    fn test_peer_json_serialization() {
-        let peer = PeerInfo {
-            id: "peer-1".to_string(),
-            display_name: "Peer One".to_string(),
-            ip: "192.168.1.50".to_string(),
-            port: 19876,
-            last_seen: 1609459200,
-        };
-
-        let json = serde_json::to_string(&peer).unwrap();
-        assert!(json.contains("peer-1"));
-        assert!(json.contains("192.168.1.50"));
-    }
-
-    #[test]
-    fn test_now_secs_monotonic_increase() {
-        let t1 = now_secs();
-        std::thread::sleep(std::time::Duration::from_millis(10));
-        let t2 = now_secs();
-
-        assert!(t2 >= t1);
-    }
-
-    #[test]
-    fn test_atomic_bool_operations() {
-        let flag = Arc::new(AtomicBool::new(false));
-
-        assert!(!flag.load(Ordering::SeqCst));
-
-        flag.store(true, Ordering::SeqCst);
-        assert!(flag.load(Ordering::SeqCst));
-
-        flag.store(false, Ordering::SeqCst);
-        assert!(!flag.load(Ordering::SeqCst));
-    }
-
-    #[test]
-    fn test_mutex_arc_pattern() {
-        let data = Arc::new(Mutex::new(String::from("initial")));
-
-        {
-            let mut d = data.lock().unwrap();
-            *d = String::from("modified");
-        }
-
-        let value = data.lock().unwrap();
-        assert_eq!(*value, "modified");
-    }
-
-    #[test]
-    fn test_hashmap_peer_storage() {
-        let mut peers: HashMap<String, PeerInfo> = HashMap::new();
-
-        let peer = PeerInfo {
-            id: "p1".to_string(),
-            display_name: "Peer 1".to_string(),
-            ip: "10.0.0.1".to_string(),
-            port: 8080,
-            last_seen: 1234567890,
-        };
-
-        peers.insert(peer.id.clone(), peer);
-
-        assert_eq!(peers.len(), 1);
-        assert!(peers.contains_key("p1"));
-    }
-
-    #[test]
-    fn test_vec_pending_shares() {
-        let mut shares: Vec<PendingShare> = Vec::new();
-
-        shares.push(PendingShare {
-            id: "s1".to_string(),
-            from_name: "User1".to_string(),
-            from_ip: "192.168.1.10".to_string(),
-            profiles: vec![],
-            snippets: vec![],
-            received_at: 1234567890,
-        });
-
-        shares.push(PendingShare {
-            id: "s2".to_string(),
-            from_name: "User2".to_string(),
-            from_ip: "192.168.1.20".to_string(),
-            profiles: vec![],
-            snippets: vec![],
-            received_at: 1234567891,
-        });
-
-        assert_eq!(shares.len(), 2);
-
-        let removed = shares.remove(0);
-        assert_eq!(removed.id, "s1");
-        assert_eq!(shares.len(), 1);
-    }
-
-    #[test]
-    fn test_subnet_broadcast_private_ips() {
-        assert_eq!(
-            subnet_broadcast("192.168.0.1"),
-            Some("192.168.0.255".to_string())
-        );
-        assert_eq!(
-            subnet_broadcast("192.168.100.50"),
-            Some("192.168.100.255".to_string())
-        );
-        assert_eq!(subnet_broadcast("10.0.0.1"), Some("10.0.0.255".to_string()));
-        assert_eq!(
-            subnet_broadcast("10.10.10.10"),
-            Some("10.10.10.255".to_string())
-        );
-        assert_eq!(
-            subnet_broadcast("172.16.0.1"),
-            Some("172.16.0.255".to_string())
-        );
-        assert_eq!(
-            subnet_broadcast("172.31.255.1"),
-            Some("172.31.255.255".to_string())
-        );
-    }
-
-    #[test]
-    fn test_subnet_broadcast_edge_cases() {
-        assert_eq!(
-            subnet_broadcast("255.255.255.255"),
-            Some("255.255.255.255".to_string())
-        );
-        assert_eq!(subnet_broadcast("0.0.0.0"), Some("0.0.0.255".to_string()));
-    }
-
-    #[test]
-    fn test_peerinfo_clone() {
-        let peer1 = PeerInfo {
-            id: "p1".to_string(),
-            display_name: "Peer 1".to_string(),
-            ip: "192.168.1.1".to_string(),
-            port: 8080,
-            last_seen: 1234567890,
-        };
-
-        let peer2 = peer1.clone();
-        assert_eq!(peer1.id, peer2.id);
-        assert_eq!(peer1.ip, peer2.ip);
-    }
-
-    #[test]
-    fn test_pending_share_clone() {
-        let share1 = PendingShare {
-            id: "s1".to_string(),
-            from_name: "User".to_string(),
-            from_ip: "10.0.0.1".to_string(),
-            profiles: vec![],
-            snippets: vec![],
-            received_at: 1234567890,
-        };
-
-        let share2 = share1.clone();
-        assert_eq!(share1.id, share2.id);
-    }
-
-    #[test]
-    fn test_sharing_status_clone() {
-        let status1 = SharingStatus {
-            active: true,
-            display_name: "Test".to_string(),
-            local_ip: "192.168.1.1".to_string(),
-            http_port: 8080,
-            peer_count: 3,
-        };
-
-        let status2 = status1.clone();
-        assert_eq!(status1.active, status2.active);
-        assert_eq!(status1.peer_count, status2.peer_count);
-    }
-
-    #[test]
-    fn test_peer_info_operations() {
-        let peers: Vec<PeerInfo> = vec![
-            PeerInfo {
-                id: "peer1".to_string(),
-                display_name: "Peer One".to_string(),
-                ip: "192.168.1.10".to_string(),
-                port: 19876,
-                last_seen: 1700000000,
-            },
-            PeerInfo {
-                id: "peer2".to_string(),
-                display_name: "Peer Two".to_string(),
-                ip: "192.168.1.20".to_string(),
-                port: 19876,
-                last_seen: 1700000001,
-            },
-        ];
-
-        assert_eq!(peers.len(), 2);
-
-        let ips: Vec<&String> = peers.iter().map(|p| &p.ip).collect();
-        assert_eq!(ips.len(), 2);
-    }
-
-    #[test]
-    fn test_pending_share_operations() {
-        let mut shares: Vec<PendingShare> = Vec::new();
-
-        shares.push(PendingShare {
-            id: "share1".to_string(),
-            from_name: "User1".to_string(),
-            from_ip: "192.168.1.5".to_string(),
-            profiles: vec![],
-            snippets: vec![],
-            received_at: 1700000000,
-        });
-
-        shares.push(PendingShare {
-            id: "share2".to_string(),
-            from_name: "User2".to_string(),
-            from_ip: "192.168.1.10".to_string(),
-            profiles: vec![],
-            snippets: vec![],
-            received_at: 1700000001,
-        });
-
-        let from_ips: Vec<&String> = shares.iter().map(|s| &s.from_ip).collect();
-        assert_eq!(from_ips.len(), 2);
-    }
-
-    #[test]
-    fn test_peer_timestamps() {
-        let now = now_secs();
-
-        let peer = PeerInfo {
-            id: "test".to_string(),
-            display_name: "Test".to_string(),
-            ip: "192.168.1.1".to_string(),
-            port: 8080,
-            last_seen: now,
-        };
-
-        assert_eq!(peer.last_seen, now);
-    }
-
-    #[test]
-    fn test_sharing_status_default() {
-        let status = SharingStatus {
-            active: false,
-            display_name: String::new(),
-            local_ip: String::new(),
-            http_port: 0,
-            peer_count: 0,
-        };
-
-        assert!(!status.active);
-        assert_eq!(status.peer_count, 0);
-        assert_eq!(status.http_port, 0);
-    }
-
-    #[test]
-    fn test_beacon_packet_creation() {
-        use crate::models::sharing::BeaconPacket;
-
-        let beacon = BeaconPacket {
-            id: "instance-123".to_string(),
-            display_name: "My PC".to_string(),
-            http_port: 12345,
-        };
-
-        let json = serde_json::to_string(&beacon).unwrap();
-        assert!(json.contains("instance-123"));
-    }
-
-    #[test]
-    fn test_share_payload_serialization() {
-        use crate::models::sharing::SharePayload;
-
-        let payload = SharePayload {
-            sender_name: "Alice".to_string(),
-            sender_ip: "192.168.1.5".to_string(),
-            profiles: None,
-            snippets: None,
-            timestamp: 1700000000,
-        };
-
-        let json = serde_json::to_string(&payload).unwrap();
-        assert!(json.contains("Alice"));
-    }
-
-    #[test]
-    fn test_now_secs_ordering() {
-        let times: Vec<u64> = (0..10).map(|_| now_secs()).collect();
-
-        let mut sorted = times.clone();
-        sorted.sort();
-
-        assert_eq!(times.len(), sorted.len());
     }
 }

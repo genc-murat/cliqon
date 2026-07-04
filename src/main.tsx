@@ -6,20 +6,23 @@ import { SharingProvider } from "./contexts/SharingContext";
 import { ConnectionsProvider } from "./contexts/ConnectionsContext";
 import { ConfirmProvider } from "./hooks/useConfirm";
 import { SnippetsProvider } from "./contexts/SnippetsContext";
+import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <ThemeProvider>
-      <ConnectionsProvider>
-        <SnippetsProvider>
-          <SharingProvider>
-            <ConfirmProvider>
-              <App />
-            </ConfirmProvider>
-          </SharingProvider>
-        </SnippetsProvider>
-      </ConnectionsProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <ConnectionsProvider>
+          <SnippetsProvider>
+            <SharingProvider>
+              <ConfirmProvider>
+                <App />
+              </ConfirmProvider>
+            </SharingProvider>
+          </SnippetsProvider>
+        </ConnectionsProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 );

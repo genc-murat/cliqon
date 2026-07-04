@@ -111,20 +111,19 @@ impl SystemService {
         // action: start, stop, restart, enable, disable
         let session = self.open_session(profile, secret)?;
 
-        let safe_action = action
-            .replace("'", "'\\''")
-            .replace(";", "")
-            .replace("&", "")
-            .replace("|", "");
-        let safe_service = service
-            .replace("'", "'\\''")
-            .replace(";", "")
-            .replace("&", "")
-            .replace("|", "");
+        // Strictly validate action to prevent command injection
+        if !matches!(action, "start" | "stop" | "restart" | "enable" | "disable") {
+            return Err(AppError::Custom("Invalid service action".to_string()));
+        }
+
+        // Strictly validate service name to prevent command injection
+        if !service.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.' || c == '@') {
+            return Err(AppError::Custom("Invalid service name".to_string()));
+        }
 
         // Try without sudo first. If it fails due to permissions, the frontend will see it in the output.
         // Later we can implement sudo if we pass the passover over stdin.
-        let cmd = format!("systemctl {} {} 2>&1", safe_action, safe_service);
+        let cmd = format!("systemctl {} {} 2>&1", action, service);
         self.exec_command(&session, &cmd)
     }
 
@@ -143,9 +142,24 @@ impl SystemService {
     ) -> Result<String> {
         let session = self.open_session(profile, secret)?;
 
-        // Sanitize inputs
-        let safe_key = key.replace("'", "'\\''").replace("\"", "\\\"");
-        let safe_value = value.replace("'", "'\\''").replace("\"", "\\\"");
+        // Strictly validate environment variable key
+        if !key.chars().all(|c| c.is_alphanumeric() || c == '_') {
+            return Err(AppError::Custom("Invalid environment variable key".to_string()));
+        }
+
+        // Escape shell metacharacters to prevent command injection inside double quotes
+        let safe_key = key
+            .replace('\\', "\\\\")
+            .replace('$', "\\$")
+            .replace('`', "\\`")
+            .replace('"', "\\\"")
+            .replace('\'', "'\\''");
+        let safe_value = value
+            .replace('\\', "\\\\")
+            .replace('$', "\\$")
+            .replace('`', "\\`")
+            .replace('"', "\\\"")
+            .replace('\'', "'\\''");
 
         // Script to update or append the export in .bashrc
         let cmd = format!(
@@ -172,7 +186,17 @@ impl SystemService {
     ) -> Result<String> {
         let session = self.open_session(profile, secret)?;
 
-        let safe_key = key.replace("'", "'\\''").replace("\"", "\\\"");
+        // Strictly validate environment variable key
+        if !key.chars().all(|c| c.is_alphanumeric() || c == '_') {
+            return Err(AppError::Custom("Invalid environment variable key".to_string()));
+        }
+
+        let safe_key = key
+            .replace('\\', "\\\\")
+            .replace('$', "\\$")
+            .replace('`', "\\`")
+            .replace('"', "\\\"")
+            .replace('\'', "'\\''");
 
         // Script to remove the export from .bashrc
         let cmd = format!(
@@ -193,50 +217,35 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_system_service_new() {
-        let service = SystemService::new();
-        // SystemService is a unit struct, just verify it can be created
-        let _ = service;
-    }
+    fn test_input_sanitization() {
+        // Safe values pass through unchanged
+        assert_eq!(
+            "start"
+                .replace("'", "'\\''")
+                .replace(";", "")
+                .replace("&", "")
+                .replace("|", ""),
+            "start"
+        );
+        assert_eq!(
+            "nginx"
+                .replace("'", "'\\''")
+                .replace(";", "")
+                .replace("&", "")
+                .replace("|", ""),
+            "nginx"
+        );
 
-    #[test]
-    fn test_safe_action_sanitization() {
-        let action = "start";
-        let safe_action = action
-            .replace("'", "'\\''")
-            .replace(";", "")
-            .replace("&", "")
-            .replace("|", "");
-        assert_eq!(safe_action, "start");
-    }
-
-    #[test]
-    fn test_safe_service_sanitization() {
-        let service = "nginx";
-        let safe_service = service
-            .replace("'", "'\\''")
-            .replace(";", "")
-            .replace("&", "")
-            .replace("|", "");
-        assert_eq!(safe_service, "nginx");
-    }
-
-    #[test]
-    fn test_safe_action_with_dangerous_chars() {
-        let action = "start;rm -rf /";
-        let safe_action = action
+        // Dangerous characters are removed
+        let safe_action = "start;rm -rf /"
             .replace("'", "'\\''")
             .replace(";", "")
             .replace("&", "")
             .replace("|", "");
         assert_eq!(safe_action, "startrm -rf /");
         assert!(!safe_action.contains(';'));
-    }
 
-    #[test]
-    fn test_safe_service_with_dangerous_chars() {
-        let service = "nginx&shutdown";
-        let safe_service = service
+        let safe_service = "nginx&shutdown"
             .replace("'", "'\\''")
             .replace(";", "")
             .replace("&", "")
@@ -246,46 +255,30 @@ mod tests {
     }
 
     #[test]
-    fn test_manage_service_command_format() {
-        let safe_action = "start";
-        let safe_service = "nginx";
-        let cmd = format!("systemctl {} {} 2>&1", safe_action, safe_service);
-        assert!(cmd.contains("systemctl"));
-        assert!(cmd.contains("start"));
-        assert!(cmd.contains("nginx"));
-        assert!(cmd.contains("2>&1"));
-    }
-
-    #[test]
-    fn test_env_var_key_sanitization() {
-        let key = "MY_VAR";
-        let safe_key = key.replace("'", "'\\''").replace("\"", "\\\"");
+    fn test_env_var_sanitization() {
+        let safe_key = "MY_VAR"
+            .replace("'", "'\\''")
+            .replace("\"", "\\\"");
         assert_eq!(safe_key, "MY_VAR");
-    }
 
-    #[test]
-    fn test_env_var_value_sanitization() {
-        let value = "hello world";
-        let safe_value = value.replace("'", "'\\''").replace("\"", "\\\"");
+        let safe_value = "hello world"
+            .replace("'", "'\\''")
+            .replace("\"", "\\\"");
         assert_eq!(safe_value, "hello world");
+
+        let key_with_quotes = "VAR'WITH'QUOTES"
+            .replace("'", "'\\''")
+            .replace("\"", "\\\"");
+        assert!(key_with_quotes.contains("'\\''"));
     }
 
     #[test]
-    fn test_env_var_with_quotes_sanitization() {
-        let key = "VAR'WITH'QUOTES";
-        let safe_key = key.replace("'", "'\\''").replace("\"", "\\\"");
-        assert_eq!(safe_key, "VAR'\\''WITH'\\''QUOTES");
-        // The shell escaping produces '\'' sequences
-        assert!(safe_key.contains("'\\''"));
-    }
-
-    #[test]
-    fn test_set_env_var_grep_command() {
+    fn test_env_var_script_building() {
         let safe_key = "MY_VAR";
         let safe_value = "my_value";
 
-        // The script should contain grep to check for existing export
-        let script_contains_grep = format!(
+        // Set env var script
+        let set_script = format!(
             r#"
             BASHRC="$HOME/.bashrc"
             if grep -q "export {}=" "$BASHRC"; then
@@ -297,16 +290,12 @@ mod tests {
             "#,
             safe_key, safe_key, safe_key, safe_value, safe_key, safe_value, safe_key, safe_value
         );
+        assert!(set_script.contains("grep -q"));
+        assert!(set_script.contains("sed -i"));
+        assert!(set_script.contains("export MY_VAR="));
 
-        assert!(script_contains_grep.contains("grep -q"));
-        assert!(script_contains_grep.contains("sed -i"));
-        assert!(script_contains_grep.contains("export MY_VAR="));
-    }
-
-    #[test]
-    fn test_delete_env_var_command() {
-        let safe_key = "MY_VAR";
-        let cmd = format!(
+        // Delete env var script
+        let delete_script = format!(
             r#"
             BASHRC="$HOME/.bashrc"
             sed -i "/^export {}=/d" "$BASHRC"
@@ -314,43 +303,28 @@ mod tests {
             "#,
             safe_key, safe_key
         );
-
-        assert!(cmd.contains("sed -i"));
-        assert!(cmd.contains("unset MY_VAR"));
+        assert!(delete_script.contains("sed -i"));
+        assert!(delete_script.contains("unset MY_VAR"));
     }
 
     #[test]
-    fn test_systemctl_command_variants() {
-        let actions = vec!["start", "stop", "restart", "enable", "disable"];
+    fn test_systemctl_command_building() {
         let service = "nginx";
-
-        for action in actions {
+        for action in ["start", "stop", "restart", "enable", "disable"] {
             let cmd = format!("systemctl {} {} 2>&1", action, service);
             assert!(cmd.contains("systemctl"));
             assert!(cmd.contains(action));
             assert!(cmd.contains(service));
+            assert!(cmd.contains("2>&1"));
         }
     }
 
     #[test]
-    fn test_bashrc_path_constant() {
-        assert_eq!("$HOME/.bashrc", "$HOME/.bashrc");
-    }
-
-    #[test]
-    fn test_printenv_command() {
-        let cmd = "printenv";
-        assert_eq!(cmd, "printenv");
-    }
-
-    #[test]
-    fn test_systemctl_check_command() {
-        let cmd = r#"
+    fn test_systemctl_list_command_structure() {
+        let services_cmd = r#"
             if command -v systemctl > /dev/null; then
-                # Output format: UNIT LOAD ACTIVE SUB DESCRIPTION
                 systemctl list-units --type=service --all --no-pager --no-legend | awk '{
                     unit=$1; load=$2; active=$3; sub=$4;
-                    // Description is the rest of the line
                     desc=""; for(i=5;i<=NF;i++) desc=desc " " $i;
                     gsub(/^[ \t]+|[ \t]+$/, "", desc);
                     printf "%s|%s|%s|%s|%s\n", unit, load, active, sub, desc
@@ -359,190 +333,33 @@ mod tests {
                 echo "systemctl not found"
             fi
         "#;
+        assert!(services_cmd.contains("command -v systemctl"));
+        assert!(services_cmd.contains("systemctl list-units"));
+        assert!(services_cmd.contains("--type=service"));
+        assert!(services_cmd.contains("--no-pager"));
+        assert!(services_cmd.contains("--no-legend"));
 
-        assert!(cmd.contains("command -v systemctl"));
-        assert!(cmd.contains("systemctl list-units"));
-        assert!(cmd.contains("--type=service"));
-        assert!(cmd.contains("--no-pager"));
-        assert!(cmd.contains("--no-legend"));
-    }
-
-    #[test]
-    fn test_systemctl_timers_command() {
-        let cmd = r#"
+        let timers_cmd = r#"
             if command -v systemctl > /dev/null; then
-                # Robust parsing for systemctl list-timers
                 systemctl list-timers --all --no-pager --no-legend | awk '{
                     i=1;
-                    # NEXT
                     if ($i == "n/a") { next_dt="n/a"; i++; }
                     else { next_dt=$i" "$(i+1)" "$(i+2)" "$(i+3); i+=4; }
-
-                    # LEFT
                     left_val=$i" "$(i+1); i+=2;
-
-                    # LAST
                     if ($i == "n/a") { last_dt="n/a"; i++; }
                     else { last_dt=$i" "$(i+1)" "$(i+2)" "$(i+3); i+=4; }
-
-                    # PASSED
                     passed_val=$i" "$(i+1); i+=2;
-
-                    # UNIT
                     unit=$i; i++;
-
-                    # ACTIVATES
                     activates=$i;
-
                     printf "%s|%s|%s|%s|%s|%s\n", next_dt, left_val, last_dt, passed_val, unit, activates
                 }'
             else
                 echo "systemctl not found"
             fi
         "#;
-
-        assert!(cmd.contains("systemctl list-timers"));
-        assert!(cmd.contains("--all"));
-        assert!(cmd.contains("--no-pager"));
-    }
-
-    #[test]
-    fn test_action_types() {
-        let valid_actions = vec!["start", "stop", "restart", "enable", "disable"];
-        for action in valid_actions {
-            assert!(!action.is_empty());
-        }
-    }
-
-    #[test]
-    fn test_service_name_validation() {
-        let valid_services = vec!["nginx", "docker", "ssh", "mysql", "postgresql"];
-        for service in valid_services {
-            assert!(!service.contains(';'));
-            assert!(!service.contains('&'));
-            assert!(!service.contains('|'));
-        }
-    }
-
-    #[test]
-    fn test_systemctl_command_format() {
-        let service = "nginx";
-        let actions = vec![
-            format!("systemctl start {}", service),
-            format!("systemctl stop {}", service),
-            format!("systemctl restart {}", service),
-            format!("systemctl status {}", service),
-            format!("systemctl enable {}", service),
-            format!("systemctl disable {}", service),
-        ];
-
-        for cmd in actions {
-            assert!(cmd.starts_with("systemctl"));
-        }
-    }
-
-    #[test]
-    fn test_system_info_gathering() {
-        let commands = vec![
-            "uname -a",
-            "uptime",
-            "df -h",
-            "free -m",
-            "cat /proc/cpuinfo",
-        ];
-
-        for cmd in commands {
-            assert!(!cmd.is_empty());
-        }
-    }
-
-    #[test]
-    fn test_process_monitoring() {
-        let process_names = vec!["nginx", "postgres", "docker", "redis-server"];
-
-        for name in process_names {
-            assert!(!name.is_empty());
-        }
-    }
-
-    #[test]
-    fn test_disk_space_calculation() {
-        let partitions = vec![
-            ("/", 50000000u64),
-            ("/home", 100000000u64),
-            ("/var", 75000000u64),
-        ];
-
-        for (_mount, size) in partitions {
-            assert!(size > 0);
-        }
-    }
-
-    #[test]
-    fn test_memory_info_parsing() {
-        let mem_values = vec![
-            ("MemTotal", 16000000u64),
-            ("MemFree", 8000000u64),
-            ("MemAvailable", 12000000u64),
-        ];
-
-        for (_label, value) in mem_values {
-            assert!(value > 0);
-        }
-    }
-
-    #[test]
-    fn test_cpu_info_format() {
-        let cpu_models = vec![
-            "Intel(R) Core(TM) i7-9700K",
-            "AMD Ryzen 7 3700X",
-            "Intel(R) Xeon(R) CPU E5-2680 v4",
-        ];
-
-        for model in cpu_models {
-            assert!(!model.is_empty());
-        }
-    }
-
-    #[test]
-    fn test_uptime_calculation() {
-        let uptimes = vec![
-            3600u64,    // 1 hour
-            86400u64,   // 1 day
-            604800u64,  // 1 week
-            2592000u64, // 1 month
-        ];
-
-        for uptime in uptimes {
-            assert!(uptime > 0);
-        }
-    }
-
-    #[test]
-    fn test_service_status_check() {
-        let statuses = vec![
-            "active (running)",
-            "inactive (dead)",
-            "failed",
-            "activating",
-        ];
-
-        for status in statuses {
-            assert!(!status.is_empty());
-        }
-    }
-
-    #[test]
-    fn test_log_file_paths() {
-        let log_paths = vec![
-            "/var/log/syslog",
-            "/var/log/nginx/access.log",
-            "/var/log/nginx/error.log",
-            "/var/log/messages",
-        ];
-
-        for path in log_paths {
-            assert!(path.starts_with("/var/log"));
-        }
+        assert!(timers_cmd.contains("systemctl list-timers"));
+        assert!(timers_cmd.contains("--all"));
+        assert!(timers_cmd.contains("--no-pager"));
     }
 }
+

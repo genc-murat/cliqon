@@ -161,9 +161,12 @@ function App() {
     const tab = tabs.find(t => t.id === tabId);
     if (!tab || !tab.activePane) return;
 
+    // Sanitize containerId to prevent shell command injection
+    const cleanContainerId = containerId.replace(/[^a-zA-Z0-9_-]/g, '');
+
     // Clear the terminal and then run docker logs
-    // Sending \x0L or 'clear' command. Most modern terminals respond to 'clear\n'
-    const command = `clear\ndocker logs -f --tail 100 ${containerId}\n`;
+    // Sending \x0C or 'clear' command. Most modern terminals respond to 'clear\n'
+    const command = `clear\ndocker logs -f --tail 100 ${cleanContainerId}\n`;
     const encoder = new TextEncoder();
     api.writeToPty(tab.activePane, Array.from(encoder.encode(command))).catch(console.error);
   };
@@ -172,8 +175,11 @@ function App() {
     const tab = tabs.find(t => t.id === tabId);
     if (!tab || !tab.activePane) return;
 
+    // Sanitize containerId to prevent shell command injection
+    const cleanContainerId = containerId.replace(/[^a-zA-Z0-9_-]/g, '');
+
     // Clear the terminal and connect interactively via bash or sh
-    const command = `clear\ndocker exec -it ${containerId} /bin/sh -c "(bash || sh) 2>/dev/null"\n`;
+    const command = `clear\ndocker exec -it ${cleanContainerId} /bin/sh -c "(bash || sh) 2>/dev/null"\n`;
     const encoder = new TextEncoder();
     api.writeToPty(tab.activePane, Array.from(encoder.encode(command))).catch(console.error);
   };
@@ -275,11 +281,15 @@ function App() {
       }
     };
 
+    const handleNextTab = () => handleCycleTabs(true);
+    const handlePrevTab = () => handleCycleTabs(false);
+    const handleCheckUpdates = () => checkForUpdates();
+
     window.addEventListener('cliqon:close-active-tab', handleCloseActiveTab);
     window.addEventListener('cliqon:split-pane', handleSplit);
-    window.addEventListener('cliqon:next-tab', () => handleCycleTabs(true));
-    window.addEventListener('cliqon:prev-tab', () => handleCycleTabs(false));
-    window.addEventListener('cliqon:check-updates', () => checkForUpdates());
+    window.addEventListener('cliqon:next-tab', handleNextTab);
+    window.addEventListener('cliqon:prev-tab', handlePrevTab);
+    window.addEventListener('cliqon:check-updates', handleCheckUpdates);
     window.addEventListener('cliqon:exit-app', handleExitApp);
 
     window.addEventListener('keydown', handleKeyDown);
@@ -287,9 +297,9 @@ function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('cliqon:close-active-tab', handleCloseActiveTab);
       window.removeEventListener('cliqon:split-pane', handleSplit);
-      window.removeEventListener('cliqon:next-tab', () => handleCycleTabs(true));
-      window.removeEventListener('cliqon:prev-tab', () => handleCycleTabs(false));
-      window.removeEventListener('cliqon:check-updates', () => checkForUpdates());
+      window.removeEventListener('cliqon:next-tab', handleNextTab);
+      window.removeEventListener('cliqon:prev-tab', handlePrevTab);
+      window.removeEventListener('cliqon:check-updates', handleCheckUpdates);
       window.removeEventListener('cliqon:exit-app', handleExitApp);
     };
   }, [activeTab, checkForUpdates]);

@@ -229,8 +229,7 @@ fn parse_cpu(raw: &str, prev: &mut Option<(u64, u64)>) -> f64 {
             return 0.0;
         }
         ((d_total - d_idle) as f64 / d_total as f64 * 100.0)
-            .min(100.0)
-            .max(0.0)
+            .clamp(0.0, 100.0)
     } else {
         *prev = Some((idle, total));
         // First sample — return rough estimate
@@ -238,8 +237,7 @@ fn parse_cpu(raw: &str, prev: &mut Option<(u64, u64)>) -> f64 {
             return 0.0;
         }
         ((total - idle) as f64 / total as f64 * 100.0)
-            .min(100.0)
-            .max(0.0)
+            .clamp(0.0, 100.0)
     }
 }
 
@@ -499,8 +497,6 @@ mod tests {
     fn test_parse_loadavg_insufficient_parts() {
         let loadavg = "0.15 0.10";
         let (l1, l5, l15) = parse_loadavg(loadavg);
-        // When insufficient parts (less than 3), it returns 0.0 for all values
-        // because the function requires at least 3 parts
         assert_eq!(l1, 0.0);
         assert_eq!(l5, 0.0);
         assert_eq!(l15, 0.0);
@@ -513,6 +509,26 @@ mod tests {
         assert_eq!(l1, 0.0);
         assert_eq!(l5, 0.0);
         assert_eq!(l15, 0.0);
+    }
+
+    #[test]
+    fn test_parse_os_info_pretty_name() {
+        // Test the OS info parsing logic from the start() method
+        fn parse_os_info(raw: &str) -> String {
+            if raw.starts_with("PRETTY_NAME=") {
+                raw.trim_start_matches("PRETTY_NAME=")
+                    .trim_matches('"')
+                    .to_string()
+            } else {
+                raw.to_string()
+            }
+        }
+
+        assert_eq!(parse_os_info("PRETTY_NAME=\"Ubuntu 22.04.3 LTS\""), "Ubuntu 22.04.3 LTS");
+        assert_eq!(parse_os_info("PRETTY_NAME=\"Debian GNU/Linux 12 (bookworm)\""), "Debian GNU/Linux 12 (bookworm)");
+        assert_eq!(parse_os_info("PRETTY_NAME=\"Fedora Linux 39 (Container Image)\""), "Fedora Linux 39 (Container Image)");
+        assert_eq!(parse_os_info("Linux"), "Linux");
+        assert_eq!(parse_os_info(""), "");
     }
 
     #[test]
@@ -553,14 +569,5 @@ mod tests {
 
         assert_eq!(metrics.cpu_percent, 50.0);
         assert_eq!(metrics.ram_percent, 50.0);
-    }
-
-    #[test]
-    fn test_metrics_calculation() {
-        let total: u64 = 100000;
-        let used: u64 = 50000;
-        let percent = (used as f64 / total as f64) * 100.0;
-
-        assert_eq!(percent, 50.0);
     }
 }

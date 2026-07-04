@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Shield, FilePlus, Save, X, Activity, Star } from 'lucide-react';
 import { AuthMethod, SshProfile } from '../../types/connection';
 import { invoke } from '@tauri-apps/api/core';
@@ -32,6 +32,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
     const [loading, setLoading] = useState(false);
     const [testStatus, setTestStatus] = useState<TestStatus>('idle');
     const [testMessage, setTestMessage] = useState<string>('');
+    const testTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (testTimerRef.current) clearTimeout(testTimerRef.current);
+        };
+    }, []);
 
     useEffect(() => {
         if (isOpen) {
@@ -67,7 +74,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
             });
             setTestStatus('success');
             setTestMessage('Connection successful!');
-            setTimeout(() => setTestStatus('idle'), 3000);
+            if (testTimerRef.current) clearTimeout(testTimerRef.current);
+            testTimerRef.current = setTimeout(() => {
+                setTestStatus('idle');
+                testTimerRef.current = null;
+            }, 3000);
         } catch (err: any) {
             setTestStatus('error');
             setTestMessage(typeof err === 'string' ? err : err.message || 'Connection failed');

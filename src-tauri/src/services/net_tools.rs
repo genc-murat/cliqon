@@ -1,12 +1,9 @@
 use std::io::Read;
-use std::net::TcpStream;
-use std::time::Duration;
 
-use ssh2::Session;
 
 use crate::error::{AppError, Result};
 use crate::models::profile::SshProfile;
-use crate::services::auth::authenticate_session;
+use crate::services::auth;
 
 pub struct NetToolManager;
 
@@ -105,15 +102,8 @@ impl NetToolManager {
         };
 
         // Open a dedicated SSH connection for this one-shot command
-        let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
-        tcp.set_read_timeout(Some(Duration::from_secs(60)))?;
-        tcp.set_write_timeout(Some(Duration::from_secs(10)))?;
-
-        let mut session = Session::new()?;
-        session.set_tcp_stream(tcp);
-        session.handshake()?;
-
-        authenticate_session(&mut session, profile, secret)?;
+        let session = auth::open_session(profile, secret)?;
+        session.set_timeout(60_000);
 
         // Execute the command
         session.set_blocking(true);

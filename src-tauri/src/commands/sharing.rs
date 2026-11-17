@@ -57,8 +57,7 @@ pub async fn share_items_with_peer(
         let all_profiles = store.get_all_profiles()?;
         for pid in &profile_ids {
             if let Some(profile) = all_profiles.iter().find(|p| p.id == *pid) {
-                let secret = store.get_profile_secret(pid).ok().flatten();
-                shareable_profiles.push(ShareableProfile::from_profile(profile, secret));
+                shareable_profiles.push(ShareableProfile::from_profile(profile));
             }
         }
     }
@@ -105,9 +104,9 @@ pub async fn accept_share(
     if !share.profiles.is_empty() {
         let store = state.profile_store.lock().unwrap();
         for sp in &share.profiles {
-            let ssh_profile = sp.to_ssh_profile();
-            let secret = sp.secret.clone();
-            store.save_profile(ssh_profile, secret)?;
+            let mut profile = sp.to_ssh_profile();
+            profile.id = uuid::Uuid::new_v4().to_string();
+            store.save_profile(profile, None)?;
             count += 1;
         }
     }
@@ -116,7 +115,9 @@ pub async fn accept_share(
     if !share.snippets.is_empty() {
         let store = state.snippet_store.lock().unwrap();
         for ss in &share.snippets {
-            let snippet = crate::models::snippet::Snippet::from(ss.clone());
+            let mut snippet = crate::models::snippet::Snippet::from(ss.clone());
+            snippet.id = uuid::Uuid::new_v4().to_string();
+            snippet.auto_run = false;
             store.save(snippet)?;
             count += 1;
         }

@@ -14,8 +14,7 @@ pub async fn run_net_tool(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .net_tool_manager

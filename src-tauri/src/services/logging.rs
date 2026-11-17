@@ -1,8 +1,6 @@
 use crate::error::Result;
 use crate::models::profile::SshProfile;
-use crate::services::auth::authenticate_session;
-use ssh2::Session;
-use std::net::TcpStream;
+use crate::services::auth;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -35,12 +33,7 @@ impl LogManager {
         path: String,
         session_id: String,
     ) -> Result<()> {
-        let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
-        let mut session = Session::new()?;
-        session.set_tcp_stream(tcp);
-        session.handshake()?;
-
-        authenticate_session(&mut session, &profile, secret.as_deref())?;
+        let session = auth::open_session(&profile, secret.as_deref())?;
 
         let mut channel = session.channel_session()?;
 

@@ -36,11 +36,28 @@ pub struct SshProfile {
     // For PrivateKey method, the path to the key or the key content
     // Note: We don't store passwords/key passphrases directly in this struct.
     pub private_key_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub obfuscated_secret: Option<String>,
     pub tunnels: Option<Vec<TunnelConfig>>,
     pub is_favorite: Option<bool>,
     pub color: Option<String>,
     pub last_used: Option<i64>,
+}
+
+impl SshProfile {
+    pub fn same_credentials_scope(&self, other: &Self) -> bool {
+        self.host.trim().eq_ignore_ascii_case(other.host.trim())
+            && self.port == other.port
+            && self.username == other.username
+            && self.auth_method == other.auth_method
+            && (self.auth_method != AuthMethod::PrivateKey
+                || self.private_key_path == other.private_key_path)
+    }
+
+    pub fn without_secret(mut self) -> Self {
+        self.obfuscated_secret = None;
+        self
+    }
 }
 
 impl Default for SshProfile {

@@ -6,6 +6,7 @@ pub mod services;
 
 use state::app_state::AppState;
 use commands::profile::*;
+use commands::backup::*;
 use commands::terminal::*;
 use commands::sftp::*;
 use commands::monitor::*;
@@ -35,10 +36,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
-            #[cfg(debug_assertions)]
+            #[cfg(all(debug_assertions, feature = "devtools"))]
             app.handle().plugin(tauri_plugin_devtools::init())?;
 
             let app_state = AppState::new(app.handle());
+            services::host_keys::initialize(app.path().app_data_dir()?.join("known_hosts.json"));
             app.manage(app_state);
             app.manage(std::sync::Arc::new(SystemService::new()));
             app.manage(std::sync::Arc::new(LogManager::new()));
@@ -49,10 +51,13 @@ pub fn run() {
             get_profiles,
             save_profile,
             delete_profile,
-            get_profile_secret,
+            export_backup_records,
+            restore_backup_records,
             record_usage,
             import_profiles,
             test_ssh_connection,
+            inspect_ssh_host_key,
+            trust_ssh_host_key,
             connect_ssh,
             write_to_pty,
             resize_pty,

@@ -1,13 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::net::TcpStream;
-use std::time::Duration;
 use std::io::Read;
 use ssh2::Session;
 use tauri::State;
 use crate::error::{Result, AppError};
 use crate::models::profile::SshProfile;
-use crate::services::auth::authenticate_session;
 use crate::state::app_state::AppState;
 use std::fs;
 use std::process::Command;
@@ -40,15 +37,7 @@ pub struct GenerateKeyRequest {
 }
 
 fn create_ssh_session(profile: &SshProfile, secret: Option<&str>) -> Result<Session> {
-    let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
-    tcp.set_read_timeout(Some(Duration::from_secs(30)))?;
-    tcp.set_write_timeout(Some(Duration::from_secs(30)))?;
-    
-    let mut session = Session::new()?;
-    session.set_tcp_stream(tcp);
-    session.handshake()?;
-    
-    authenticate_session(&mut session, profile, secret)?;
+    let session = crate::services::auth::open_session(profile, secret)?;
     
     Ok(session)
 }
@@ -324,7 +313,7 @@ pub async fn get_remote_authorized_keys(
     profile: SshProfile,
 ) -> Result<Vec<RemoteKey>> {
     let store = state.profile_store.lock().unwrap();
-    let secret = store.get_profile_secret(&profile.id)?;
+    let secret = store.get_secret_for(&profile)?;
 
     let output = exec_on_remote(&profile, secret.as_deref(), "cat ~/.ssh/authorized_keys 2>/dev/null || echo ''")?;
     
@@ -345,7 +334,7 @@ pub async fn add_remote_authorized_key(
     public_key: String,
 ) -> Result<bool> {
     let store = state.profile_store.lock().unwrap();
-    let secret = store.get_profile_secret(&profile.id)?;
+    let secret = store.get_secret_for(&profile)?;
 
     exec_on_remote(&profile, secret.as_deref(), "mkdir -p ~/.ssh && chmod 700 ~/.ssh")?;
     
@@ -365,7 +354,7 @@ pub async fn remove_remote_authorized_key(
     public_key: String,
 ) -> Result<bool> {
     let store = state.profile_store.lock().unwrap();
-    let secret = store.get_profile_secret(&profile.id)?;
+    let secret = store.get_secret_for(&profile)?;
 
     let temp_file = "/tmp/cliqon_authorized_keys_temp";
     let escaped_key = public_key.replace("'", "'\\''");
@@ -386,7 +375,7 @@ pub async fn deploy_key_to_remote(
     remote_username: String,
 ) -> Result<bool> {
     let store = state.profile_store.lock().unwrap();
-    let secret = store.get_profile_secret(&profile.id)?;
+    let secret = store.get_secret_for(&profile)?;
 
     let keys_dir = get_keys_dir();
     let public_key_path = keys_dir.join(format!("{}.pub", key_name));

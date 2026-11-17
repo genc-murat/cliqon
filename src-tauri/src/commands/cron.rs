@@ -15,20 +15,8 @@ pub struct CronJob {
 }
 
 fn exec_on_remote_cron(profile: &SshProfile, secret: Option<&str>, command: &str) -> Result<String> {
-    use std::net::TcpStream;
-    use std::time::Duration;
-    use ssh2::Session;
-    use crate::services::auth::authenticate_session;
 
-    let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
-    tcp.set_read_timeout(Some(Duration::from_secs(30)))?;
-    tcp.set_write_timeout(Some(Duration::from_secs(30)))?;
-    
-    let mut session = Session::new()?;
-    session.set_tcp_stream(tcp);
-    session.handshake()?;
-    
-    authenticate_session(&mut session, profile, secret)?;
+    let session = crate::services::auth::open_session(profile, secret)?;
     
     let mut channel = session.channel_session()?;
     channel.exec(command)?;
@@ -56,7 +44,7 @@ pub async fn list_cron_jobs(
     profile: SshProfile,
 ) -> Result<Vec<CronJob>> {
     let store = state.profile_store.lock().unwrap();
-    let secret = store.get_profile_secret(&profile.id)?;
+    let secret = store.get_secret_for(&profile)?;
 
     let output = exec_on_remote_cron(&profile, secret.as_deref(), "crontab -l 2>/dev/null || echo ''")?;
 
@@ -96,7 +84,7 @@ pub async fn create_cron_job(
     command: String,
 ) -> Result<bool> {
     let store = state.profile_store.lock().unwrap();
-    let secret = store.get_profile_secret(&profile.id)?;
+    let secret = store.get_secret_for(&profile)?;
 
     let escaped_command = command.replace("'", "'\\''");
     let cron_line = format!("{} {}", schedule, escaped_command);
@@ -119,7 +107,7 @@ pub async fn delete_cron_job(
     command: String,
 ) -> Result<bool> {
     let store = state.profile_store.lock().unwrap();
-    let secret = store.get_profile_secret(&profile.id)?;
+    let secret = store.get_secret_for(&profile)?;
 
     let escaped_schedule = schedule.replace("'", "'\\''");
     let escaped_command = command.replace("'", "'\\''");
@@ -141,7 +129,7 @@ pub async fn get_cron_history(
     limit: Option<u32>,
 ) -> Result<Vec<String>> {
     let store = state.profile_store.lock().unwrap();
-    let secret = store.get_profile_secret(&profile.id)?;
+    let secret = store.get_secret_for(&profile)?;
 
     let limit_str = limit.unwrap_or(20);
     

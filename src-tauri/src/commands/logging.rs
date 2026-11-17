@@ -14,7 +14,7 @@ pub async fn start_log_tail(
     path: String,
     session_id: String,
 ) -> Result<()> {
-    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+    let secret = state.profile_store.lock().unwrap().get_secret_for(&profile)
         .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
     
     log_manager.start_tail(app, profile, secret, path, session_id)?;

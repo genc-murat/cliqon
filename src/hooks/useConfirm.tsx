@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 
 interface ConfirmOptions {
@@ -16,40 +16,33 @@ interface ConfirmContextType {
 const ConfirmContext = createContext<ConfirmContextType | undefined>(undefined);
 
 export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [options, setOptions] = useState<ConfirmOptions>({});
-    const resolveRef = useRef<((value: boolean) => void) | null>(null);
+    const [pending, setPending] = useState<Array<{ options: ConfirmOptions; resolve: (value: boolean) => void }>>([]);
+    const request = pending[0];
 
     const confirm = useCallback((confirmOptions: ConfirmOptions) => {
-        setOptions(confirmOptions);
-        setIsOpen(true);
         return new Promise<boolean>((resolve) => {
-            resolveRef.current = resolve;
+            setPending(current => [...current, { options: confirmOptions, resolve }]);
         });
     }, []);
 
-    const handleConfirm = useCallback(() => {
-        setIsOpen(false);
-        resolveRef.current?.(true);
-    }, []);
-
-    const handleCancel = useCallback(() => {
-        setIsOpen(false);
-        resolveRef.current?.(false);
-    }, []);
+    function resolveRequest(value: boolean) {
+        if (!request) return;
+        request.resolve(value);
+        setPending(current => current.filter(item => item !== request));
+    }
 
     return (
         <ConfirmContext.Provider value={{ confirm }}>
             {children}
             <ConfirmDialog
-                isOpen={isOpen}
-                title={options.title || 'Are you sure?'}
-                message={options.message || 'This action cannot be undone.'}
-                confirmLabel={options.confirmLabel}
-                cancelLabel={options.cancelLabel}
-                isDestructive={options.isDestructive}
-                onConfirm={handleConfirm}
-                onCancel={handleCancel}
+                isOpen={!!request}
+                title={request?.options.title || 'Are you sure?'}
+                message={request?.options.message || 'This action cannot be undone.'}
+                confirmLabel={request?.options.confirmLabel}
+                cancelLabel={request?.options.cancelLabel}
+                isDestructive={request?.options.isDestructive}
+                onConfirm={() => resolveRequest(true)}
+                onCancel={() => resolveRequest(false)}
             />
         </ConfirmContext.Provider>
     );

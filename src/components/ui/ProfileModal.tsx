@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Shield, FilePlus, Save, X, Activity, Star } from 'lucide-react';
 import { AuthMethod, SshProfile } from '../../types/connection';
-import { invoke } from '@tauri-apps/api/core';
+import { api } from '../../services/api';
+import { isUnknownHostKey, sshErrorMessage, useHostKeyTrust } from '../../hooks/useHostKeyTrust';
 
 type TestStatus = 'idle' | 'testing' | 'success' | 'error';
 
@@ -32,7 +33,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
     const [loading, setLoading] = useState(false);
     const [testStatus, setTestStatus] = useState<TestStatus>('idle');
     const [testMessage, setTestMessage] = useState<string>('');
+    const [saveError, setSaveError] = useState('');
     const testTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const testAttempt = useRef(0);
+    const approveHostKey = useHostKeyTrust();
 
     useEffect(() => {
         return () => {
@@ -46,7 +50,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
             setSecret('');
             setTestStatus('idle');
             setTestMessage('');
+            setSaveError('');
         }
+        return () => { testAttempt.current++; };
     }, [isOpen, existingProfile]);
 
     if (!isOpen) return null;
@@ -54,24 +60,32 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setSaveError('');
         try {
             await onSave(profile, secret || null);
             onClose();
         } catch (err) {
-            console.error(err);
+            setSaveError(sshErrorMessage(err));
         } finally {
             setLoading(false);
         }
     };
 
     const handleTestConnection = async () => {
+        const attempt = ++testAttempt.current;
+        const isCurrent = () => testAttempt.current === attempt;
+        if (testTimerRef.current) clearTimeout(testTimerRef.current);
         setTestStatus('testing');
         setTestMessage('');
         try {
-            await invoke('test_ssh_connection', {
-                profile,
-                providedSecret: secret || null
-            });
+            try {
+                await api.testSshConnection(profile, secret || null);
+            } catch (error) {
+                if (!isUnknownHostKey(error)) throw error;
+                if (!isCurrent() || !await approveHostKey(profile, isCurrent)) throw error;
+                await api.testSshConnection(profile, secret || null);
+            }
+            if (!isCurrent()) return;
             setTestStatus('success');
             setTestMessage('Connection successful!');
             if (testTimerRef.current) clearTimeout(testTimerRef.current);
@@ -79,9 +93,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
                 setTestStatus('idle');
                 testTimerRef.current = null;
             }, 3000);
-        } catch (err: any) {
+        } catch (err) {
+            if (!isCurrent()) return;
             setTestStatus('error');
-            setTestMessage(typeof err === 'string' ? err : err.message || 'Connection failed');
+            setTestMessage(sshErrorMessage(err));
         }
     };
 
@@ -244,6 +259,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
                         )}
                     </div>
 
+                    {saveError && <p role="alert" className="text-xs text-red-400">{saveError}</p>}
+                    {testStatus === 'error' && <p role="alert" className="text-xs text-red-400">{testMessage}</p>}
                     <div className="flex justify-between items-center pt-4 border-t border-[var(--border-color)]">
                         <div className="flex items-center gap-2">
                             <button
@@ -255,7 +272,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
                             >
                                 <Activity size={18} className={testStatus === 'testing' ? 'animate-pulse text-[var(--accent-color)]' : ''} />
                             </button>
-                            {testStatus !== 'idle' && (
+                            {testStatus === 'success' && (
                                 <span className={`text-[10px] font-bold uppercase tracking-tight ${testStatus === 'success' ? 'text-green-500' : 'text-red-500'} max-w-[120px] truncate`}>
                                     {testMessage}
                                 </span>

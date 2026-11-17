@@ -64,6 +64,7 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
     const [loading, setLoading] = useState<boolean>(true);
     const [statsLoading, setStatsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+    const [operationError, setOperationError] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null); // containerId that is busy
     const isPruning = useRef<boolean>(false);
 
@@ -113,6 +114,7 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
     }, [fetchContainers, fetchStats]);
 
     const handleAction = async (action: 'start' | 'stop' | 'restart', containerId: string) => {
+        setOperationError(null);
         try {
             setActionLoading(containerId);
             if (action === 'start') {
@@ -125,8 +127,7 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
             await fetchContainers(); // refresh immediately
             await fetchStats();
         } catch (err: any) {
-            console.error(`Error performing ${action} on ${containerId}:`, err);
-            // Optionally set error state or show a toast
+            setOperationError(`Could not ${action} container ${containerId}. ${String(err)}`);
         } finally {
             setActionLoading(null);
         }
@@ -149,6 +150,7 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
         });
         
         if (!isConfirmed) return;
+        setOperationError(null);
         
         try {
             isPruning.current = true;
@@ -176,40 +178,44 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
             await fetchContainers();
             await fetchStats();
         } catch (err: any) {
-            console.error("Failed to prune", err);
+            setOperationError(`Prune failed. ${String(err)}`);
         } finally {
             isPruning.current = false;
             setActionLoading(null);
         }
     };
 
-    const handleBulkAction = async (action: 'start' | 'stop' | 'restart' | 'remove') => {
+    const handleBulkAction = async (action: 'start' | 'stop' | 'restart') => {
         if (selectedContainers.size === 0) return;
-
-        let confirmMsg = `Are you sure you want to ${action} ${selectedContainers.size} container(s)?`;
-        if (action === 'remove') confirmMsg += ' This action is irreversible.';
 
         const isConfirmed = await confirmCustom({
             title: 'Bulk Action',
-            message: confirmMsg,
+            message: `Are you sure you want to ${action} ${selectedContainers.size} container(s)?`,
             confirmLabel: action.charAt(0).toUpperCase() + action.slice(1),
-            isDestructive: action === 'remove' || action === 'stop'
+            isDestructive: action === 'stop'
         });
         if (!isConfirmed) return;
+        setOperationError(null);
 
         try {
             setActionLoading('bulk');
-            const promises = Array.from(selectedContainers).map(async (containerId) => {
+            const containerIds = Array.from(selectedContainers);
+            const results = await Promise.allSettled(containerIds.map(async (containerId) => {
                 if (action === 'start') await api.startDockerContainer(profile, containerId);
                 else if (action === 'stop') await api.stopDockerContainer(profile, containerId);
                 else if (action === 'restart') await api.restartDockerContainer(profile, containerId);
-            });
-            await Promise.allSettled(promises);
-            setSelectedContainers(new Set());
+            }));
+            const failures = results.flatMap((result, index) =>
+                result.status === 'rejected' ? [{ id: containerIds[index], reason: result.reason }] : []
+            );
+            if (failures.length > 0) {
+                setOperationError(`Could not ${action} ${failures.length} of ${containerIds.length} containers. ${String(failures[0].reason)}`);
+            }
+            setSelectedContainers(new Set(failures.map(failure => failure.id)));
             await fetchContainers();
             await fetchStats();
         } catch (err: any) {
-            console.error(`Error performing bulk ${action}:`, err);
+            setOperationError(`Bulk ${action} failed. ${String(err)}`);
         } finally {
             setActionLoading(null);
         }
@@ -425,6 +431,11 @@ export const DockerManager: React.FC<DockerManagerProps> = ({ profile, onClose, 
 
             {/* Content */}
             <div className="flex-1 overflow-hidden relative flex flex-col">
+                {operationError && (
+                    <p role="alert" className="shrink-0 p-2 text-xs text-red-400 bg-red-500/10 break-words">
+                        {operationError}
+                    </p>
+                )}
                 {activeTab === 'ports' ? (
                     <DockerPortForwards containers={containers} host={profile.host} />
                 ) : activeTab === 'logs' ? (

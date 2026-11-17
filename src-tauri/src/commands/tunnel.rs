@@ -9,16 +9,13 @@ pub async fn start_tunnel(
     config: TunnelConfig,
     state: State<'_, AppState>,
 ) -> Result<()> {
-    // 1. Get the session
-    let session = state
-        .ssh_manager
-        .get_session(&session_id)
-        .ok_or_else(|| AppError::Custom("SSH Session not found".to_string()))?;
-        
-    // 2. Start the tunnel
-    state.tunnel_service.start_tunnel(&session, config, session_id)?;
-
-    Ok(())
+    let manager = state.ssh_manager.clone();
+    let profile_store = state.profile_store.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        manager.start_tunnel(session_id, config, |profile| {
+            profile_store.lock().unwrap().get_secret_for(profile)
+        })
+    }).await.map_err(|error| AppError::Custom(error.to_string()))?
 }
 
 #[tauri::command]
@@ -26,7 +23,7 @@ pub async fn stop_tunnel(
     tunnel_id: String,
     state: State<'_, AppState>,
 ) -> Result<()> {
-    state.tunnel_service.stop_tunnel(&tunnel_id)?;
+    state.ssh_manager.tunnels.stop_tunnel(&tunnel_id)?;
     Ok(())
 }
 
@@ -35,14 +32,14 @@ pub async fn get_active_tunnels(
     session_id: String,
     state: State<'_, AppState>,
 ) -> Result<Vec<TunnelConfig>> {
-    Ok(state.tunnel_service.get_active_tunnels(&session_id))
+    Ok(state.ssh_manager.tunnels.get_active_tunnels(&session_id))
 }
 #[tauri::command]
 pub async fn get_tunnel_stats(
     session_id: String,
     state: State<'_, AppState>,
 ) -> Result<Vec<crate::services::tunnel::TunnelStats>> {
-    Ok(state.tunnel_service.get_tunnel_stats(&session_id))
+    Ok(state.ssh_manager.tunnels.get_tunnel_stats(&session_id))
 }
 
 #[cfg(test)]

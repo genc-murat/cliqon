@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
+import React, { lazy, Suspense, useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { listen, type Event as TauriEvent, type UnlistenFn } from '@tauri-apps/api/event';
 import { Folder, Download, RefreshCw, ChevronLeft, ChevronRight, Edit2, Trash2, Copy, FileText, Network, ShieldAlert, Activity, ArrowUpCircle, Star, Bookmark, X as XIcon, TerminalSquare, Settings, Eye, EyeOff, Archive, Check, SortAsc, FilePlus, Clipboard, Scissors } from 'lucide-react';
 import { FileIcon } from '../ui/FileIcon';
 import { SshProfile, FileNode } from '../../types/connection';
@@ -8,10 +8,12 @@ import { useResizable } from '../../hooks/useResizable';
 import { TransferQueue } from './TransferQueue';
 import { FilePropertiesModal } from './FilePropertiesModal';
 import { TextEditorModal } from './TextEditorModal';
-import { DockerComposeVisualizer } from './DockerComposeVisualizer';
 import { LogViewerModal } from './LogViewerModal';
 import { useSftpBookmarks } from '../../hooks/useSftpBookmarks';
 import { useConfirm } from '../../hooks/useConfirm';
+
+const DockerComposeVisualizer = lazy(() => import('./DockerComposeVisualizer')
+    .then(module => ({ default: module.DockerComposeVisualizer })));
 
 interface FileBrowserProps {
     profile: SshProfile;
@@ -37,6 +39,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
     const [connected, setConnected] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [currentPath, setCurrentPath] = useState<string>('.');
+    const currentPathRef = useRef(currentPath);
     const [files, setFiles] = useState<FileNode[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem('cliqon-sftp-collapsed') === 'true');
@@ -123,81 +126,80 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
 
     useEffect(() => {
         let isMounted = true;
-        let unlistenRx: UnlistenFn | null = null;
-        let unlistenPathRx: UnlistenFn | null = null;
-        let unlistenTransferDone: UnlistenFn | null = null;
-        let unlistenRenameDone: UnlistenFn | null = null;
-        let unlistenDeleteDone: UnlistenFn | null = null;
-        let unlistenDeleteErr: UnlistenFn | null = null;
-        let unlistenRenameErr: UnlistenFn | null = null;
-        let unlistenWatch: UnlistenFn | null = null;
-        let unlistenCreateDirDone: UnlistenFn | null = null;
-        let unlistenCreateDirErr: UnlistenFn | null = null;
-        let unlistenCreateFileDone: UnlistenFn | null = null;
-        let unlistenCreateFileErr: UnlistenFn | null = null;
-        let unlistenCopyDone: UnlistenFn | null = null;
-        let unlistenCopyErr: UnlistenFn | null = null;
-        let unlistenMoveDone: UnlistenFn | null = null;
-        let unlistenMoveErr: UnlistenFn | null = null;
+        let connectionRequested = false;
+        const activeListeners: UnlistenFn[] = [];
+        const watch = async <T,>(event: string, handleEvent: (event: TauriEvent<T>) => void) => {
+            if (!isMounted) return;
+            const stop = await listen<T>(event, handleEvent);
+            if (isMounted) activeListeners.push(stop);
+            else stop();
+        };
 
         const setupSftp = async () => {
             try {
-                unlistenRx = await listen<FileNode[]>(`sftp_dir_rx_${sessionId}`, (event) => {
+                await watch<FileNode[]>(`sftp_dir_rx_${sessionId}`, (event) => {
                     if (isMounted) { setFiles(event.payload); setIsLoading(false); setSelectedIndex(-1); }
                 });
-                unlistenPathRx = await listen<string>(`sftp_current_path_rx_${sessionId}`, (event) => {
-                    if (isMounted) { setCurrentPath(event.payload); }
+                await watch<string>(`sftp_current_path_rx_${sessionId}`, (event) => {
+                    if (isMounted) { currentPathRef.current = event.payload; setCurrentPath(event.payload); }
                 });
-                unlistenTransferDone = await listen<string>(`sftp_transfer_done_${sessionId}`, () => {
-                    if (isMounted) fetchDirectory(currentPath);
+                await watch<string>(`sftp_transfer_done_${sessionId}`, () => {
+                    if (isMounted) fetchDirectory(currentPathRef.current);
                 });
-                unlistenRenameDone = await listen<string>(`sftp_rename_done_${sessionId}`, () => {
-                    if (isMounted) { fetchDirectory(currentPath); showStatus('✅ Renamed'); }
+                await watch<string>(`sftp_rename_done_${sessionId}`, () => {
+                    if (isMounted) { fetchDirectory(currentPathRef.current); showStatus('✅ Renamed'); }
                 });
-                unlistenRenameErr = await listen<string>(`sftp_rename_error_${sessionId}`, (e) => {
+                await watch<string>(`sftp_rename_error_${sessionId}`, (e) => {
                     if (isMounted) showStatus(`❌ Rename failed: ${e.payload} `);
                 });
-                unlistenDeleteDone = await listen<string>(`sftp_delete_done_${sessionId}`, () => {
-                    if (isMounted) { fetchDirectory(currentPath); showStatus('✅ Deleted'); }
+                await watch<string>(`sftp_delete_done_${sessionId}`, () => {
+                    if (isMounted) { fetchDirectory(currentPathRef.current); showStatus('✅ Deleted'); }
                 });
-                unlistenDeleteErr = await listen<string>(`sftp_delete_error_${sessionId}`, (e) => {
+                await watch<string>(`sftp_delete_error_${sessionId}`, (e) => {
                     if (isMounted) showStatus(`❌ Delete failed: ${e.payload} `);
                 });
 
-                unlistenWatch = await listen<string>(`sftp_watch_changed_${sessionId}`, (e) => {
-                    if (isMounted && e.payload === currentPath) fetchDirectory(currentPath);
+                await watch<string>(`sftp_watch_changed_${sessionId}`, (e) => {
+                    if (isMounted && e.payload === currentPathRef.current) fetchDirectory(currentPathRef.current);
                 });
 
-                unlistenCreateDirDone = await listen<string>(`sftp_createdir_done_${sessionId}`, () => {
-                    if (isMounted) { fetchDirectory(currentPath); showStatus('✅ Folder created'); }
+                await watch<string>(`sftp_createdir_done_${sessionId}`, () => {
+                    if (isMounted) { fetchDirectory(currentPathRef.current); showStatus('✅ Folder created'); }
                 });
-                unlistenCreateDirErr = await listen<string>(`sftp_createdir_error_${sessionId}`, (e) => {
+                await watch<string>(`sftp_createdir_error_${sessionId}`, (e) => {
                     if (isMounted) showStatus(`❌ Create folder failed: ${e.payload} `);
                 });
 
-                unlistenCreateFileDone = await listen<string>(`sftp_createfile_done_${sessionId}`, () => {
-                    if (isMounted) { fetchDirectory(currentPath); showStatus('✅ File created'); }
+                await watch<string>(`sftp_createfile_done_${sessionId}`, () => {
+                    if (isMounted) { fetchDirectory(currentPathRef.current); showStatus('✅ File created'); }
                 });
-                unlistenCreateFileErr = await listen<string>(`sftp_createfile_error_${sessionId}`, (e) => {
+                await watch<string>(`sftp_createfile_error_${sessionId}`, (e) => {
                     if (isMounted) showStatus(`❌ Create file failed: ${e.payload} `);
                 });
 
-                unlistenCopyDone = await listen<{ source: string; dest: string }>(`sftp_copy_done_${sessionId}`, () => {
-                    if (isMounted) { fetchDirectory(currentPath); showStatus('✅ Copied'); }
+                await watch<{ source: string; dest: string }>(`sftp_copy_done_${sessionId}`, () => {
+                    if (isMounted) { fetchDirectory(currentPathRef.current); showStatus('✅ Copied'); }
                 });
-                unlistenCopyErr = await listen<string>(`sftp_copy_error_${sessionId}`, (e) => {
+                await watch<string>(`sftp_copy_error_${sessionId}`, (e) => {
                     if (isMounted) showStatus(`❌ Copy failed: ${e.payload} `);
                 });
 
-                unlistenMoveDone = await listen<{ source: string; dest: string }>(`sftp_move_done_${sessionId}`, () => {
-                    if (isMounted) { fetchDirectory(currentPath); setClipboard(null); showStatus('✅ Moved'); }
+                await watch<{ source: string; dest: string }>(`sftp_move_done_${sessionId}`, () => {
+                    if (isMounted) { fetchDirectory(currentPathRef.current); setClipboard(null); showStatus('✅ Moved'); }
                 });
-                unlistenMoveErr = await listen<string>(`sftp_move_error_${sessionId}`, (e) => {
+                await watch<string>(`sftp_move_error_${sessionId}`, (e) => {
                     if (isMounted) showStatus(`❌ Move failed: ${e.payload} `);
                 });
 
+                if (!isMounted) return;
+                connectionRequested = true;
                 await api.connectSftp(profile, sessionId);
-                if (isMounted) { setConnected(true); fetchDirectory(currentPath); }
+                if (!isMounted) {
+                    await api.closeSftp(sessionId);
+                    return;
+                }
+                setConnected(true);
+                fetchDirectory(currentPathRef.current);
             } catch (err: any) {
                 if (isMounted) setError(`SFTP Error: ${err} `);
             }
@@ -207,15 +209,10 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
 
         return () => {
             isMounted = false;
-            [unlistenRx, unlistenPathRx, unlistenTransferDone, unlistenRenameDone, unlistenRenameErr,
-                unlistenDeleteDone, unlistenDeleteErr, unlistenWatch, unlistenCreateDirDone,
-                unlistenCreateDirErr, unlistenCreateFileDone, unlistenCreateFileErr,
-                unlistenCopyDone, unlistenCopyErr, unlistenMoveDone, unlistenMoveErr].forEach(u => u?.());
-            api.closeSftp(sessionId).catch((err) => {
-                console.error('Failed to close SFTP:', err);
-            });
+            activeListeners.forEach(unlisten => unlisten());
+            if (connectionRequested) api.closeSftp(sessionId).catch(console.error);
         };
-    }, [profile, sessionId, currentPath, fetchDirectory]);
+    }, [profile, sessionId, fetchDirectory]);
 
     const handleNavigate = (node: FileNode) => {
         if (node.is_dir) {
@@ -998,11 +995,13 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({ profile, sessionId, is
 
             {/* Compose Visualizer Modal */}
             {visualizeComposeFile && (
-                <DockerComposeVisualizer
-                    profile={profile}
-                    initialPath={visualizeComposeFile.path}
-                    onClose={() => setVisualizeComposeFile(null)}
-                />
+                <Suspense fallback={null}>
+                    <DockerComposeVisualizer
+                        profile={profile}
+                        initialPath={visualizeComposeFile.path}
+                        onClose={() => setVisualizeComposeFile(null)}
+                    />
+                </Suspense>
             )}
 
             {/* Create Modal */}

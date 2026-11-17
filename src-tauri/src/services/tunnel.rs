@@ -1,23 +1,39 @@
 use std::collections::HashMap;
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::io::{self, Read, Write};
+use std::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::{Duration, Instant};
 
-use ssh2::Session;
+use ssh2::{Channel, Listener, Session};
 
+use super::{auth::authenticate_session, connection_stop::ConnectionStop, host_keys};
 use crate::error::{AppError, Result};
-use crate::models::profile::{TunnelConfig, TunnelType};
+use crate::models::profile::{SshProfile, TunnelConfig, TunnelType};
 
-// tunnel state
-#[derive(Debug)]
+const POLL_INTERVAL: Duration = Duration::from_millis(15);
+const FORWARD_TIMEOUT: Duration = Duration::from_secs(10);
+
+#[derive(Clone)]
 pub struct ActiveTunnel {
     pub config: TunnelConfig,
     pub session_id: String,
     pub is_running: Arc<AtomicBool>,
     pub bytes_sent: Arc<AtomicU64>,
     pub bytes_received: Arc<AtomicU64>,
+    stop: Arc<ConnectionStop>,
+}
+
+impl ActiveTunnel {
+    fn running(&self) -> bool {
+        self.is_running.load(Ordering::Acquire)
+    }
+
+    fn cancel(&self) {
+        self.is_running.store(false, Ordering::Release);
+        self.stop.cancel();
+    }
 }
 
 #[derive(serde::Serialize, Clone, Debug)]
@@ -28,374 +44,416 @@ pub struct TunnelStats {
     pub is_active: bool,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Default)]
 pub struct TunnelService {
-    // tunnel_id -> ActiveTunnel
     active_tunnels: Arc<Mutex<HashMap<String, ActiveTunnel>>>,
 }
 
-impl Default for TunnelService {
-    fn default() -> Self {
-        Self::new()
-    }
+enum ForwardListener {
+    Local(TcpListener),
+    Remote(Listener),
 }
 
 impl TunnelService {
     pub fn new() -> Self {
-        Self {
-            active_tunnels: Arc::new(Mutex::new(HashMap::new())),
-        }
+        Self::default()
     }
 
     pub fn start_tunnel(
         &self,
-        session: &Session,
+        profile: &SshProfile,
+        secret: Option<&str>,
         config: TunnelConfig,
         session_id: String,
+        session_stop: &ConnectionStop,
     ) -> Result<()> {
-        let tunnel_id = config.id.clone();
-
-        let mut tunnels = self.active_tunnels.lock().unwrap();
-        if tunnels.contains_key(&tunnel_id) {
-            return Err(AppError::Custom("Tunnel is already active".to_string()));
+        let tunnel = ActiveTunnel {
+            config,
+            session_id,
+            is_running: Arc::new(AtomicBool::new(true)),
+            bytes_sent: Arc::new(AtomicU64::new(0)),
+            bytes_received: Arc::new(AtomicU64::new(0)),
+            stop: Arc::new(ConnectionStop::default()),
+        };
+        {
+            let mut tunnels = self.active_tunnels.lock().unwrap();
+            if session_stop.is_cancelled() {
+                return Err(AppError::Custom("SSH session closed".into()));
+            }
+            if tunnels.contains_key(&tunnel.config.id) {
+                return Err(AppError::Custom("Tunnel is already active".into()));
+            }
+            tunnels.insert(tunnel.config.id.clone(), tunnel.clone());
         }
 
-        let is_running = Arc::new(AtomicBool::new(true));
-        let bytes_sent = Arc::new(AtomicU64::new(0));
-        let bytes_received = Arc::new(AtomicU64::new(0));
+        let setup = (|| {
+            let stream = host_keys::connect_tcp(profile)?;
+            tunnel.stop.attach(&stream)?;
+            let mut session = host_keys::handshake(stream)?;
+            authenticate_session(&mut session, profile, secret)?;
 
-        match config.tunnel_type {
-            TunnelType::Local => {
-                let local_port = config.local_port;
-                let remote_host = config
-                    .remote_host
-                    .clone()
-                    .unwrap_or_else(|| "127.0.0.1".to_string());
-                let remote_port = config.remote_port.unwrap_or(80);
+            let listener = match tunnel.config.tunnel_type {
+                TunnelType::Local | TunnelType::Dynamic => {
+                    let listener =
+                        TcpListener::bind((Ipv4Addr::LOCALHOST, tunnel.config.local_port))?;
+                    listener.set_nonblocking(true)?;
+                    ForwardListener::Local(listener)
+                }
+                TunnelType::Remote => {
+                    let (listener, _) = session.channel_forward_listen(
+                        tunnel.config.remote_port.unwrap_or(8080),
+                        Some(tunnel.config.remote_host.as_deref().unwrap_or("0.0.0.0")),
+                        None,
+                    )?;
+                    ForwardListener::Remote(listener)
+                }
+            };
 
-                let listener = TcpListener::bind(format!("127.0.0.1:{}", local_port))?;
-                listener.set_nonblocking(true)?;
-
-                let cloned_session = session.clone();
-                let running_flag = Arc::clone(&is_running);
-
-                let bs = Arc::clone(&bytes_sent);
-                let br = Arc::clone(&bytes_received);
-                thread::spawn(move || {
-                    for stream in listener.incoming() {
-                        if !running_flag.load(Ordering::Relaxed) {
-                            break;
-                        }
-
-                        match stream {
-                            Ok(mut tcp_stream) => {
-                                // Accept connection
-                                let channel_res = cloned_session.channel_direct_tcpip(
-                                    &remote_host,
-                                    remote_port,
-                                    None,
-                                );
-
-                                if let Ok(mut channel) = channel_res {
-                                    let mut tcp_stream_clone = tcp_stream.try_clone().unwrap();
-                                    let mut channel_clone = channel.clone();
-
-                                    // TCP -> SSH
-                                    let tx_sent = Arc::clone(&bs);
-                                    thread::spawn(move || {
-                                        let mut buf = [0u8; 8192];
-                                        while let Ok(n) = tcp_stream.read(&mut buf) {
-                                            if n == 0 {
-                                                break;
-                                            }
-                                            if channel.write_all(&buf[..n]).is_err() {
-                                                break;
-                                            }
-                                            tx_sent.fetch_add(n as u64, Ordering::Relaxed);
-                                        }
-                                        let _ = channel.send_eof();
-                                    });
-
-                                    // SSH -> TCP
-                                    let tx_received = Arc::clone(&br);
-                                    thread::spawn(move || {
-                                        let mut buf = [0u8; 8192];
-                                        while let Ok(n) = channel_clone.read(&mut buf) {
-                                            if n == 0 {
-                                                break;
-                                            }
-                                            if tcp_stream_clone.write_all(&buf[..n]).is_err() {
-                                                break;
-                                            }
-                                            tx_received.fetch_add(n as u64, Ordering::Relaxed);
-                                        }
-                                    });
-                                }
-                            }
-                            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                thread::sleep(std::time::Duration::from_millis(50));
-                            }
-                            Err(_) => {
-                                break;
-                            }
-                        }
-                    }
-                });
+            if !tunnel.running() {
+                return Err(AppError::Custom("Tunnel cancelled".into()));
             }
-            TunnelType::Remote => {
-                let local_port = config.local_port;
-                let remote_host = config
-                    .remote_host
-                    .clone()
-                    .unwrap_or_else(|| "0.0.0.0".to_string());
-                let remote_port = config.remote_port.unwrap_or(8080);
+            session.set_blocking(false);
+            Ok((session, listener))
+        })();
 
-                let (mut listener, _) =
-                    session.channel_forward_listen(remote_port, Some(&remote_host), None)?;
-
-                let running_flag = Arc::clone(&is_running);
-
-                let bs = Arc::clone(&bytes_sent);
-                let br = Arc::clone(&bytes_received);
-                thread::spawn(move || {
-                    while running_flag.load(Ordering::Relaxed) {
-                        // accept() may block, but we can't easily interrupt it other than closing the session/channel
-                        match listener.accept() {
-                            Ok(mut channel) => {
-                                if let Ok(mut tcp_stream) =
-                                    TcpStream::connect(format!("127.0.0.1:{}", local_port))
-                                {
-                                    let mut tcp_stream_clone = tcp_stream.try_clone().unwrap();
-                                    let mut channel_clone = channel.clone();
-
-                                    // TCP -> SSH
-                                    let tx_sent = Arc::clone(&bs);
-                                    thread::spawn(move || {
-                                        let mut buf = [0u8; 8192];
-                                        while let Ok(n) = tcp_stream.read(&mut buf) {
-                                            if n == 0 {
-                                                break;
-                                            }
-                                            if channel.write_all(&buf[..n]).is_err() {
-                                                break;
-                                            }
-                                            tx_sent.fetch_add(n as u64, Ordering::Relaxed);
-                                        }
-                                        let _ = channel.send_eof();
-                                    });
-
-                                    // SSH -> TCP
-                                    let tx_received = Arc::clone(&br);
-                                    thread::spawn(move || {
-                                        let mut buf = [0u8; 8192];
-                                        while let Ok(n) = channel_clone.read(&mut buf) {
-                                            if n == 0 {
-                                                break;
-                                            }
-                                            if tcp_stream_clone.write_all(&buf[..n]).is_err() {
-                                                break;
-                                            }
-                                            tx_received.fetch_add(n as u64, Ordering::Relaxed);
-                                        }
-                                    });
-                                }
-                            }
-                            Err(_) => {
-                                // Ignore timeout/errors and check running flag again
-                                thread::sleep(std::time::Duration::from_millis(100));
-                            }
-                        }
-                    }
-                });
+        let (session, listener) = match setup {
+            Ok(ready) => ready,
+            Err(error) => {
+                self.remove_current(&tunnel);
+                return Err(error);
             }
-            TunnelType::Dynamic => {
-                let local_port = config.local_port;
-                let listener = TcpListener::bind(format!("127.0.0.1:{}", local_port))?;
-                listener.set_nonblocking(true)?;
-
-                let cloned_session = session.clone();
-                let running_flag = Arc::clone(&is_running);
-
-                let bs = Arc::clone(&bytes_sent);
-                let br = Arc::clone(&bytes_received);
-                thread::spawn(move || {
-                    for stream in listener.incoming() {
-                        if !running_flag.load(Ordering::Relaxed) {
-                            break;
-                        }
-
-                        match stream {
-                            Ok(mut tcp_stream) => {
-                                let session_for_thread = cloned_session.clone();
-                                let tx_sent_outer = Arc::clone(&bs);
-                                let tx_received_outer = Arc::clone(&br);
-
-                                thread::spawn(move || {
-                                    let mut buf = [0u8; 512];
-
-                                    // 1. Read SOCKS5 greeting
-                                    if tcp_stream.read(&mut buf).unwrap_or(0) < 3 {
-                                        return;
-                                    }
-                                    if buf[0] != 0x05 {
-                                        return;
-                                    } // Only SOCKS5 supported
-
-                                    // 2. Reply no auth
-                                    if tcp_stream.write_all(&[0x05, 0x00]).is_err() {
-                                        return;
-                                    }
-
-                                    // 3. Read connection request
-                                    let n = tcp_stream.read(&mut buf).unwrap_or(0);
-                                    if n < 10 || buf[0] != 0x05 || buf[1] != 0x01 {
-                                        return;
-                                    } // Only TCP connect (0x01)
-
-                                    let atyp = buf[3];
-                                    let host;
-                                    let port;
-
-                                    if atyp == 0x01 {
-                                        // IPv4
-                                        if n < 10 {
-                                            return;
-                                        }
-                                        host =
-                                            format!("{}.{}.{}.{}", buf[4], buf[5], buf[6], buf[7]);
-                                        port = u16::from_be_bytes([buf[8], buf[9]]);
-                                    } else if atyp == 0x03 {
-                                        // Domain name
-                                        let len = buf[4] as usize;
-                                        if n < 5 + len + 2 {
-                                            return;
-                                        }
-                                        host =
-                                            String::from_utf8_lossy(&buf[5..5 + len]).to_string();
-                                        let offset = 5 + len;
-                                        port = u16::from_be_bytes([buf[offset], buf[offset + 1]]);
-                                    } else {
-                                        let _ = tcp_stream
-                                            .write_all(&[0x05, 0x08, 0x00, 0x01, 0, 0, 0, 0, 0, 0]); // Address type not supported
-                                        return;
-                                    }
-
-                                    // 4. Connect via SSH channel_direct_tcpip
-                                    if let Ok(mut channel) =
-                                        session_for_thread.channel_direct_tcpip(&host, port, None)
-                                    {
-                                        // Reply success
-                                        if tcp_stream
-                                            .write_all(&[0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
-                                            .is_err()
-                                        {
-                                            return;
-                                        }
-
-                                        let mut tcp_stream_clone = tcp_stream.try_clone().unwrap();
-                                        let mut channel_clone = channel.clone();
-
-                                        // TCP -> SSH
-                                        let tx_sent = Arc::clone(&tx_sent_outer);
-                                        thread::spawn(move || {
-                                            let mut b = [0u8; 8192];
-                                            while let Ok(n) = tcp_stream.read(&mut b) {
-                                                if n == 0 {
-                                                    break;
-                                                }
-                                                if channel.write_all(&b[..n]).is_err() {
-                                                    break;
-                                                }
-                                                tx_sent.fetch_add(n as u64, Ordering::Relaxed);
-                                            }
-                                            let _ = channel.send_eof();
-                                        });
-
-                                        // SSH -> TCP
-                                        let tx_received = Arc::clone(&tx_received_outer);
-                                        let mut b = [0u8; 8192];
-                                        while let Ok(n) = channel_clone.read(&mut b) {
-                                            if n == 0 {
-                                                break;
-                                            }
-                                            if tcp_stream_clone.write_all(&b[..n]).is_err() {
-                                                break;
-                                            }
-                                            tx_received.fetch_add(n as u64, Ordering::Relaxed);
-                                        }
-                                    } else {
-                                        // Reply general failure
-                                        let _ = tcp_stream
-                                            .write_all(&[0x05, 0x01, 0x00, 0x01, 0, 0, 0, 0, 0, 0]);
-                                    }
-                                });
-                            }
-                            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                thread::sleep(std::time::Duration::from_millis(50));
-                            }
-                            Err(_) => {
-                                break;
-                            }
-                        }
-                    }
-                });
+        };
+        let service = self.clone();
+        thread::spawn(move || {
+            match listener {
+                ForwardListener::Local(listener) => listen_local(listener, session, &tunnel),
+                ForwardListener::Remote(listener) => listen_remote(listener, &tunnel),
             }
-        }
-
-        tunnels.insert(
-            tunnel_id,
-            ActiveTunnel {
-                config,
-                session_id,
-                is_running,
-                bytes_sent,
-                bytes_received,
-            },
-        );
-
+            service.remove_current(&tunnel);
+        });
         Ok(())
+    }
+
+    fn remove_current(&self, tunnel: &ActiveTunnel) {
+        let mut tunnels = self.active_tunnels.lock().unwrap();
+        let id = &tunnel.config.id;
+        if tunnels
+            .get(id)
+            .is_some_and(|active| Arc::ptr_eq(&active.stop, &tunnel.stop))
+        {
+            tunnels.remove(id);
+        }
+        tunnel.cancel();
     }
 
     pub fn stop_tunnel(&self, tunnel_id: &str) -> Result<()> {
-        let mut tunnels = self.active_tunnels.lock().unwrap();
-        if let Some(tunnel) = tunnels.remove(tunnel_id) {
-            tunnel.is_running.store(false, Ordering::Relaxed);
+        if let Some(tunnel) = self.active_tunnels.lock().unwrap().remove(tunnel_id) {
+            tunnel.cancel();
         }
         Ok(())
     }
 
+    pub fn stop_session(&self, session_id: &str) {
+        self.active_tunnels.lock().unwrap().retain(|_, tunnel| {
+            if tunnel.session_id != session_id {
+                return true;
+            }
+            tunnel.cancel();
+            false
+        });
+    }
+
     pub fn get_active_tunnels(&self, session_id: &str) -> Vec<TunnelConfig> {
-        let tunnels = self.active_tunnels.lock().unwrap();
-        tunnels
+        self.active_tunnels
+            .lock()
+            .unwrap()
             .values()
-            .filter(|t| t.session_id == session_id)
-            .map(|t| t.config.clone())
+            .filter(|tunnel| tunnel.session_id == session_id && tunnel.running())
+            .map(|tunnel| tunnel.config.clone())
             .collect()
     }
 
     pub fn get_tunnel_stats(&self, session_id: &str) -> Vec<TunnelStats> {
-        let tunnels = self.active_tunnels.lock().unwrap();
-        tunnels
+        self.active_tunnels
+            .lock()
+            .unwrap()
             .values()
-            .filter(|t| t.session_id == session_id)
-            .map(|t| TunnelStats {
-                tunnel_id: t.config.id.clone(),
-                bytes_sent: t.bytes_sent.load(Ordering::Relaxed),
-                bytes_received: t.bytes_received.load(Ordering::Relaxed),
-                is_active: t.is_running.load(Ordering::Relaxed),
+            .filter(|tunnel| tunnel.session_id == session_id)
+            .map(|tunnel| TunnelStats {
+                tunnel_id: tunnel.config.id.clone(),
+                bytes_sent: tunnel.bytes_sent.load(Ordering::Relaxed),
+                bytes_received: tunnel.bytes_received.load(Ordering::Relaxed),
+                is_active: tunnel.running(),
             })
             .collect()
     }
 
     pub fn get_all_tunnel_ids(&self) -> Vec<String> {
-        let tunnels = self.active_tunnels.lock().unwrap();
-        tunnels.keys().cloned().collect()
+        self.active_tunnels
+            .lock()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect()
     }
 
     pub fn is_tunnel_active(&self, tunnel_id: &str) -> bool {
-        let tunnels = self.active_tunnels.lock().unwrap();
-        tunnels.contains_key(tunnel_id)
+        self.active_tunnels.lock().unwrap().contains_key(tunnel_id)
     }
+}
+
+fn ssh_would_block(error: &ssh2::Error) -> bool {
+    error.code() == ssh2::ErrorCode::Session(-37)
+}
+
+fn listen_local(listener: TcpListener, session: Session, tunnel: &ActiveTunnel) {
+    let open_lock = Arc::new(Mutex::new(()));
+    while tunnel.running() {
+        match listener.accept() {
+            Ok((mut stream, _)) => {
+                let tunnel = tunnel.clone();
+                let session = session.clone();
+                let open_lock = open_lock.clone();
+                thread::spawn(move || {
+                    if stream.set_nonblocking(true).is_err() {
+                        return;
+                    }
+                    let dynamic = tunnel.config.tunnel_type == TunnelType::Dynamic;
+                    let target = if dynamic {
+                        read_socks_target(&mut stream, &tunnel)
+                    } else {
+                        Ok((
+                            tunnel
+                                .config
+                                .remote_host
+                                .clone()
+                                .unwrap_or_else(|| "127.0.0.1".into()),
+                            tunnel.config.remote_port.unwrap_or(80),
+                        ))
+                    };
+                    let Ok((host, port)) = target else { return };
+                    let channel = {
+                        let _guard = open_lock.lock().unwrap();
+                        open_forward_channel(&session, &host, port, &tunnel)
+                    };
+
+                    if dynamic {
+                        let status = if channel.is_ok() { 0 } else { 1 };
+                        if socks_io(
+                            &tunnel,
+                            |offset| stream.write(&[5, status, 0, 1, 0, 0, 0, 0, 0, 0][offset..]),
+                            10,
+                        )
+                        .is_err()
+                        {
+                            return;
+                        }
+                    }
+                    if let Ok(channel) = channel {
+                        let _ = relay(stream, channel, &tunnel);
+                    }
+                });
+            }
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => thread::sleep(POLL_INTERVAL),
+            Err(_) => break,
+        }
+    }
+}
+
+fn listen_remote(mut listener: Listener, tunnel: &ActiveTunnel) {
+    while tunnel.running() {
+        match listener.accept() {
+            Ok(channel) => {
+                let tunnel = tunnel.clone();
+                thread::spawn(move || {
+                    let address = SocketAddr::from((Ipv4Addr::LOCALHOST, tunnel.config.local_port));
+                    if let Ok(stream) = TcpStream::connect_timeout(&address, FORWARD_TIMEOUT) {
+                        let _ = relay(stream, channel, &tunnel);
+                    }
+                });
+            }
+            Err(error) if ssh_would_block(&error) => thread::sleep(POLL_INTERVAL),
+            Err(_) => break,
+        }
+    }
+}
+
+fn open_forward_channel(
+    session: &Session,
+    host: &str,
+    port: u16,
+    tunnel: &ActiveTunnel,
+) -> Result<Channel> {
+    let deadline = Instant::now() + FORWARD_TIMEOUT;
+    while tunnel.running() && Instant::now() < deadline {
+        match session.channel_direct_tcpip(host, port, None) {
+            Ok(channel) => return Ok(channel),
+            Err(error) if ssh_would_block(&error) => thread::sleep(POLL_INTERVAL),
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Err(AppError::Custom(
+        "Could not open SSH forwarding channel".into(),
+    ))
+}
+
+fn socks_io(
+    tunnel: &ActiveTunnel,
+    mut operation: impl FnMut(usize) -> io::Result<usize>,
+    size: usize,
+) -> io::Result<()> {
+    let deadline = Instant::now() + FORWARD_TIMEOUT;
+    let mut offset = 0;
+    while offset < size && tunnel.running() && Instant::now() < deadline {
+        match operation(offset) {
+            Ok(0) => return Err(io::ErrorKind::UnexpectedEof.into()),
+            Ok(count) => offset += count,
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => thread::sleep(POLL_INTERVAL),
+            Err(error) => return Err(error),
+        }
+    }
+    if offset == size {
+        Ok(())
+    } else {
+        Err(io::ErrorKind::TimedOut.into())
+    }
+}
+
+fn read_socks_target(stream: &mut TcpStream, tunnel: &ActiveTunnel) -> io::Result<(String, u16)> {
+    let mut greeting = [0; 2];
+    socks_io(tunnel, |offset| stream.read(&mut greeting[offset..]), 2)?;
+    if greeting[0] != 5 {
+        return Err(io::ErrorKind::InvalidData.into());
+    }
+    let mut methods = vec![0; usize::from(greeting[1])];
+    let method_count = methods.len();
+    socks_io(
+        tunnel,
+        |offset| stream.read(&mut methods[offset..]),
+        method_count,
+    )?;
+    let method = if methods.contains(&0) { 0 } else { 255 };
+    socks_io(tunnel, |offset| stream.write(&[5, method][offset..]), 2)?;
+    if method != 0 {
+        return Err(io::ErrorKind::InvalidData.into());
+    }
+    let mut request = [0; 4];
+    socks_io(tunnel, |offset| stream.read(&mut request[offset..]), 4)?;
+    if request[..3] != [5, 1, 0] {
+        return Err(io::ErrorKind::InvalidData.into());
+    }
+    let host = match request[3] {
+        1 => {
+            let mut address = [0; 4];
+            socks_io(tunnel, |offset| stream.read(&mut address[offset..]), 4)?;
+            Ipv4Addr::from(address).to_string()
+        }
+        4 => {
+            let mut address = [0; 16];
+            socks_io(tunnel, |offset| stream.read(&mut address[offset..]), 16)?;
+            Ipv6Addr::from(address).to_string()
+        }
+        3 => {
+            let mut length = [0];
+            socks_io(tunnel, |offset| stream.read(&mut length[offset..]), 1)?;
+            let address_len = usize::from(length[0]);
+            let mut address = vec![0; address_len];
+            socks_io(
+                tunnel,
+                |offset| stream.read(&mut address[offset..]),
+                address_len,
+            )?;
+            String::from_utf8(address)
+                .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?
+        }
+        _ => return Err(io::ErrorKind::Unsupported.into()),
+    };
+    let mut port = [0; 2];
+    socks_io(tunnel, |offset| stream.read(&mut port[offset..]), 2)?;
+    Ok((host, u16::from_be_bytes(port)))
+}
+
+struct Transfer {
+    bytes: [u8; 8192],
+    length: usize,
+    sent: usize,
+    eof: bool,
+}
+
+impl Transfer {
+    fn new() -> Self {
+        Self {
+            bytes: [0; 8192],
+            length: 0,
+            sent: 0,
+            eof: false,
+        }
+    }
+
+    fn relay(
+        &mut self,
+        source: &mut impl Read,
+        target: &mut impl Write,
+        total: &AtomicU64,
+    ) -> io::Result<bool> {
+        if self.eof {
+            return Ok(false);
+        }
+        if self.sent == self.length {
+            match source.read(&mut self.bytes) {
+                Ok(0) => {
+                    self.eof = true;
+                    return Ok(true);
+                }
+                Ok(count) => {
+                    self.length = count;
+                    self.sent = 0;
+                }
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => return Ok(false),
+                Err(error) => return Err(error),
+            }
+        }
+        match target.write(&self.bytes[self.sent..self.length]) {
+            Ok(0) => Err(io::ErrorKind::WriteZero.into()),
+            Ok(count) => {
+                self.sent += count;
+                total.fetch_add(count as u64, Ordering::Relaxed);
+                Ok(true)
+            }
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => Ok(false),
+            Err(error) => Err(error),
+        }
+    }
+}
+
+fn relay(mut stream: TcpStream, mut channel: Channel, tunnel: &ActiveTunnel) -> Result<()> {
+    stream.set_nonblocking(true)?;
+    let mut from_tcp = Transfer::new();
+    let mut from_ssh = Transfer::new();
+    let mut sent_eof = false;
+
+    while tunnel.running() {
+        let sent = from_tcp.relay(&mut stream, &mut channel, &tunnel.bytes_sent)?;
+        let received = from_ssh.relay(&mut channel, &mut stream, &tunnel.bytes_received)?;
+        if from_ssh.eof && received {
+            let _ = stream.shutdown(Shutdown::Write);
+        }
+        if from_tcp.eof && !sent_eof {
+            match channel.send_eof() {
+                Ok(()) => sent_eof = true,
+                Err(error) if ssh_would_block(&error) => {}
+                Err(error) => return Err(error.into()),
+            }
+        }
+        if from_ssh.eof && sent_eof {
+            break;
+        }
+        if !sent && !received {
+            thread::sleep(POLL_INTERVAL);
+        }
+    }
+    let _ = channel.close();
+    Ok(())
 }
 
 #[cfg(test)]
@@ -430,6 +488,40 @@ mod tests {
     }
 
     #[test]
+    fn stopping_a_session_cancels_only_its_tunnels() {
+        let service = TunnelService::new();
+        let create_tunnel = |id: &str| ActiveTunnel {
+            config: TunnelConfig {
+                id: id.into(),
+                name: id.into(),
+                tunnel_type: TunnelType::Local,
+                local_port: 8080,
+                remote_host: None,
+                remote_port: None,
+            },
+            session_id: id.into(),
+            is_running: Arc::new(AtomicBool::new(true)),
+            bytes_sent: Arc::new(AtomicU64::new(0)),
+            bytes_received: Arc::new(AtomicU64::new(0)),
+            stop: Arc::new(ConnectionStop::default()),
+        };
+        let closing = create_tunnel("closing");
+        let remaining = create_tunnel("remaining");
+        {
+            let mut active = service.active_tunnels.lock().unwrap();
+            active.insert("closing".into(), closing.clone());
+            active.insert("remaining".into(), remaining.clone());
+        }
+
+        service.stop_session("closing");
+
+        assert!(closing.stop.is_cancelled());
+        assert!(!service.is_tunnel_active("closing"));
+        assert!(!remaining.stop.is_cancelled());
+        assert!(service.is_tunnel_active("remaining"));
+    }
+
+    #[test]
     fn test_active_tunnel_creation() {
         let config = TunnelConfig {
             id: "tunnel-1".to_string(),
@@ -445,6 +537,7 @@ mod tests {
             config: config.clone(),
             session_id: "session-1".to_string(),
             is_running: is_running.clone(),
+            stop: Arc::new(ConnectionStop::default()),
             bytes_sent: Arc::new(AtomicU64::new(0)),
             bytes_received: Arc::new(AtomicU64::new(0)),
         };
@@ -470,6 +563,7 @@ mod tests {
             config,
             session_id: "session-1".to_string(),
             is_running: is_running.clone(),
+            stop: Arc::new(ConnectionStop::default()),
             bytes_sent: Arc::new(AtomicU64::new(0)),
             bytes_received: Arc::new(AtomicU64::new(0)),
         };
@@ -544,7 +638,10 @@ mod tests {
         };
 
         assert_eq!(
-            config.remote_host.clone().unwrap_or_else(|| "127.0.0.1".to_string()),
+            config
+                .remote_host
+                .clone()
+                .unwrap_or_else(|| "127.0.0.1".to_string()),
             "192.168.1.1"
         );
         assert_eq!(config.remote_port.unwrap_or(80), 443);
@@ -627,7 +724,12 @@ mod tests {
         };
 
         assert_eq!(config.local_port, 0);
-        assert_eq!(config.remote_host.unwrap_or_else(|| "127.0.0.1".to_string()), "127.0.0.1");
+        assert_eq!(
+            config
+                .remote_host
+                .unwrap_or_else(|| "127.0.0.1".to_string()),
+            "127.0.0.1"
+        );
         assert_eq!(config.remote_port.unwrap_or(80), 80);
     }
 

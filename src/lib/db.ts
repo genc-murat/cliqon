@@ -1,5 +1,6 @@
 import Dexie, { Table } from 'dexie';
 import { SshProfile, Snippet } from '../types/connection';
+import { api } from '../services/api';
 
 export interface MlModelRecord {
     profileId: string;
@@ -33,6 +34,7 @@ export interface ExportData {
     profiles: SshProfile[];
     snippets: Snippet[];
     settings: Record<string, unknown>;
+    panelStates?: Record<string, number>;
     mlModels: Array<{
         profileId: string;
         modelData: string;
@@ -136,83 +138,51 @@ export async function setMultipleSettings(items: Record<string, unknown>): Promi
 }
 
 export async function exportAllData(): Promise<ExportData> {
-    const profiles = await db.profiles.toArray();
-    const snippets = await db.snippets.toArray();
-    const settingsRecords = await db.settings.toArray();
-    const mlModels = await db.mlModels.toArray();
-    
-    const settings: Record<string, unknown> = {};
-    for (const record of settingsRecords) {
-        settings[record.key] = record.value;
-    }
-    
+    const [{ profiles, snippets }, settings, panelStates, mlModels] = await Promise.all([
+        api.exportBackupRecords(),
+        db.settings.toArray(),
+        db.panelStates.toArray(),
+        db.mlModels.toArray(),
+    ]);
+
     return {
-        version: '0.4.0',
+        version: '1.0.0',
         exportDate: new Date().toISOString(),
-        profiles: profiles.map(p => ({
-            ...p,
-            obfuscated_secret: undefined
-        })),
+        profiles,
         snippets,
-        settings,
-        mlModels: mlModels.map(m => ({
-            profileId: m.profileId,
-            modelData: m.modelData
-        }))
+        settings: Object.fromEntries(settings.map(({ key, value }) => [key, value])),
+        panelStates: Object.fromEntries(panelStates.map(({ key, value }) => [key, value])),
+        mlModels: mlModels.map(({ profileId, modelData }) => ({ profileId, modelData })),
     };
 }
 
-export async function importData(data: ExportData, mergeStrategy: 'replace' | 'merge' = 'merge'): Promise<{ profiles: number; snippets: number; settings: number; mlModels: number }> {
-    const now = Date.now();
-    
-    if (mergeStrategy === 'replace') {
-        await db.profiles.clear();
-        await db.snippets.clear();
-        await db.settings.clear();
-        await db.mlModels.clear();
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+export async function importData(value: unknown): Promise<void> {
+    if (!isRecord(value) || !['0.4.0', '1.0.0'].includes(String(value.version))
+        || !Array.isArray(value.profiles) || !Array.isArray(value.snippets)
+        || !isRecord(value.settings) || !Array.isArray(value.mlModels)
+        || !value.mlModels.every(model => isRecord(model)
+            && typeof model.profileId === 'string' && typeof model.modelData === 'string')
+        || (value.panelStates !== undefined && (!isRecord(value.panelStates)
+            || !Object.values(value.panelStates).every(size => Number.isFinite(size))))) {
+        throw new Error('Invalid or unsupported Cliqon backup.');
     }
-    
-    if (data.profiles.length > 0) {
-        const profiles = data.profiles.map(p => ({ ...p, obfuscated_secret: undefined }));
-        if (mergeStrategy === 'replace') {
-            await db.profiles.bulkAdd(profiles);
-        } else {
-            await db.profiles.bulkPut(profiles);
-        }
-    }
-    
-    if (data.snippets.length > 0) {
-        if (mergeStrategy === 'replace') {
-            await db.snippets.bulkAdd(data.snippets);
-        } else {
-            await db.snippets.bulkPut(data.snippets);
-        }
-    }
-    
-    if (Object.keys(data.settings).length > 0) {
-        const settingsRecords = Object.entries(data.settings).map(([key, value]) => ({
-            key,
-            value,
-            updatedAt: now
-        }));
-        await db.settings.bulkPut(settingsRecords);
-    }
-    
-    if (data.mlModels.length > 0) {
-        const mlModelRecords = data.mlModels.map(m => ({
-            profileId: m.profileId,
-            modelData: m.modelData,
-            updatedAt: now
-        }));
-        await db.mlModels.bulkPut(mlModelRecords);
-    }
-    
-    return {
-        profiles: data.profiles.length,
-        snippets: data.snippets.length,
-        settings: Object.keys(data.settings).length,
-        mlModels: data.mlModels.length
-    };
+
+    const data = value as unknown as ExportData;
+    const updatedAt = Date.now();
+    await db.transaction('rw', db.settings, db.panelStates, db.mlModels, async () => {
+        await db.settings.bulkPut(Object.entries(data.settings).map(([key, value]) => ({ key, value, updatedAt })));
+        await db.panelStates.bulkPut(Object.entries(data.panelStates ?? {}).map(([key, value]) => ({ key, value, updatedAt })));
+        const profileIds = await Dexie.waitFor(api.restoreBackupRecords({ profiles: data.profiles, snippets: data.snippets }));
+        await db.mlModels.bulkPut(data.mlModels.map(({ profileId, modelData }) => ({
+            profileId: Object.prototype.hasOwnProperty.call(profileIds, profileId) ? profileIds[profileId] : profileId,
+            modelData,
+            updatedAt,
+        })));
+    });
 }
 
 export async function clearAllData(): Promise<void> {
@@ -233,9 +203,8 @@ export async function getDatabaseStats(): Promise<{
     backups: number;
     estimatedSize: number;
 }> {
-    const [profiles, snippets, settings, panelStates, mlModels, backups] = await Promise.all([
-        db.profiles.count(),
-        db.snippets.count(),
+    const [{ profiles, snippets }, settings, panelStates, mlModels, backups] = await Promise.all([
+        api.exportBackupRecords(),
         db.settings.count(),
         db.panelStates.count(),
         db.mlModels.count(),
@@ -246,8 +215,8 @@ export async function getDatabaseStats(): Promise<{
     const estimatedSize = mlModelsData.reduce((acc, m) => acc + m.modelData.length, 0);
     
     return {
-        profiles,
-        snippets,
+        profiles: profiles.length,
+        snippets: snippets.length,
         settings,
         panelStates,
         mlModels,

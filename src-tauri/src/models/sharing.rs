@@ -49,7 +49,7 @@ impl From<ShareableSnippet> for Snippet {
     }
 }
 
-/// A profile that can be shared over the network (includes secrets)
+/// Connection metadata that can be shared over the local network.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ShareableProfile {
     pub id: String,
@@ -59,15 +59,12 @@ pub struct ShareableProfile {
     pub username: String,
     pub auth_method: AuthMethod,
     pub category: Option<String>,
-    pub private_key_path: Option<String>,
-    pub secret: Option<String>,
     pub is_favorite: Option<bool>,
     pub color: Option<String>,
 }
 
 impl ShareableProfile {
-    /// Convert from SshProfile + resolved secret
-    pub fn from_profile(profile: &SshProfile, secret: Option<String>) -> Self {
+    pub fn from_profile(profile: &SshProfile) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(), // new ID for imported profile
             name: profile.name.clone(),
@@ -76,8 +73,6 @@ impl ShareableProfile {
             username: profile.username.clone(),
             auth_method: profile.auth_method.clone(),
             category: profile.category.clone(),
-            private_key_path: profile.private_key_path.clone(),
-            secret,
             is_favorite: profile.is_favorite,
             color: profile.color.clone(),
         }
@@ -93,7 +88,7 @@ impl ShareableProfile {
             username: self.username.clone(),
             auth_method: self.auth_method.clone(),
             category: self.category.clone(),
-            private_key_path: self.private_key_path.clone(),
+            private_key_path: None,
             obfuscated_secret: None,
             tunnels: Some(Vec::new()),
             is_favorite: self.is_favorite,
@@ -167,15 +162,15 @@ mod tests {
     #[test]
     fn test_shareable_profile_from_profile() {
         let profile = create_test_profile();
-        let secret = Some("mypassword".to_string());
-
-        let shareable = ShareableProfile::from_profile(&profile, secret.clone());
+        let shareable = ShareableProfile::from_profile(&profile);
 
         assert_ne!(shareable.id, profile.id);
         assert_eq!(shareable.name, profile.name);
         assert_eq!(shareable.host, profile.host);
         assert_eq!(shareable.port, profile.port);
-        assert_eq!(shareable.secret, secret);
+        let wire_profile = serde_json::to_value(&shareable).unwrap();
+        assert!(wire_profile.get("secret").is_none());
+        assert!(wire_profile.get("private_key_path").is_none());
     }
 
     #[test]
@@ -188,18 +183,21 @@ mod tests {
             username: "shareduser".to_string(),
             auth_method: AuthMethod::PrivateKey,
             category: None,
-            private_key_path: Some("/path/to/key".to_string()),
-            secret: Some("keypassphrase".to_string()),
             is_favorite: Some(false),
             color: None,
         };
 
-        let ssh_profile = shareable.to_ssh_profile();
+        let mut legacy_payload = serde_json::to_value(&shareable).unwrap();
+        legacy_payload["secret"] = serde_json::json!("sample passphrase");
+        legacy_payload["private_key_path"] = serde_json::json!("/path/to/key");
+        let received: ShareableProfile = serde_json::from_value(legacy_payload).unwrap();
+        let ssh_profile = received.to_ssh_profile();
 
         assert_eq!(ssh_profile.id, shareable.id);
         assert_eq!(ssh_profile.name, shareable.name);
         assert_eq!(ssh_profile.host, shareable.host);
         assert!(ssh_profile.obfuscated_secret.is_none());
+        assert!(ssh_profile.private_key_path.is_none());
         assert_eq!(ssh_profile.tunnels, Some(Vec::new()));
     }
 
@@ -305,7 +303,7 @@ mod tests {
             last_used: None,
         };
 
-        let shareable = ShareableProfile::from_profile(&profile, None);
+        let shareable = ShareableProfile::from_profile(&profile);
         assert_eq!(shareable.category, Some("Databases".to_string()));
 
         let converted_back = shareable.to_ssh_profile();

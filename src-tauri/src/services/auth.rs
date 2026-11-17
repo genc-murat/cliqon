@@ -4,6 +4,12 @@ use std::path::Path;
 use crate::error::{AppError, Result};
 use crate::models::profile::{AuthMethod, SshProfile};
 
+pub fn open_session(profile: &SshProfile, secret: Option<&str>) -> Result<Session> {
+    let mut session = super::host_keys::handshake(super::host_keys::connect_tcp(profile)?)?;
+    authenticate_session(&mut session, profile, secret)?;
+    Ok(session)
+}
+
 /// Authentication helper that handles SSH authentication using different methods.
 /// 
 /// This function supports three authentication methods:
@@ -15,6 +21,8 @@ pub fn authenticate_session(
     profile: &SshProfile,
     secret: Option<&str>,
 ) -> Result<()> {
+    super::host_keys::verify(session, profile)?;
+
     match profile.auth_method {
         AuthMethod::Password => {
             let pwd = secret.unwrap_or_default();

@@ -1,7 +1,22 @@
 use tauri::{AppHandle, State};
-use crate::error::Result;
+use crate::error::{AppError, Result};
 use crate::models::profile::SshProfile;
 use crate::state::app_state::AppState;
+use crate::services::host_keys::{self, HostKeyInfo};
+
+#[tauri::command]
+pub async fn inspect_ssh_host_key(profile: SshProfile) -> Result<HostKeyInfo> {
+    tauri::async_runtime::spawn_blocking(move || host_keys::inspect(&profile))
+        .await
+        .map_err(|error| AppError::Custom(error.to_string()))?
+}
+
+#[tauri::command]
+pub async fn trust_ssh_host_key(profile: SshProfile, fingerprint: String) -> Result<()> {
+    tauri::async_runtime::spawn_blocking(move || host_keys::trust(&profile, &fingerprint))
+        .await
+        .map_err(|error| AppError::Custom(error.to_string()))?
+}
 
 #[tauri::command]
 pub async fn connect_ssh(
@@ -11,7 +26,7 @@ pub async fn connect_ssh(
     session_id: String,
 ) -> Result<()> {
     // Attempt to load the secret from keyring
-    let secret_result = state.profile_store.lock().unwrap().get_profile_secret(&profile.id);
+    let secret_result = state.profile_store.lock().unwrap().get_secret_for(&profile);
     let secret = match secret_result {
         Ok(opt_sec) => {
             if opt_sec.is_none() && profile.auth_method == crate::models::profile::AuthMethod::Password {
@@ -34,18 +49,14 @@ pub async fn test_ssh_connection(
     profile: SshProfile,
     provided_secret: Option<String>,
 ) -> Result<()> {
-    let secret = match provided_secret {
-        Some(s) if !s.is_empty() => Some(s),
-        _ => {
-            if !profile.id.is_empty() {
-                state.profile_store.lock().unwrap().get_profile_secret(&profile.id).unwrap_or(None)
-            } else {
-                None
-            }
-        }
+    let secret = match provided_secret.filter(|secret| !secret.is_empty()) {
+        Some(secret) => Some(secret),
+        None => state.profile_store.lock().unwrap().get_secret_for(&profile)?,
     };
-    state.ssh_manager.test_connection(&profile, secret.as_deref())?;
-    Ok(())
+    let manager = state.ssh_manager.clone();
+    tauri::async_runtime::spawn_blocking(move || manager.test_connection(&profile, secret.as_deref()))
+        .await
+        .map_err(|error| AppError::Custom(error.to_string()))?
 }
 
 #[tauri::command]
@@ -75,6 +86,8 @@ pub async fn close_pty(
     session_id: String,
 ) -> Result<()> {
     state.ssh_manager.close_session(&session_id);
+    state.sftp_manager.close_session(&session_id);
+    state.monitor_manager.stop(&session_id);
     Ok(())
 }
 

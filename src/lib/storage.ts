@@ -36,12 +36,12 @@ export async function initializeStorage(): Promise<void> {
     if (initPromise) return initPromise;
     
     initPromise = (async () => {
-        const settings = await db.settings.where('key').anyOf(SETTING_KEYS).toArray();
+        const settings = await db.settings.toArray();
         for (const record of settings) {
             memoryCache.set(record.key, record.value);
         }
         
-        const panelStates = await db.panelStates.where('key').anyOf(PANEL_STATE_KEYS).toArray();
+        const panelStates = await db.panelStates.toArray();
         for (const record of panelStates) {
             memoryCache.set(record.key, record.value);
         }

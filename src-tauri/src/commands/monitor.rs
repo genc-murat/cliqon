@@ -15,8 +15,7 @@ pub async fn start_monitor(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state.monitor_manager.start(app, profile, secret, session_id)?;
     Ok(())

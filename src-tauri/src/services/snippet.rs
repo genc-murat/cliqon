@@ -39,10 +39,7 @@ impl SnippetStore {
     }
 
     pub fn save_all(&self, items: &[Snippet]) -> Result<()> {
-        let path = self.get_file_path();
-        let content = serde_json::to_string_pretty(items)?;
-        fs::write(path, content)?;
-        Ok(())
+        super::write_json_atomically(&self.get_file_path(), &items)
     }
 
     pub fn save(&self, item: Snippet) -> Result<()> {

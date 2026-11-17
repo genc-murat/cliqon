@@ -1,15 +1,15 @@
 use std::io::{Read, Write};
-use std::net::{TcpStream, ToSocketAddrs};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use crossbeam_channel::{unbounded, Sender};
-use ssh2::Session;
 use tauri::{AppHandle, Emitter};
 
+use super::{connection_stop::ConnectionStop, host_keys, tunnel::TunnelService};
+
 use crate::error::{AppError, Result};
-use crate::models::profile::SshProfile;
+use crate::models::profile::{SshProfile, TunnelConfig};
 use crate::services::auth::authenticate_session;
 
 const OUTPUT_BATCH_INTERVAL_MS: u64 = 16;
@@ -24,7 +24,7 @@ pub struct SshPayload {
 pub struct ActiveSession {
     pub profile_id: String,
     pub session_id: String,
-    pub session: Session,
+    profile: SshProfile,
     tx: Sender<Vec<u8>>,
     resize_tx: Sender<(u32, u32)>,
 }
@@ -39,8 +39,15 @@ impl ActiveSession {
     }
 }
 
+struct Connection {
+    stop: Arc<ConnectionStop>,
+    active: Option<ActiveSession>,
+}
+
+#[derive(Clone)]
 pub struct SshManager {
-    active_sessions: Arc<Mutex<std::collections::HashMap<String, ActiveSession>>>,
+    active_sessions: Arc<Mutex<std::collections::HashMap<String, Connection>>>,
+    pub tunnels: TunnelService,
 }
 
 impl Default for SshManager {
@@ -53,26 +60,13 @@ impl SshManager {
     pub fn new() -> Self {
         Self {
             active_sessions: Arc::new(Mutex::new(std::collections::HashMap::new())),
+            tunnels: TunnelService::new(),
         }
     }
 
     pub fn test_connection(&self, profile: &SshProfile, secret: Option<&str>) -> Result<()> {
-        let addr = format!("{}:{}", profile.host, profile.port)
-            .to_socket_addrs()
-            .map_err(|e| AppError::Custom(format!("Invalid address: {}", e)))?
-            .next()
-            .ok_or_else(|| AppError::Custom("Could not resolve address".to_string()))?;
-        let tcp = TcpStream::connect_timeout(&addr, Duration::from_secs(5))?;
-        let _ = tcp.set_read_timeout(Some(Duration::from_secs(5)));
-        let _ = tcp.set_write_timeout(Some(Duration::from_secs(5)));
-
-        let mut session = Session::new()?;
-        session.set_tcp_stream(tcp);
-        session.handshake()?;
-
-        authenticate_session(&mut session, profile, secret)?;
-
-        Ok(())
+        let mut session = host_keys::handshake(host_keys::connect_tcp(profile)?)?;
+        authenticate_session(&mut session, profile, secret)
     }
 
     pub fn connect(
@@ -82,259 +76,231 @@ impl SshManager {
         secret: Option<String>,
         session_id: String,
     ) -> Result<()> {
-        let active_sessions = self.active_sessions.clone();
+        let stop = Arc::new(ConnectionStop::default());
+        {
+            let mut sessions = self.active_sessions.lock().unwrap();
+            if sessions.contains_key(&session_id) {
+                return Err(AppError::Custom("SSH session already exists".into()));
+            }
+            sessions.insert(
+                session_id.clone(),
+                Connection {
+                    stop: stop.clone(),
+                    active: None,
+                },
+            );
+        }
 
+        let manager = self.clone();
         thread::spawn(move || {
-            let status_event = format!("ssh_status_{}", session_id);
-
-            // ── TCP Connect ─────────────────────────────────────
-            let _ = app.emit(&status_event, serde_json::json!({
-                "status": "connecting",
-                "message": format!("Connecting to {}:{}...", profile.host, profile.port)
-            }));
-
-            let addr = match format!("{}:{}", profile.host, profile.port)
-                .to_socket_addrs()
-                .map_err(|e| format!("Invalid address: {}", e))
-                .and_then(|mut addrs| addrs.next().ok_or_else(|| "Could not resolve address".to_string()))
-            {
-                Ok(a) => a,
-                Err(e) => {
-                    let _ = app.emit(&status_event, serde_json::json!({
-                        "status": "error",
-                        "message": e
-                    }));
-                    return;
-                }
-            };
-
-            let tcp = match TcpStream::connect_timeout(&addr, Duration::from_secs(10)) {
-                Ok(tcp) => tcp,
-                Err(e) => {
-                    let _ = app.emit(&status_event, serde_json::json!({
-                        "status": "error",
-                        "message": format!("Connection failed: {}", e)
-                    }));
-                    return;
-                }
-            };
-
-            // ── SSH Handshake ────────────────────────────────────
-            let _ = app.emit(&status_event, serde_json::json!({
-                "status": "handshake",
-                "message": "SSH handshake..."
-            }));
-
-            let mut session = match Session::new() {
-                Ok(s) => s,
-                Err(e) => {
-                    let _ = app.emit(&status_event, serde_json::json!({
-                        "status": "error",
-                        "message": format!("Session error: {}", e)
-                    }));
-                    return;
-                }
-            };
-            session.set_tcp_stream(tcp);
-
-            if let Err(e) = session.handshake() {
-                let _ = app.emit(&status_event, serde_json::json!({
-                    "status": "error",
-                    "message": format!("Handshake failed: {}", e)
-                }));
+            let outcome =
+                manager.run_connection(&app, &profile, secret.as_deref(), &session_id, &stop);
+            let mut sessions = manager.active_sessions.lock().unwrap();
+            let is_current = sessions
+                .get(&session_id)
+                .is_some_and(|connection| Arc::ptr_eq(&connection.stop, &stop));
+            if !is_current {
                 return;
             }
 
-            // ── Authentication ───────────────────────────────────
-            let _ = app.emit(&status_event, serde_json::json!({
-                "status": "authenticating",
-                "message": "Authenticating..."
-            }));
+            sessions.remove(&session_id);
+            manager.tunnels.stop_session(&session_id);
+            stop.cancel();
+            drop(sessions);
 
-            if let Err(e) = authenticate_session(&mut session, &profile, secret.as_deref()) {
-                let _ = app.emit(&status_event, serde_json::json!({
-                    "status": "error",
-                    "message": format!("Authentication failed: {}", e)
-                }));
-                return;
+            match outcome {
+                Ok(()) => {
+                    let _ = app.emit(&format!("ssh_close_{session_id}"), ());
+                }
+                Err(error) => ssh_status(&app, &session_id, "error", &error.to_string()),
             }
-
-            // ── Channel Setup ────────────────────────────────────
-            let mut channel = match session.channel_session() {
-                Ok(ch) => ch,
-                Err(e) => {
-                    let _ = app.emit(&status_event, serde_json::json!({
-                        "status": "error",
-                        "message": format!("Channel error: {}", e)
-                    }));
-                    return;
-                }
-            };
-
-            if let Err(e) = channel.request_pty("xterm", None, None) {
-                let _ = app.emit(&status_event, serde_json::json!({
-                    "status": "error",
-                    "message": format!("PTY error: {}", e)
-                }));
-                return;
-            }
-
-            if let Err(e) = channel.exec("bash -l").or_else(|_| channel.shell()) {
-                let _ = app.emit(&status_event, serde_json::json!({
-                    "status": "error",
-                    "message": format!("Shell error: {}", e)
-                }));
-                return;
-            }
-
-            // ── Register active session ──────────────────────────
-            let (tx, rx) = unbounded::<Vec<u8>>();
-            let (resize_tx, resize_rx) = unbounded::<(u32, u32)>();
-
-            let active_session = ActiveSession {
-                profile_id: profile.id.clone(),
-                session_id: session_id.clone(),
-                session: session.clone(),
-                tx,
-                resize_tx,
-            };
-
-            active_sessions
-                .lock()
-                .unwrap()
-                .insert(session_id.clone(), active_session);
-
-            // ── Emit connected ───────────────────────────────────
-            let _ = app.emit(&status_event, serde_json::json!({
-                "status": "connected",
-                "message": "Connected successfully."
-            }));
-
-            // ── I/O Loop ─────────────────────────────────────────
-            let mut buf = [0u8; 4096];
-            let mut output_buffer: Vec<u8> = Vec::with_capacity(OUTPUT_BATCH_MAX_SIZE);
-            let mut last_flush = Instant::now();
-
-            session.set_blocking(false);
-
-            loop {
-                let mut activity = false;
-
-                match channel.read(&mut buf) {
-                    Ok(0) => {
-                        if !output_buffer.is_empty() {
-                            let _ = app.emit(
-                                &format!("ssh_data_rx_{}", session_id),
-                                output_buffer.clone(),
-                            );
-                        }
-                        let _ = app.emit(&format!("ssh_close_{}", session_id), ());
-                        break;
-                    }
-                    Ok(n) => {
-                        output_buffer.extend_from_slice(&buf[..n]);
-                        activity = true;
-
-                        let should_flush = output_buffer.len() >= OUTPUT_BATCH_MAX_SIZE
-                            || last_flush.elapsed().as_millis() as u64 >= OUTPUT_BATCH_INTERVAL_MS;
-
-                        if should_flush && !output_buffer.is_empty() {
-                            let _ = app.emit(
-                                &format!("ssh_data_rx_{}", session_id),
-                                output_buffer.clone(),
-                            );
-                            output_buffer.clear();
-                            output_buffer.reserve(OUTPUT_BATCH_MAX_SIZE);
-                            last_flush = Instant::now();
-                        }
-                    }
-                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
-                    Err(_) => {
-                        if !output_buffer.is_empty() {
-                            let _ = app.emit(
-                                &format!("ssh_data_rx_{}", session_id),
-                                output_buffer.clone(),
-                            );
-                        }
-                        let _ = app.emit(&format!("ssh_close_{}", session_id), ());
-                        break;
-                    }
-                }
-
-                if let Ok(data) = rx.try_recv() {
-                    let mut pos = 0;
-                    while pos < data.len() {
-                        match channel.write(&data[pos..]) {
-                            Ok(n) => pos += n,
-                            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                thread::sleep(Duration::from_millis(5));
-                            }
-                            Err(_) => break,
-                        }
-                    }
-                    let _ = channel.flush();
-                    activity = true;
-                }
-
-                if let Ok((cols, rows)) = resize_rx.try_recv() {
-                    session.set_blocking(true);
-                    let _ = channel.request_pty_size(cols, rows, None, None);
-                    session.set_blocking(false);
-                    activity = true;
-                }
-
-                if !activity {
-                    if !output_buffer.is_empty()
-                        && last_flush.elapsed().as_millis() as u64 >= OUTPUT_BATCH_INTERVAL_MS
-                    {
-                        let _ = app.emit(
-                            &format!("ssh_data_rx_{}", session_id),
-                            output_buffer.clone(),
-                        );
-                        output_buffer.clear();
-                        output_buffer.reserve(OUTPUT_BATCH_MAX_SIZE);
-                        last_flush = Instant::now();
-                    }
-                    thread::sleep(Duration::from_millis(15));
-                }
-            }
-
-            let _ = channel.close();
-            let _ = channel.wait_close();
         });
-
         Ok(())
     }
 
-    pub fn write_to_session(&self, session_id: &str, data: Vec<u8>) -> Result<()> {
-        let lock = self.active_sessions.lock().unwrap();
-        if let Some(session) = lock.get(session_id) {
-            session.write_data(data);
-            Ok(())
-        } else {
-            Err(AppError::Custom("Session not found".to_string()))
+    fn run_connection(
+        &self,
+        app: &AppHandle,
+        profile: &SshProfile,
+        secret: Option<&str>,
+        session_id: &str,
+        stop: &Arc<ConnectionStop>,
+    ) -> Result<()> {
+        ssh_status(
+            app,
+            session_id,
+            "connecting",
+            &format!("Connecting to {}:{}...", profile.host, profile.port),
+        );
+        let stream = host_keys::connect_tcp(profile)?;
+        stop.attach(&stream)?;
+
+        ssh_status(app, session_id, "handshake", "SSH handshake...");
+        let mut session = host_keys::handshake(stream)?;
+        ssh_status(
+            app,
+            session_id,
+            "authenticating",
+            "Verifying server and authenticating...",
+        );
+        authenticate_session(&mut session, profile, secret)?;
+
+        let mut channel = session.channel_session()?;
+        channel.request_pty("xterm", None, None)?;
+        channel.exec("bash -l").or_else(|_| channel.shell())?;
+        session.set_blocking(false);
+
+        let (tx, rx) = unbounded::<Vec<u8>>();
+        let (resize_tx, resize_rx) = unbounded::<(u32, u32)>();
+        {
+            let mut sessions = self.active_sessions.lock().unwrap();
+            let current = sessions
+                .get_mut(session_id)
+                .filter(|connection| Arc::ptr_eq(&connection.stop, stop))
+                .ok_or_else(|| AppError::Custom("Connection cancelled".into()))?;
+            current.active = Some(ActiveSession {
+                profile_id: profile.id.clone(),
+                session_id: session_id.into(),
+                profile: profile.clone(),
+                tx,
+                resize_tx,
+            });
         }
+
+        ssh_status(app, session_id, "connected", "Connected successfully.");
+        let data_event = format!("ssh_data_rx_{session_id}");
+        let mut buffer = [0u8; 4096];
+        let mut output = Vec::with_capacity(OUTPUT_BATCH_MAX_SIZE);
+        let mut last_flush = Instant::now();
+        let mut input = None;
+        let mut resize = None;
+
+        let result = loop {
+            if stop.is_cancelled() {
+                break Ok(());
+            }
+
+            let mut activity = false;
+            match channel.read(&mut buffer) {
+                Ok(0) => break Ok(()),
+                Ok(count) => {
+                    output.extend_from_slice(&buffer[..count]);
+                    activity = true;
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {}
+                Err(error) => break Err(error.into()),
+            }
+            if !output.is_empty()
+                && (output.len() >= OUTPUT_BATCH_MAX_SIZE
+                    || last_flush.elapsed() >= Duration::from_millis(OUTPUT_BATCH_INTERVAL_MS))
+            {
+                let _ = app.emit(&data_event, &output);
+                output.clear();
+                last_flush = Instant::now();
+            }
+
+            if input.is_none() {
+                input = rx
+                    .try_recv()
+                    .ok()
+                    .filter(|bytes| !bytes.is_empty())
+                    .map(|bytes| (bytes, 0));
+            }
+            if let Some((bytes, offset)) = &mut input {
+                match channel.write(&bytes[*offset..]) {
+                    Ok(0) => break Err(std::io::Error::from(std::io::ErrorKind::WriteZero).into()),
+                    Ok(count) => {
+                        *offset += count;
+                        if *offset == bytes.len() {
+                            input = None;
+                        }
+                        activity = true;
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {}
+                    Err(error) => break Err(error.into()),
+                }
+            }
+
+            if let Ok(latest) = resize_rx.try_recv() {
+                resize = Some(latest);
+            }
+            if let Some((cols, rows)) = resize {
+                match channel.request_pty_size(cols, rows, None, None) {
+                    Err(error) if error.code() == ssh2::ErrorCode::Session(-37) => {}
+                    _ => {
+                        resize = None;
+                    }
+                }
+            }
+
+            if !activity {
+                thread::sleep(Duration::from_millis(15));
+            }
+        };
+
+        if !output.is_empty() && !stop.is_cancelled() {
+            let _ = app.emit(&data_event, &output);
+        }
+        let _ = channel.close();
+        result
+    }
+
+    pub fn write_to_session(&self, session_id: &str, data: Vec<u8>) -> Result<()> {
+        let sessions = self.active_sessions.lock().unwrap();
+        let session = sessions
+            .get(session_id)
+            .and_then(|connection| connection.active.as_ref())
+            .ok_or_else(|| AppError::Custom("Session not found".into()))?;
+        session.write_data(data);
+        Ok(())
     }
 
     pub fn resize_session(&self, session_id: &str, cols: u32, rows: u32) -> Result<()> {
-        let lock = self.active_sessions.lock().unwrap();
-        if let Some(session) = lock.get(session_id) {
-            session.resize(cols, rows);
-            Ok(())
-        } else {
-            Err(AppError::Custom("Session not found".to_string()))
-        }
+        let sessions = self.active_sessions.lock().unwrap();
+        let session = sessions
+            .get(session_id)
+            .and_then(|connection| connection.active.as_ref())
+            .ok_or_else(|| AppError::Custom("Session not found".into()))?;
+        session.resize(cols, rows);
+        Ok(())
     }
 
     pub fn close_session(&self, session_id: &str) {
-        let mut lock = self.active_sessions.lock().unwrap();
-        lock.remove(session_id);
+        let mut sessions = self.active_sessions.lock().unwrap();
+        if let Some(connection) = sessions.remove(session_id) {
+            connection.stop.cancel();
+            self.tunnels.stop_session(session_id);
+        }
     }
 
-    pub fn get_session(&self, session_id: &str) -> Option<Session> {
-        let lock = self.active_sessions.lock().unwrap();
-        lock.get(session_id).map(|s| s.session.clone())
+    pub fn start_tunnel(
+        &self,
+        session_id: String,
+        config: TunnelConfig,
+        get_secret: impl FnOnce(&SshProfile) -> Result<Option<String>>,
+    ) -> Result<()> {
+        let (profile, stop) = {
+            let sessions = self.active_sessions.lock().unwrap();
+            let connection = sessions
+                .get(&session_id)
+                .ok_or_else(|| AppError::Custom("SSH Session not found".into()))?;
+            let active = connection
+                .active
+                .as_ref()
+                .ok_or_else(|| AppError::Custom("SSH session is still connecting".into()))?;
+            (active.profile.clone(), connection.stop.clone())
+        };
+        let secret = get_secret(&profile)?;
+        self.tunnels
+            .start_tunnel(&profile, secret.as_deref(), config, session_id, &stop)
     }
+}
+
+fn ssh_status(app: &AppHandle, session_id: &str, status: &str, message: &str) {
+    let _ = app.emit(
+        &format!("ssh_status_{session_id}"),
+        serde_json::json!({ "status": status, "message": message }),
+    );
 }
 
 #[cfg(test)]
@@ -364,7 +330,7 @@ mod tests {
         let session = ActiveSession {
             profile_id: "profile-1".to_string(),
             session_id: "session-1".to_string(),
-            session: Session::new().unwrap(),
+            profile: SshProfile::default(),
             tx,
             resize_tx: unbounded().0,
         };
@@ -379,7 +345,7 @@ mod tests {
         let session = ActiveSession {
             profile_id: "profile-1".to_string(),
             session_id: "session-1".to_string(),
-            session: Session::new().unwrap(),
+            profile: SshProfile::default(),
             tx: unbounded().0,
             resize_tx,
         };
@@ -397,7 +363,25 @@ mod tests {
         assert!(err2.unwrap_err().to_string().contains("Session not found"));
 
         manager.close_session("nonexistent"); // Should not panic
-        assert!(manager.get_session("nonexistent").is_none());
+        assert!(manager.active_sessions.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn closing_a_pending_session_cancels_its_worker() {
+        let manager = SshManager::new();
+        let stop = Arc::new(ConnectionStop::default());
+        manager.active_sessions.lock().unwrap().insert(
+            "pending".into(),
+            Connection {
+                stop: stop.clone(),
+                active: None,
+            },
+        );
+
+        manager.close_session("pending");
+
+        assert!(stop.is_cancelled());
+        assert!(manager.active_sessions.lock().unwrap().is_empty());
     }
 
     #[test]
@@ -405,7 +389,7 @@ mod tests {
         let session = ActiveSession {
             profile_id: "test-profile".to_string(),
             session_id: "test-session".to_string(),
-            session: Session::new().unwrap(),
+            profile: SshProfile::default(),
             tx: unbounded().0,
             resize_tx: unbounded().0,
         };

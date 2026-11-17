@@ -8,6 +8,7 @@ import { ClipboardAddon } from '@xterm/addon-clipboard';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { SshProfile } from '../../types/connection';
 import { api } from '../../services/api';
+import { isUnknownHostKey, sshErrorMessage, useHostKeyTrust } from '../../hooks/useHostKeyTrust';
 import { useTheme } from '../../hooks/useTheme';
 import { useTerminalHistory } from '../../hooks/useTerminalHistory';
 import { FileBrowser } from './FileBrowser';
@@ -22,6 +23,7 @@ interface TerminalViewerProps {
     sessionId: string;
     isActive: boolean;
     paneMode?: boolean;
+    onConnectionChange?: (sessionId: string, connected: boolean) => void;
 }
 
 interface GpuInfo {
@@ -29,14 +31,13 @@ interface GpuInfo {
     vendor: string;
 }
 
-export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, sessionId, isActive, paneMode = false }) => {
+export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, sessionId, isActive, paneMode = false, onConnectionChange }) => {
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<Terminal | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
     const searchAddonRef = useRef<SearchAddon | null>(null);
-    const unlistenRxRef = useRef<UnlistenFn | null>(null);
-    const unlistenCloseRef = useRef<UnlistenFn | null>(null);
     const [connected, setConnected] = useState(false);
+    const approveHostKey = useHostKeyTrust();
     const connectedRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
     const { theme, terminalTheme, terminalFont, terminalCursorStyle, terminalPerformance, showResourceMonitor } = useTheme();
@@ -164,9 +165,6 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
 
         return () => {
             term.dispose();
-            if (unlistenRxRef.current) unlistenRxRef.current();
-            if (unlistenCloseRef.current) unlistenCloseRef.current();
-            api.closePty(sessionId).catch(console.error);
         };
     }, []);
 
@@ -193,63 +191,80 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
 
     useEffect(() => {
         let isMounted = true;
-        let unlistenStatus: UnlistenFn | null = null;
+        let connectionRequested = false;
+        let retriedHostKey = false;
+        const listeners: UnlistenFn[] = [];
+        const term = xtermRef.current;
+        const isCurrent = () => isMounted;
 
-        const setupConnection = async () => {
-            if (!xtermRef.current) return;
-            const term = xtermRef.current;
-
-            // Listen for connection status events (non-blocking lifecycle)
-            unlistenStatus = await listen<{ status: string; message: string }>(`ssh_status_${sessionId}`, (event) => {
-                if (!isMounted || !xtermRef.current) return;
-                const { status, message } = event.payload;
-
-                if (status === 'connected') {
-                    setConnected(true);
-                    term.writeln(`\r\x1b[32m${message}\x1b[0m\r\n`);
-                    if (fitAddonRef.current) {
-                        const dims = fitAddonRef.current.proposeDimensions();
-                        if (dims) {
-                            api.resizePty(sessionId, dims.cols, dims.rows).catch(console.error);
-                        }
-                    }
-                } else if (status === 'error') {
-                    setError(message);
-                    term.writeln(`\r\n\x1b[31mError: ${message}\x1b[0m`);
-                } else {
-                    // connecting, handshake, authenticating
-                    term.writeln(`\x1b[36m${message}\x1b[0m`);
-                }
+        const addListener = async <T,>(event: string, handler: (payload: T) => void) => {
+            if (!isMounted) return;
+            const stop = await listen<T>(event, ({ payload }) => {
+                if (isMounted) handler(payload);
             });
-
-            // Listen for data and close events
-            unlistenRxRef.current = await listen<number[]>(`ssh_data_rx_${sessionId}`, (event) => {
-                if (xtermRef.current) {
-                    const data = new Uint8Array(event.payload);
-                    xtermRef.current.write(data, () => {
-                        const decoded = new TextDecoder().decode(data);
-                        processOutput(decoded);
-
-                        const { ghostText, activeSuggestion } = updatePrediction();
-                        setGhostText(ghostText);
-                        ghostTextRef.current = ghostText;
-                        activeSuggestionRef.current = activeSuggestion;
-                    });
-                }
-            });
-
-            unlistenCloseRef.current = await listen(`ssh_close_${sessionId}`, () => {
-                if (xtermRef.current) {
-                    xtermRef.current.writeln('\r\n\x1b[31mConnection closed by remote host.\x1b[0m');
-                }
-                setConnected(false);
-            });
-
-            // Fire-and-forget: connection runs in background thread
-            api.connectSsh(profile, sessionId).catch(() => { });
+            if (isMounted) listeners.push(stop);
+            else stop();
         };
 
-        setupConnection();
+        const reportError = async (error: unknown) => {
+            if (!isMounted) return;
+            setConnected(false);
+            onConnectionChange?.(sessionId, false);
+            if (isUnknownHostKey(error) && !retriedHostKey) {
+                retriedHostKey = true;
+                try {
+                    if (await approveHostKey(profile, isCurrent)) {
+                        await api.connectSsh(profile, sessionId);
+                        if (!isMounted) await api.closePty(sessionId);
+                        return;
+                    }
+                } catch (retryError) {
+                    error = retryError;
+                }
+            }
+            if (isMounted) setError(sshErrorMessage(error));
+        };
+
+        const setupConnection = async () => {
+            if (!term) return;
+            await addListener<{ status: string; message: string }>(`ssh_status_${sessionId}`, ({ status, message }) => {
+                if (status === 'connected') {
+                    setConnected(true);
+                    setError(null);
+                    onConnectionChange?.(sessionId, true);
+                    term.writeln(message);
+                    const dims = fitAddonRef.current?.proposeDimensions();
+                    if (dims) api.resizePty(sessionId, dims.cols, dims.rows).catch(console.error);
+                } else if (status === 'error') {
+                    void reportError(message);
+                } else {
+                    term.writeln(message);
+                }
+            });
+            await addListener<number[]>(`ssh_data_rx_${sessionId}`, (payload) => {
+                const data = new Uint8Array(payload);
+                term.write(data, () => {
+                    if (!isMounted) return;
+                    processOutput(new TextDecoder().decode(data));
+                    const { ghostText, activeSuggestion } = updatePrediction();
+                    setGhostText(ghostText);
+                    ghostTextRef.current = ghostText;
+                    activeSuggestionRef.current = activeSuggestion;
+                });
+            });
+            await addListener(`ssh_close_${sessionId}`, () => {
+                setConnected(false);
+                setError('Connection closed by remote host.');
+                onConnectionChange?.(sessionId, false);
+            });
+
+            if (!isMounted) return;
+            connectionRequested = true;
+            await api.connectSsh(profile, sessionId);
+            if (!isMounted) await api.closePty(sessionId);
+        };
+
+        setupConnection().catch(reportError);
 
         const onDataDisposable = xtermRef.current?.onData((data) => {
             if (!connectedRef.current) return;
@@ -304,11 +319,13 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
 
         return () => {
             isMounted = false;
-            if (unlistenStatus) unlistenStatus();
+            listeners.forEach(unlisten => unlisten());
+            if (connectionRequested) api.closePty(sessionId).catch(console.error);
+            onConnectionChange?.(sessionId, false);
             onDataDisposable?.dispose();
             onResizeDisposable?.dispose();
         };
-    }, [profile, sessionId]);
+    }, [profile, sessionId, approveHostKey, onConnectionChange]);
 
     useEffect(() => {
         const handleResize = () => {
@@ -411,7 +428,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         <div
             className="w-full h-full flex flex-row"
         >
-            {!paneMode && <FileBrowser profile={profile} sessionId={sessionId} isActive={isActive} />}
+            {!paneMode && connected && <FileBrowser profile={profile} sessionId={sessionId} isActive={isActive} />}
 
             <div className="flex-1 relative h-full">
                 {showLineNumbers && (
@@ -485,6 +502,12 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                         >
                             Tab ⏎
                         </span>
+                    </div>
+                )}
+
+                {error && (
+                    <div role="alert" className="absolute top-2 inset-x-3 z-10 rounded-md border border-red-500/40 bg-[var(--bg-sidebar)] px-3 py-2 text-sm text-red-400 break-words">
+                        {error}
                     </div>
                 )}
 

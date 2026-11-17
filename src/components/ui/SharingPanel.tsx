@@ -6,6 +6,7 @@ import {
 import { useSharing } from '../../contexts/SharingContext';
 import { SshProfile } from '../../types/connection';
 import { PeerInfo } from '../../types/sharing';
+import { api } from '../../services/api';
 
 interface SharingPanelProps {
     profiles: SshProfile[];
@@ -71,7 +72,6 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
         if (!selectedPeer || selectedProfileIds.size === 0) return;
         setIsSending(true);
         try {
-            const { api } = await import('../../services/api');
             const msg = await api.shareItemsWithPeer(selectedPeer.id, Array.from(selectedProfileIds), []);
             showToast(msg, 'success');
             setSelectedPeer(null);
@@ -422,6 +422,9 @@ export const SharingPanel: React.FC<SharingPanelProps> = ({
                                         ))}
                                     </div>
 
+                                    <p className="mb-2 text-xs text-[var(--text-muted)]">
+                                        The recipient will set up their own password or SSH key.
+                                    </p>
                                     <button
                                         onClick={handleShare}
                                         disabled={selectedProfileIds.size === 0 || isSending}

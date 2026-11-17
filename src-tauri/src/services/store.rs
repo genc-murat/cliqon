@@ -3,8 +3,8 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
-use crate::error::Result;
-use crate::models::profile::SshProfile;
+use crate::error::{AppError, Result};
+use crate::models::profile::{AuthMethod, SshProfile};
 
 const KEYRING_SERVICE: &str = "cliqon_ssh_profiles";
 
@@ -42,73 +42,136 @@ impl ProfileStore {
     }
 
     pub fn save_profiles(&self, profiles: &[SshProfile]) -> Result<()> {
-        let path = self.get_profiles_file_path();
-        let content = serde_json::to_string_pretty(profiles)?;
-        fs::write(path, content)?;
-        Ok(())
+        super::write_json_atomically(&self.get_profiles_file_path(), &profiles)
     }
 
     pub fn save_profile(&self, profile: SshProfile, secret: Option<String>) -> Result<()> {
         let mut profiles = self.get_all_profiles()?;
-        let mut updated_profile = profile.clone();
-
-        if let Some(sec) = secret.clone() {
-            if let Ok(entry) = Entry::new(KEYRING_SERVICE, &profile.id) {
-                let _ = entry.set_password(&sec);
+        let mut updated_profile = profile.without_secret();
+        let position = profiles.iter().position(|p| p.id == updated_profile.id);
+        let existing = position.map(|pos| &profiles[pos]);
+        let credential_changed = secret.is_some()
+            || existing.is_some_and(|profile| !profile.same_credentials_scope(&updated_profile));
+        let replaced_credential = if credential_changed {
+            let entry = Entry::new(KEYRING_SERVICE, &updated_profile.id)?;
+            let previous = read_credential(&entry)?;
+            if let Some(secret) = secret.filter(|_| updated_profile.auth_method != AuthMethod::Agent) {
+                entry.set_password(&secret)?;
+            } else {
+                delete_credential(&entry)?;
             }
-            updated_profile.obfuscated_secret = Some(obfuscate(&sec));
+            Some((entry, previous))
         } else {
-            // Keep existing obfuscated_secret if we are editing without updating the password
-            if let Some(existing) = profiles.iter().find(|p| p.id == profile.id) {
+            if let Some(existing) = existing {
                 updated_profile.obfuscated_secret = existing.obfuscated_secret.clone();
             }
-        }
+            None
+        };
 
-        if let Some(pos) = profiles.iter().position(|p| p.id == profile.id) {
+        if let Some(pos) = position {
             profiles[pos] = updated_profile;
         } else {
             profiles.push(updated_profile);
         }
 
-        self.save_profiles(&profiles)
+        if let Err(error) = self.save_profiles(&profiles) {
+            if let Some((entry, previous)) = replaced_credential {
+                let rollback = match previous {
+                    Some(secret) => entry.set_password(&secret),
+                    None => delete_credential(&entry),
+                };
+                if let Err(rollback_error) = rollback {
+                    return Err(AppError::Custom(format!("{error}. Credential rollback failed: {rollback_error}")));
+                }
+            }
+            return Err(error);
+        }
+        Ok(())
     }
 
     pub fn delete_profile(&self, id: &str) -> Result<()> {
         let mut profiles = self.get_all_profiles()?;
 
         if let Some(pos) = profiles.iter().position(|p| p.id == id) {
+            let entry = Entry::new(KEYRING_SERVICE, id)?;
+            let previous = read_credential(&entry)?;
+            if previous.is_some() {
+                delete_credential(&entry)?;
+            }
             profiles.remove(pos);
-            self.save_profiles(&profiles)?;
-
-            // Try to delete secret from keyring, ignore error if it's not found
-            if let Ok(entry) = Entry::new(KEYRING_SERVICE, id) {
-                let _ = entry.delete_credential();
+            if let Err(error) = self.save_profiles(&profiles) {
+                if let Some(secret) = previous {
+                    entry.set_password(&secret)?;
+                }
+                return Err(error);
             }
         }
 
         Ok(())
     }
 
-    pub fn get_profile_secret(&self, id: &str) -> Result<Option<String>> {
-        // 1. Try Keyring
-        if let Ok(entry) = Entry::new(KEYRING_SERVICE, id) {
-            if let Ok(secret) = entry.get_password() {
-                return Ok(Some(secret));
+    pub fn get_secret_for(&self, requested: &SshProfile) -> Result<Option<String>> {
+        let mut profiles = self.get_all_profiles()?;
+        let Some(profile) = profiles.iter_mut().find(|profile| {
+            profile.id == requested.id && profile.same_credentials_scope(requested)
+        }) else {
+            return Ok(None);
+        };
+        if profile.auth_method == AuthMethod::Agent {
+            return Ok(None);
+        }
+        if profile.obfuscated_secret.is_some() {
+            let secret = migrate_legacy_credential(profile)?;
+            self.save_profiles(&profiles)?;
+            return Ok(secret);
+        }
+        Ok(read_credential(&Entry::new(KEYRING_SERVICE, &profile.id)?)?)
+    }
+
+    pub fn migrate_legacy_credentials(&self) -> Result<()> {
+        let mut profiles = self.get_all_profiles()?;
+        let mut migrated = false;
+        let mut failure = None;
+        for profile in profiles.iter_mut().filter(|profile| profile.obfuscated_secret.is_some()) {
+            match migrate_legacy_credential(profile) {
+                Ok(_) => migrated = true,
+                Err(error) => failure = Some(error),
             }
         }
-
-        // 2. Fallback to json local storage
-        let profiles = self.get_all_profiles().unwrap_or_default();
-        if let Some(profile) = profiles.into_iter().find(|p| p.id == id) {
-            if let Some(obs) = profile.obfuscated_secret {
-                return Ok(deobfuscate(&obs));
-            }
+        if migrated {
+            self.save_profiles(&profiles)?;
         }
-
-        Ok(None)
+        failure.map_or(Ok(()), Err)
     }
 }
 
+fn read_credential(entry: &Entry) -> std::result::Result<Option<String>, keyring::Error> {
+    match entry.get_password() {
+        Ok(secret) => Ok(Some(secret)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+fn delete_credential(entry: &Entry) -> std::result::Result<(), keyring::Error> {
+    match entry.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(error) => Err(error),
+    }
+}
+
+fn migrate_legacy_credential(profile: &mut SshProfile) -> Result<Option<String>> {
+    let secret = profile.obfuscated_secret.as_deref().and_then(deobfuscate)
+        .filter(|_| profile.auth_method != AuthMethod::Agent);
+    if let Some(secret) = &secret {
+        let entry = Entry::new(KEYRING_SERVICE, &profile.id)?;
+        entry.set_password(secret)?;
+    }
+    profile.obfuscated_secret = None;
+    Ok(secret)
+}
+
+#[cfg(test)]
 fn obfuscate(s: &str) -> String {
     s.bytes().map(|b| format!("{:02x}", b ^ 0x6A)).collect()
 }
@@ -117,7 +180,7 @@ fn deobfuscate(s: &str) -> Option<String> {
     if s.is_empty() {
         return None;
     }
-    if !s.len().is_multiple_of(2) {
+    if !s.is_ascii() || !s.len().is_multiple_of(2) {
         return None;
     }
     let bytes: std::result::Result<Vec<u8>, _> = (0..s.len())
@@ -168,6 +231,7 @@ mod tests {
 
     #[test]
     fn test_deobfuscate_edge_cases() {
+        assert!(deobfuscate("aéa").is_none());
         assert!(deobfuscate("ZZZZ").is_none());   // invalid hex
         assert!(deobfuscate("abc").is_none());    // odd length
         assert!(deobfuscate("").is_none());       // empty

@@ -19,7 +19,7 @@ Cliqon is a fast, feature-rich SSH terminal and SFTP file manager for the deskto
 
 While there are many SSH clients, Cliqon is built for the **modern developer workflow**:
 - **Performance First:** Native performance with a Rust backend (Tauri 2) and WebGL-accelerated terminal.
-- **Seamless Collaboration:** Zero-config, P2P network sharing to securely send profiles to teammates.
+- **Local Collaboration:** Share connection details and snippets with teammates on the local network.
 - **Intelligence:** ML-powered autocomplete that learns your habits locally and privately.
 - **Integrated Toolbox:** Docker management, server health monitoring and 30+ network diagnostic tools built-in.
 - **Deep Customization:** 39+ premium themes and fine-grained UI control.
@@ -60,7 +60,7 @@ graph TB
         NetToolSvc["Net Tool Service<br/>(diagnostics)"]
         LogMgr["Log Manager<br/>(tail streaming)"]
         ImportSvc["Import Service<br/>(MobaXterm, Termius)"]
-        AuthSvc["Auth Service<br/>(keyring, obfuscation)"]
+        AuthSvc["Auth Service<br/>(host key verification, OS keyring)"]
     end
 
     subgraph OS ["OS & Network Layer"]
@@ -146,7 +146,7 @@ sequenceDiagram
 Share SSH connection profiles and global snippets with teammates on the same local network — no server required:
 - **Global Active Indicator** — A continuous status indicator in the top TitleBar displays when sharing is active, with a notification badge for incoming share requests. You can click it from anywhere to open the panel.
 - **Auto-Discovery** — Cliqon instances on the same LAN automatically discover each other via UDP broadcast (port `19875`)
-- **Profile & Snippet Sharing** — Select one or more profiles or snippets and send them directly to a discovered peer; passwords and keys are included for profiles.
+- **Profile & Snippet Sharing** — Send connection details and snippets over HTTP to a discovered peer on a trusted LAN. Recipients set up their own credentials.
 - **Incoming Share Notifications** — Received shares appear as interactive cards with item details; one-click **Accept** imports directly into your connection or snippet list.
 - **Display Name** — Set a custom display name (defaults to hostname) so teammates know who's sharing
 - **Zero Configuration** — No central server, no cloud, no accounts; works entirely peer-to-peer on your LAN
@@ -199,7 +199,7 @@ Share SSH connection profiles and global snippets with teammates on the same loc
 - **Dynamic Port Forwarding (SOCKS5)** — Route your browser traffic securely through the SSH connection without complex command line flags.
 - **Visual Tunnel Map** — New interactive diagram-view that visualizes the connection between local and remote endpoints with animated traffic flows.
 - **Live Traffic Monitoring** — Real-time tracking of bytes sent and received for all active tunnels, helping you monitor data transfer at a glance.
-- **Dedicated Management Panel** — Add, edit, and toggle tunnels directly from a new "Tunnels" tab without opening a terminal session.
+- **Dedicated Management Panel** — Add, edit, and toggle tunnels in the **Tunnels** tab of an active session. Closing the session stops its tunnels.
 - **Background Execution** — Tunnels run in lightweight Rust threads, ensuring high throughput and resilience.
  
 ### SSH Key Management & Auditing
@@ -232,9 +232,13 @@ Manage every aspect of the application without leaving your keyboard:
 - **Connection Hub** — Search and launch SSH connections directly from the palette.
 
 ### Security
-- Passwords and key passphrases stored via **OS Keyring** (Keychain on macOS, libsecret on Linux, Windows Credential Manager)
-- Obfuscated local fallback for environments where the system keyring is unavailable
-- **Auto-Locking & Session Timeout** — Automatically locks the application and forcefully closes backend SSH/SFTP connections after inactivity (configurable 5m-1h). Features a secure overlay with quick-reconnect ('R') and the ability to close specific locked tabs ('Esc' or Close button).
+- **SSH host keys** — Compare the SHA-256 fingerprint with a trusted source when connecting to a server for the first time. Cliqon records approved keys in `known_hosts.json` in its application data directory and blocks connections when a key changes. After confirming a planned rotation with the server administrator, quit Cliqon, remove the entry for that host and port, and approve the new fingerprint on the next connection.
+- **Credential storage** — Passwords and key passphrases use Keychain on macOS, Credential Manager on Windows, or a running Secret Service on Linux. Cliqon migrates legacy credentials when the system store is available. Unlock the system store to complete migration if you see a keyring error.
+- **Auto-Locking & Session Timeout** — After inactivity (configurable from 5 minutes to 1 hour), Cliqon closes SSH/SFTP connections and their tunnels. Press `R` to reconnect or `Esc` to close the active locked tab.
+
+### Backup & Restore
+
+In **Settings → Backup**, export active profiles, snippets, preferences, panel sizes, and autocomplete models to JSON. Restore merges these records with your current data. Set up credentials on the destination device and restart Cliqon to load restored preferences and autocomplete models.
 
 ### Server Health Monitor
 - **Real-Time Dashboard** — Live CPU, RAM, Disk, and Load Average metrics
@@ -349,18 +353,20 @@ Experience a smarter terminal that learns how you work. Cliqon includes a built-
 
 ### Prerequisites
 - [Rust](https://rustup.rs/) (stable)
-- [Node.js](https://nodejs.org/) v18+
+- [Node.js](https://nodejs.org/) 20.19+ on the 20.x line, or 22.12+
 - Tauri prerequisite libraries — see [Tauri Prerequisites](https://tauri.app/start/prerequisites/)
 
 ### Install dependencies
 ```bash
-npm install
+npm ci
 ```
 
 ### Development
 ```bash
 npm run tauri dev
 ```
+
+To enable the optional Tauri development diagnostics, run `npm run tauri dev -- --features devtools`.
 
 ### Production build (current platform)
 ```bash

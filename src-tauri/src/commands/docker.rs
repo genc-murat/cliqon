@@ -12,8 +12,7 @@ pub async fn get_docker_containers(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -30,8 +29,7 @@ pub async fn start_docker_container(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -48,8 +46,7 @@ pub async fn stop_docker_container(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -66,8 +63,7 @@ pub async fn restart_docker_container(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -83,8 +79,7 @@ pub async fn docker_system_prune(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -100,8 +95,7 @@ pub async fn get_docker_stats(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -118,8 +112,7 @@ pub async fn read_docker_compose(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -135,8 +128,7 @@ pub async fn get_docker_volumes(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -154,8 +146,7 @@ pub async fn get_docker_volume_files(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -172,8 +163,7 @@ pub async fn inspect_docker_container(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -191,8 +181,7 @@ pub async fn get_docker_container_logs(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -208,8 +197,7 @@ pub async fn get_docker_networks(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -227,8 +215,7 @@ pub async fn create_docker_network(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -245,8 +232,7 @@ pub async fn remove_docker_network(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -263,8 +249,7 @@ pub async fn get_docker_events(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -280,8 +265,7 @@ pub async fn prune_docker_containers(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -297,8 +281,7 @@ pub async fn prune_docker_networks(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -314,8 +297,7 @@ pub async fn prune_docker_images(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -331,8 +313,7 @@ pub async fn prune_docker_volumes(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -349,8 +330,7 @@ pub async fn docker_compose_up(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -367,8 +347,7 @@ pub async fn docker_compose_down(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -385,8 +364,7 @@ pub async fn docker_compose_pause(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -403,8 +381,7 @@ pub async fn docker_compose_unpause(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager
@@ -421,8 +398,7 @@ pub async fn docker_compose_ps(
         .profile_store
         .lock()
         .unwrap()
-        .get_profile_secret(&profile.id)
-        .unwrap_or(None);
+        .get_secret_for(&profile)?;
 
     state
         .docker_manager

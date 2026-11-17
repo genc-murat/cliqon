@@ -10,7 +10,7 @@ pub async fn connect_sftp(
     profile: SshProfile,
     session_id: String,
 ) -> Result<()> {
-    let secret_result = state.profile_store.lock().unwrap().get_profile_secret(&profile.id);
+    let secret_result = state.profile_store.lock().unwrap().get_secret_for(&profile);
     let secret = match secret_result {
         Ok(opt_sec) => {
             if opt_sec.is_none() && profile.auth_method == crate::models::profile::AuthMethod::Password {
@@ -23,8 +23,10 @@ pub async fn connect_sftp(
         }
     };
 
-    state.sftp_manager.connect(app, profile, secret, session_id)?;
-    Ok(())
+    let manager = state.sftp_manager.clone();
+    tauri::async_runtime::spawn_blocking(move || manager.connect(app, profile, secret, session_id))
+        .await
+        .map_err(|error| crate::error::AppError::Custom(error.to_string()))?
 }
 
 #[tauri::command]
@@ -168,7 +170,7 @@ pub async fn sudo_read_file(
     profile: SshProfile,
     path: String,
 ) -> Result<String> {
-    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+    let secret = state.profile_store.lock().unwrap().get_secret_for(&profile)
         .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
     
     state.sftp_manager.sudo_read_file(&profile, secret.as_deref(), &path)
@@ -181,7 +183,7 @@ pub async fn sudo_write_file(
     path: String,
     content: String,
 ) -> Result<()> {
-    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+    let secret = state.profile_store.lock().unwrap().get_secret_for(&profile)
         .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
     
     state.sftp_manager.sudo_write_file(&profile, secret.as_deref(), &path, &content)

@@ -34,7 +34,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                     <h2 className="confirm-dialog-title">{title}</h2>
                 </div>
 
-                <p className="confirm-dialog-message">{message}</p>
+                <p className="confirm-dialog-message whitespace-pre-line break-words select-text">{message}</p>
 
                 <div className="confirm-dialog-footer">
                     <button

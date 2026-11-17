@@ -11,7 +11,7 @@ pub async fn get_system_services(
     profile: SshProfile,
     system_service: State<'_, Arc<SystemService>>,
 ) -> Result<String> {
-    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+    let secret = state.profile_store.lock().unwrap().get_secret_for(&profile)
         .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
     system_service.get_system_services(&profile, secret.as_deref())
 }
@@ -22,7 +22,7 @@ pub async fn get_system_timers(
     profile: SshProfile,
     system_service: State<'_, Arc<SystemService>>,
 ) -> Result<String> {
-    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+    let secret = state.profile_store.lock().unwrap().get_secret_for(&profile)
         .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
     system_service.get_system_timers(&profile, secret.as_deref())
 }
@@ -35,7 +35,7 @@ pub async fn manage_service(
     service: String,
     system_service: State<'_, Arc<SystemService>>,
 ) -> Result<String> {
-    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+    let secret = state.profile_store.lock().unwrap().get_secret_for(&profile)
         .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
     system_service.manage_service(&profile, secret.as_deref(), &action, &service)
 }
@@ -46,7 +46,7 @@ pub async fn get_env_vars(
     profile: SshProfile,
     system_service: State<'_, Arc<SystemService>>,
 ) -> Result<String> {
-    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+    let secret = state.profile_store.lock().unwrap().get_secret_for(&profile)
         .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
     system_service.get_env_vars(&profile, secret.as_deref())
 }
@@ -59,7 +59,7 @@ pub async fn set_env_var(
     value: String,
     system_service: State<'_, Arc<SystemService>>,
 ) -> Result<String> {
-    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+    let secret = state.profile_store.lock().unwrap().get_secret_for(&profile)
         .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
     system_service.set_env_var(&profile, secret.as_deref(), &key, &value)
 }
@@ -71,7 +71,7 @@ pub async fn delete_env_var(
     key: String,
     system_service: State<'_, Arc<SystemService>>,
 ) -> Result<String> {
-    let secret = state.profile_store.lock().unwrap().get_profile_secret(&profile.id)
+    let secret = state.profile_store.lock().unwrap().get_secret_for(&profile)
         .map_err(|e| crate::error::AppError::Custom(format!("Failed to retrieve password: {}", e)))?;
     system_service.delete_env_var(&profile, secret.as_deref(), &key)
 }

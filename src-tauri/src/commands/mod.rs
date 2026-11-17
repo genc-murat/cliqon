@@ -11,3 +11,4 @@ pub mod tunnel;
 pub mod snippet;
 pub mod ssh_keys;
 pub mod cron;
+pub mod backup;

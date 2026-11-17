@@ -1,18 +1,17 @@
 use std::fs::File;
 use std::io::{Read, Write};
-use std::net::TcpStream;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use crossbeam_channel::{unbounded, Sender};
-use ssh2::Session;
+use crossbeam_channel::{unbounded, RecvTimeoutError, Sender};
 use tauri::{AppHandle, Emitter};
 
 use crate::error::{AppError, Result};
 use crate::models::profile::SshProfile;
 use crate::models::sftp::{mode_to_display, FileNode, FileProperties};
 use crate::services::auth::authenticate_session;
+use super::{connection_stop::ConnectionStop, host_keys};
 
 pub enum SftpCommand {
     ListDir(String),
@@ -35,9 +34,11 @@ pub enum SftpCommand {
 }
 
 pub struct ActiveSftp {
+    stop: Arc<ConnectionStop>,
     tx: Sender<SftpCommand>,
 }
 
+#[derive(Clone)]
 pub struct SftpManager {
     active_sessions: Arc<Mutex<std::collections::HashMap<String, ActiveSftp>>>,
 }
@@ -62,36 +63,42 @@ impl SftpManager {
         secret: Option<String>,
         session_id: String,
     ) -> Result<()> {
-        let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
-        let mut session = Session::new()?;
-        session.set_tcp_stream(tcp);
-        session.handshake()?;
-
-        authenticate_session(&mut session, &profile, secret.as_deref())?;
-
-        let sftp = session.sftp()?;
-
         let (tx, rx) = unbounded::<SftpCommand>();
+        let stop = Arc::new(ConnectionStop::default());
+        {
+            let mut sessions = self.active_sessions.lock().unwrap();
+            if sessions.contains_key(&session_id) {
+                return Err(AppError::Custom("SFTP session already exists".into()));
+            }
+            sessions.insert(session_id.clone(), ActiveSftp { stop: stop.clone(), tx });
+        }
 
-        let active_session = ActiveSftp { tx };
-        self.active_sessions
-            .lock()
-            .unwrap()
-            .insert(session_id.clone(), active_session);
-
-        let sid = session_id.clone();
+        let sftp = (|| {
+            let stream = host_keys::connect_tcp(&profile)?;
+            stop.attach(&stream)?;
+            let mut session = host_keys::handshake(stream)?;
+            authenticate_session(&mut session, &profile, secret.as_deref())?;
+            Ok(session.sftp()?)
+        })();
+        let sftp = match sftp {
+            Ok(sftp) => sftp,
+            Err(error) => {
+                self.remove_session_if_current(&session_id, &stop);
+                return Err(error);
+            }
+        };
+        let sid = session_id;
+        let manager = self.clone();
 
         thread::spawn(move || {
             let mut watch_dir: Option<String> = None;
             let mut last_mtime: u64 = 0;
 
-            loop {
-                // Determine whether to use recv or recv_timeout
+            while !stop.is_cancelled() {
                 let cmd_res = if watch_dir.is_some() {
                     rx.recv_timeout(std::time::Duration::from_millis(2000))
-                        .map_err(|_| ())
                 } else {
-                    rx.recv().map_err(|_| ())
+                    rx.recv().map_err(|_| RecvTimeoutError::Disconnected)
                 };
 
                 match cmd_res {
@@ -519,7 +526,8 @@ impl SftpManager {
                             break;
                         }
                     },
-                    Err(_) => {
+                    Err(RecvTimeoutError::Disconnected) => break,
+                    Err(RecvTimeoutError::Timeout) => {
                         // Timeout occurred, check the watch path
                         if let Some(p) = &watch_dir {
                             if let Ok(stat) = sftp.stat(Path::new(p)) {
@@ -533,9 +541,18 @@ impl SftpManager {
                     }
                 }
             }
+            manager.remove_session_if_current(&sid, &stop);
         });
 
         Ok(())
+    }
+
+    fn remove_session_if_current(&self, session_id: &str, stop: &Arc<ConnectionStop>) {
+        let mut sessions = self.active_sessions.lock().unwrap();
+        if sessions.get(session_id).is_some_and(|session| Arc::ptr_eq(&session.stop, stop)) {
+            sessions.remove(session_id);
+            stop.cancel();
+        }
     }
 
     pub fn list_dir(&self, session_id: &str, path: String) -> Result<()> {
@@ -618,6 +635,7 @@ impl SftpManager {
     pub fn close_session(&self, session_id: &str) {
         let mut lock = self.active_sessions.lock().unwrap();
         if let Some(session) = lock.remove(session_id) {
+            session.stop.cancel();
             let _ = session.tx.send(SftpCommand::Close);
         }
     }
@@ -625,8 +643,8 @@ impl SftpManager {
     fn send(&self, session_id: &str, cmd: SftpCommand) -> Result<()> {
         let lock = self.active_sessions.lock().unwrap();
         if let Some(session) = lock.get(session_id) {
-            let _ = session.tx.send(cmd);
-            Ok(())
+            session.tx.send(cmd)
+                .map_err(|_| AppError::Custom("SFTP session closed".into()))
         } else {
             Err(AppError::Custom("SFTP session not found".to_string()))
         }
@@ -638,11 +656,8 @@ impl SftpManager {
         secret: Option<&str>,
         path: &str,
     ) -> Result<String> {
-        let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
-        let mut session = Session::new()?;
-        session.set_tcp_stream(tcp);
-        session.handshake()?;
-        crate::services::auth::authenticate_session(&mut session, profile, secret)?;
+        let mut session = host_keys::handshake(host_keys::connect_tcp(profile)?)?;
+        authenticate_session(&mut session, profile, secret)?;
 
         let mut channel = session.channel_session().map_err(AppError::Ssh)?;
 
@@ -669,11 +684,8 @@ impl SftpManager {
         path: &str,
         content: &str,
     ) -> Result<()> {
-        let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
-        let mut session = Session::new()?;
-        session.set_tcp_stream(tcp);
-        session.handshake()?;
-        crate::services::auth::authenticate_session(&mut session, profile, secret)?;
+        let mut session = host_keys::handshake(host_keys::connect_tcp(profile)?)?;
+        authenticate_session(&mut session, profile, secret)?;
 
         let mut channel = session.channel_session().map_err(AppError::Ssh)?;
 
@@ -762,7 +774,7 @@ mod tests {
     #[test]
     fn test_active_sftp_struct() {
         let (tx, _rx) = unbounded::<SftpCommand>();
-        let _active_sftp = ActiveSftp { tx };
+        let _active_sftp = ActiveSftp { stop: Arc::new(ConnectionStop::default()), tx };
     }
 
     #[test]

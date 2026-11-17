@@ -15,10 +15,12 @@ interface SplitViewProps {
     activePane: string | null;
     onPaneClose: (paneId: string) => void;
     onPaneActivate: (paneId: string) => void;
+    connectedPanes: ReadonlySet<string>;
+    onConnectionChange: (sessionId: string, connected: boolean) => void;
     isTabActive: boolean;
 }
 
-export const SplitView: React.FC<SplitViewProps> = ({ panes, activePane, onPaneClose, onPaneActivate, isTabActive }) => {
+export const SplitView: React.FC<SplitViewProps> = ({ panes, activePane, onPaneClose, onPaneActivate, isTabActive, connectedPanes, onConnectionChange }) => {
     // Split sizes as percentages; first pane fills rest
     const [sizes, setSizes] = useState<number[]>(() => panes.map(() => 100 / panes.length));
     const containerRef = useRef<HTMLDivElement>(null);
@@ -71,7 +73,9 @@ export const SplitView: React.FC<SplitViewProps> = ({ panes, activePane, onPaneC
             style={{ display: isTabActive ? 'flex' : 'none' }}
         >
             {/* SFTP FileBrowser — once per tab */}
-            <FileBrowser profile={firstPane.profile} sessionId={firstPane.id} isActive={isTabActive} />
+            {connectedPanes.has(firstPane.id) && (
+                <FileBrowser key={firstPane.id} profile={firstPane.profile} sessionId={firstPane.id} isActive={isTabActive} />
+            )}
 
             {/* Terminal split area */}
             <div className="flex flex-1 h-full overflow-hidden">
@@ -102,6 +106,7 @@ export const SplitView: React.FC<SplitViewProps> = ({ panes, activePane, onPaneC
                                     sessionId={pane.id}
                                     isActive={isTabActive}
                                     paneMode={true}
+                                    onConnectionChange={onConnectionChange}
                                 />
                             </div>
                         </div>

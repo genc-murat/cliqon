@@ -7,7 +7,10 @@ use crate::services::import::ImportService;
 #[tauri::command]
 pub async fn get_profiles(state: State<'_, AppState>) -> Result<Vec<SshProfile>> {
     let store = state.profile_store.lock().unwrap();
-    store.get_all_profiles()
+    if let Err(error) = store.migrate_legacy_credentials() {
+        eprintln!("Could not migrate all SSH credentials: {error}");
+    }
+    Ok(store.get_all_profiles()?.into_iter().map(SshProfile::without_secret).collect())
 }
 
 #[tauri::command]
@@ -26,11 +29,6 @@ pub async fn delete_profile(state: State<'_, AppState>, id: String) -> Result<()
     store.delete_profile(&id)
 }
 
-#[tauri::command]
-pub async fn get_profile_secret(state: State<'_, AppState>, id: String) -> Result<Option<String>> {
-    let store = state.profile_store.lock().unwrap();
-    store.get_profile_secret(&id)
-}
 #[tauri::command]
 pub async fn record_usage(state: State<'_, AppState>, id: String) -> Result<()> {
     let store = state.profile_store.lock().unwrap();

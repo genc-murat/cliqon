@@ -1,12 +1,9 @@
-use std::io::Read;
-use std::net::TcpStream;
-use std::time::Duration;
 
 use ssh2::Session;
 
 use crate::error::{AppError, Result};
 use crate::models::profile::SshProfile;
-use crate::services::auth::authenticate_session;
+use crate::services::auth;
 
 pub struct DockerManager {}
 
@@ -30,29 +27,13 @@ impl DockerManager {
     }
 
     fn open_session(&self, profile: &SshProfile, secret: Option<&str>) -> Result<Session> {
-        let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
-        tcp.set_read_timeout(Some(Duration::from_secs(10)))?;
-        tcp.set_write_timeout(Some(Duration::from_secs(10)))?;
-
-        let mut session = Session::new()?;
-        session.set_tcp_stream(tcp);
-        session.handshake()?;
-
-        authenticate_session(&mut session, profile, secret)?;
+        let session = auth::open_session(profile, secret)?;
 
         Ok(session)
     }
 
     fn exec_command(&self, session: &Session, cmd: &str) -> Result<String> {
-        session.set_blocking(true);
-        let mut channel = session.channel_session().map_err(AppError::Ssh)?;
-        channel.exec(cmd).map_err(AppError::Ssh)?;
-
-        let mut output = String::new();
-        channel.read_to_string(&mut output).map_err(AppError::Io)?;
-
-        channel.wait_close().ok();
-        Ok(output)
+        super::remote_command::execute(session, cmd)
     }
 
     pub fn get_containers(&self, profile: &SshProfile, secret: Option<&str>) -> Result<String> {
@@ -373,7 +354,6 @@ impl DockerManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_container_id_validation() {

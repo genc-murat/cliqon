@@ -15,6 +15,12 @@ pub enum AppError {
     #[error("SSH error: {0}")]
     Ssh(#[from] ssh2::Error),
 
+    #[error("SSH_HOST_KEY_UNKNOWN: Verify the server fingerprint before connecting to {0}.")]
+    UnknownHostKey(String),
+
+    #[error("The SSH host key for {0} changed. Verify the replacement with your server administrator.")]
+    ChangedHostKey(String),
+
     #[error("Zip error: {0}")]
     Zip(#[from] zip::result::ZipError),
 

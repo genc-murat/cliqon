@@ -5,9 +5,11 @@ import { Logo } from '../layout/Logo';
 import { KeyStore } from '../settings/KeyStore';
 import { useTheme } from '../../hooks/useTheme';
 import { terminalFontFamilies } from '../../lib/themes';
-import { exportAllData, importData as importDataFn, ExportData, getDatabaseStats } from '../../lib/db';
+import { exportAllData, importData, getDatabaseStats } from '../../lib/db';
 import { api } from '../../services/api';
 import { useUpdater } from '../../hooks/useUpdater';
+import { useConnections } from '../../hooks/useConnections';
+import { useSnippets } from '../../hooks/useSnippets';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -44,12 +46,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
     const [activeSection, setActiveSection] = useState<SettingsSection>('appearance');
     const [dbStats, setDbStats] = useState<DbStats | null>(null);
+    const [backupBusy, setBackupBusy] = useState(false);
+    const [backupMessage, setBackupMessage] = useState<{ text: string; error: boolean } | null>(null);
+    const { refresh } = useConnections();
+    const { loadSnippets } = useSnippets();
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && activeSection === 'backup') {
             loadDbStats();
         }
-    }, [isOpen]);
+    }, [isOpen, activeSection]);
 
     const loadDbStats = async () => {
         try {
@@ -65,6 +71,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     };
 
     const handleExport = async () => {
+        setBackupBusy(true);
+        setBackupMessage(null);
         try {
             const data = await exportAllData();
             const jsonString = JSON.stringify(data, null, 2);
@@ -79,10 +87,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
             if (filePath) {
                 await api.saveTextFile(filePath, jsonString);
-                console.log('Export successful to:', filePath);
+                setBackupMessage({ text: 'Backup exported.', error: false });
             }
         } catch (e) {
-            console.error('Export failed:', e);
+            setBackupMessage({ text: `Export failed. ${String(e)}`, error: true });
+        } finally {
+            setBackupBusy(false);
         }
     };
 
@@ -90,15 +100,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         const file = event.target.files?.[0];
         if (!file) return;
 
+        const input = event.target;
+        setBackupBusy(true);
+        setBackupMessage(null);
         try {
-            const text = await file.text();
-            const data: ExportData = JSON.parse(text);
-            await importDataFn(data, 'merge');
-            await loadDbStats();
+            await importData(JSON.parse(await file.text()));
+            await Promise.all([refresh(), loadSnippets(), loadDbStats()]);
+            setBackupMessage({ text: 'Backup restored. Preferences and autocomplete changes take effect after restarting Cliqon.', error: false });
         } catch (e) {
-            console.error('Import failed:', e);
+            setBackupMessage({ text: `Restore failed. ${String(e)}`, error: true });
+        } finally {
+            input.value = '';
+            setBackupBusy(false);
         }
-        event.target.value = '';
     };
 
     if (!isOpen) return null;
@@ -711,6 +725,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                             <p className="text-xs text-[var(--text-muted)] mb-4">Download all your profiles, snippets, and settings as a JSON file.</p>
                                             <button
                                                 onClick={handleExport}
+                                                disabled={backupBusy}
                                                 className="px-4 py-2 text-sm font-medium rounded-xl text-white bg-[var(--accent-color)] hover:opacity-90 transition-all"
                                             >
                                                 Export All Data
@@ -726,12 +741,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                                     type="file"
                                                     accept=".json"
                                                     onChange={handleImport}
+                                                    disabled={backupBusy}
                                                     className="hidden"
                                                 />
                                             </label>
                                         </div>
                                     </div>
                                 </div>
+
+                                {backupMessage && (
+                                    <p role={backupMessage.error ? 'alert' : 'status'} className={backupMessage.error ? 'text-sm text-red-400' : 'text-sm text-[var(--text-main)]'}>
+                                        {backupMessage.text}
+                                    </p>
+                                )}
 
                                 {dbStats && (
                                     <div className="pt-6 border-t border-[var(--border-color)]">
@@ -755,7 +777,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                             </div>
                                         </div>
                                         <p className="text-xs text-[var(--text-muted)] mt-4">
-                                            Note: Passwords and private keys are stored securely in your OS keyring and cannot be exported.
+                                            Set up credentials on the destination device after restoring your profiles.
                                         </p>
                                     </div>
                                 )}

@@ -23,8 +23,6 @@ export interface ShareableProfile {
     username: string;
     auth_method: string;
     category: string | null;
-    private_key_path?: string;
-    secret?: string;
     is_favorite?: boolean;
     color?: string;
 }

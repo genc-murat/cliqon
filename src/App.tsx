@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { lazy, Suspense, useCallback, useState, useEffect, useRef } from "react";
+import { exit } from '@tauri-apps/plugin-process';
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar, TabData } from "./components/layout/TopBar";
-import { SplitView, Pane } from './components/terminal/SplitView';
-import { ManagementPanel, ManagementTab } from './components/terminal/ManagementPanel';
+import type { Pane } from './components/terminal/SplitView';
+import type { ManagementTab } from './components/terminal/ManagementPanel';
 import { useTheme } from "./hooks/useTheme";
 import { SshProfile } from "./types/connection";
 import { api } from "./services/api";
@@ -15,6 +16,9 @@ import { useUpdater } from './hooks/useUpdater';
 import { CommandPalette } from './components/ui/CommandPalette';
 import { Dashboard } from './components/ui/Dashboard';
 
+const SplitView = lazy(() => import('./components/terminal/SplitView').then(module => ({ default: module.SplitView })));
+const ManagementPanel = lazy(() => import('./components/terminal/ManagementPanel').then(module => ({ default: module.ManagementPanel })));
+
 interface SessionTab extends TabData {
   profile: SshProfile;
   panes: Pane[];
@@ -26,6 +30,7 @@ interface SessionTab extends TabData {
 function App() {
   const [tabs, setTabs] = useState<SessionTab[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [connectedPanes, setConnectedPanes] = useState<ReadonlySet<string>>(() => new Set());
   const { profiles, refresh, recordUsage } = useConnections();
 
   // Refs to allow keyboard shortcuts to trigger sidebar actions
@@ -38,6 +43,16 @@ function App() {
   const [hasNotifiedUpdate, setHasNotifiedUpdate] = useState(false);
   const confirm = useConfirm();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  const handleConnectionChange = useCallback((sessionId: string, connected: boolean) => {
+    setConnectedPanes(current => {
+      if (current.has(sessionId) === connected) return current;
+      const next = new Set(current);
+      if (connected) next.add(sessionId);
+      else next.delete(sessionId);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     // Initial check on startup
@@ -133,11 +148,19 @@ function App() {
     });
   };
 
-  const handleCloseActiveTabAndUnlock = () => {
-    if (activeTab) {
-      handleTabClose(activeTab);
-      resetTimeout();
-    }
+  const reconnectTabs = (closeActive = false) => {
+    const remaining = tabs.filter(tab => !closeActive || tab.id !== activeTab);
+    const previousIndex = tabs.findIndex(tab => tab.id === activeTab);
+    const nextTabs = remaining.map(tab => {
+      const panes = tab.panes.map(pane => ({ ...pane, id: crypto.randomUUID() }));
+      const activePaneIndex = tab.panes.findIndex(pane => pane.id === tab.activePane);
+      return { ...tab, id: panes[0].id, panes, activePane: panes[Math.max(0, activePaneIndex)].id };
+    });
+    const nextIndex = closeActive ? Math.max(0, previousIndex - 1) : previousIndex;
+    setTabs(nextTabs);
+    setActiveTab(nextTabs[nextIndex]?.id ?? nextTabs[0]?.id ?? null);
+    setConnectedPanes(new Set());
+    resetTimeout();
   };
 
   const handleToggleManagementPanel = (tabId: string, type: ManagementTab) => {
@@ -274,7 +297,6 @@ function App() {
 
     const handleExitApp = async () => {
       try {
-        const { exit } = await import('@tauri-apps/plugin-process');
         await exit(0);
       } catch (err) {
         window.close();
@@ -341,7 +363,7 @@ function App() {
 
           {/* Main Terminal Area */}
           <div className="flex-1 p-0 overflow-hidden relative">
-            {isTimedOut && <SessionTimeoutOverlay onReconnect={resetTimeout} onClose={handleCloseActiveTabAndUnlock} />}
+            {isTimedOut && <SessionTimeoutOverlay onReconnect={() => reconnectTabs()} onClose={() => reconnectTabs(true)} />}
 
             {!isTimedOut && tabs.length === 0 ? (
               <Dashboard
@@ -358,24 +380,30 @@ function App() {
               tabs.map((tab) => (
                 <div key={tab.id} className={`absolute inset-0 flex flex-col ${activeTab === tab.id ? '' : 'hidden'}`}>
                   <div className="flex-1 relative min-h-0">
-                    <SplitView
-                      panes={tab.panes}
-                      activePane={tab.activePane}
-                      isTabActive={activeTab === tab.id}
-                      onPaneClose={(paneId) => handlePaneClose(tab.id, paneId)}
-                      onPaneActivate={(paneId) => handlePaneActivate(tab.id, paneId)}
-                    />
+                    <Suspense fallback={<p className="p-4 text-sm text-[var(--text-muted)]">Loading terminal…</p>}>
+                      <SplitView
+                        panes={tab.panes}
+                        activePane={tab.activePane}
+                        isTabActive={activeTab === tab.id}
+                        onPaneClose={(paneId) => handlePaneClose(tab.id, paneId)}
+                        onPaneActivate={(paneId) => handlePaneActivate(tab.id, paneId)}
+                        connectedPanes={connectedPanes}
+                        onConnectionChange={handleConnectionChange}
+                      />
+                    </Suspense>
                   </div>
-                  {tab.managementPanelOpen && activeTab === tab.id && (
-                    <ManagementPanel
-                      profile={tab.profile}
-                      sessionId={tab.id}
-                      activeTab={tab.activeManagementTab}
-                      onTabChange={(type) => handleToggleManagementPanel(tab.id, type)}
-                      onClose={() => handleToggleManagementPanel(tab.id, tab.activeManagementTab)}
-                      onViewDockerLogs={(containerId) => handleViewDockerLogs(tab.id, containerId)}
-                      onDockerExec={(containerId) => handleDockerExec(tab.id, containerId)}
-                    />
+                  {tab.managementPanelOpen && activeTab === tab.id && connectedPanes.has(tab.panes[0].id) && (
+                    <Suspense fallback={null}>
+                      <ManagementPanel
+                        profile={tab.profile}
+                        sessionId={tab.panes[0].id}
+                        activeTab={tab.activeManagementTab}
+                        onTabChange={(type) => handleToggleManagementPanel(tab.id, type)}
+                        onClose={() => handleToggleManagementPanel(tab.id, tab.activeManagementTab)}
+                        onViewDockerLogs={(containerId) => handleViewDockerLogs(tab.id, containerId)}
+                        onDockerExec={(containerId) => handleDockerExec(tab.id, containerId)}
+                      />
+                    </Suspense>
                   )}
                 </div>
               ))

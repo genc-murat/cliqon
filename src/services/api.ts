@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { SshProfile } from '../types/connection';
+import { Snippet, SshProfile } from '../types/connection';
 import { SharingStatus, PeerInfo, PendingShare } from '../types/sharing';
 
 export const api = {
@@ -15,9 +15,10 @@ export const api = {
         return await invoke('delete_profile', { id });
     },
 
-    getProfileSecret: async (id: string): Promise<string | null> => {
-        return await invoke<string | null>('get_profile_secret', { id });
-    },
+    exportBackupRecords: () => invoke<{ profiles: SshProfile[]; snippets: Snippet[] }>('export_backup_records'),
+
+    restoreBackupRecords: (records: { profiles: SshProfile[]; snippets: Snippet[] }) =>
+        invoke<Record<string, string>>('restore_backup_records', { records }),
 
     recordUsage: async (id: string): Promise<void> => {
         return await invoke('record_usage', { id });
@@ -26,6 +27,17 @@ export const api = {
     connectSsh: async (profile: SshProfile, sessionId: string): Promise<void> => {
         return await invoke('connect_ssh', { profile, sessionId });
     },
+
+    testSshConnection: (profile: SshProfile, providedSecret: string | null) =>
+        invoke<void>('test_ssh_connection', { profile, providedSecret }),
+
+    inspectSshHostKey: (profile: SshProfile) =>
+        invoke<{ endpoint: string; fingerprint: string; algorithm: string; trusted: boolean }>(
+            'inspect_ssh_host_key', { profile }
+        ),
+
+    trustSshHostKey: (profile: SshProfile, fingerprint: string) =>
+        invoke<void>('trust_ssh_host_key', { profile, fingerprint }),
 
     writeToPty: async (sessionId: string, data: number[]): Promise<void> => {
         return await invoke('write_to_pty', { sessionId, data });

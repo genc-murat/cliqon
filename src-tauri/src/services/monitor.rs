@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::io::Read;
-use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -11,7 +10,7 @@ use tauri::{AppHandle, Emitter};
 
 use crate::error::{AppError, Result};
 use crate::models::profile::SshProfile;
-use crate::services::auth::authenticate_session;
+use crate::services::auth;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerMetrics {
@@ -67,15 +66,7 @@ impl MonitorManager {
         }
 
         // Open a dedicated SSH connection for monitoring
-        let tcp = TcpStream::connect(format!("{}:{}", profile.host, profile.port))?;
-        tcp.set_read_timeout(Some(Duration::from_secs(10)))?;
-        tcp.set_write_timeout(Some(Duration::from_secs(10)))?;
-
-        let mut session = Session::new()?;
-        session.set_tcp_stream(tcp);
-        session.handshake()?;
-
-        authenticate_session(&mut session, &profile, secret.as_deref())?;
+        let session = auth::open_session(&profile, secret.as_deref())?;
 
         let stop_flag = Arc::new(Mutex::new(false));
         let stop_clone = stop_flag.clone();

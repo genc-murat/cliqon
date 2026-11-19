@@ -1,7 +1,8 @@
 import { useRef, useCallback, useEffect, RefObject } from 'react';
 import { CommandPredictor } from '../ml/CommandPredictor';
 import { storage } from '../lib/storage';
-import { Terminal } from '@xterm/xterm';
+import type { IMarker, Terminal } from '@xterm/xterm';
+import { readShellInput, type ShellInputLine } from '../lib/shellHighlight';
 
 const predictorCache: Map<string, CommandPredictor> = new Map();
 const refCounts: Map<string, number> = new Map();
@@ -47,9 +48,8 @@ export function useTerminalHistory(profileId: string, xtermRef: RefObject<Termin
 
     // Exact buffer synchronization state
     const promptStartXRef = useRef<number>(-1);
-    const promptStartYRef = useRef<number>(-1);
+    const promptStartRef = useRef<IMarker | null>(null);
 
-    const isInteractiveRef = useRef<boolean>(false);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isLoadedRef = useRef<boolean>(false);
 
@@ -87,44 +87,30 @@ export function useTerminalHistory(profileId: string, xtermRef: RefObject<Termin
         }, 5000);
     }, [profileId]);
 
-    const processOutput = useCallback((data: string) => {
-        if (data.includes('\x1b[?1049h') || data.includes('\x1b[?47h')) {
-            isInteractiveRef.current = true;
-        }
-        if (data.includes('\x1b[?1049l') || data.includes('\x1b[?47l')) {
-            isInteractiveRef.current = false;
-        }
-    }, []);
-
-    const extractCurrentCommand = useCallback((): string => {
+    const getCurrentInput = useCallback((): ShellInputLine[] | null => {
         const term = xtermRef.current;
-        if (!term || promptStartXRef.current === -1 || promptStartYRef.current === -1) {
-            return '';
-        }
+        const startRow = promptStartRef.current?.line ?? -1;
+        const buffer = term?.buffer.active;
+        if (!term || !buffer || buffer.type !== 'normal' || startRow < 0) return null;
 
-        let cmd = '';
-        let currentY = promptStartYRef.current;
-        const buffer = term.buffer.active;
-
-        while (currentY < buffer.length) {
-            const line = buffer.getLine(currentY);
-            if (!line) break;
-
-            const startX = currentY === promptStartYRef.current ? promptStartXRef.current : 0;
-            const text = line.translateToString(true, startX);
-            cmd += text;
-
-            if (!line.isWrapped) break;
-            currentY++;
-        }
-
-        return cmd;
+        const cursorRow = buffer.baseY + buffer.cursorY;
+        if (cursorRow < startRow) return null;
+        const lines = readShellInput(term, startRow, promptStartXRef.current);
+        return lines.some(line => line.row === cursorRow) ? lines : null;
     }, [xtermRef]);
 
+    const extractCurrentCommand = useCallback(() =>
+        getCurrentInput()?.map(line => line.text).join('') ?? '', [getCurrentInput]);
+
+    const resetInput = useCallback(() => {
+        promptStartRef.current?.dispose();
+        promptStartRef.current = null;
+        promptStartXRef.current = -1;
+    }, []);
+
     const processKeystroke = useCallback((data: string) => {
-        if (isInteractiveRef.current) return;
         const term = xtermRef.current;
-        if (!term) return;
+        if (!term || term.buffer.active.type !== 'normal') return;
 
         // Reset or set prompt start markers
         if (data === '\r' || data === '\n') {
@@ -133,25 +119,23 @@ export function useTerminalHistory(profileId: string, xtermRef: RefObject<Termin
                 predictorRef.current.learn(cmd.trim());
                 scheduleSave();
             }
-            promptStartXRef.current = -1;
-            promptStartYRef.current = -1;
+            resetInput();
             return;
         }
 
         if (data === '\x03' || data === '\x15') { // Ctrl+C or Ctrl+U
-            promptStartXRef.current = -1;
-            promptStartYRef.current = -1;
+            resetInput();
             return;
         }
 
-        if (promptStartXRef.current === -1) {
+        if (!promptStartRef.current || promptStartRef.current.isDisposed) {
             promptStartXRef.current = term.buffer.active.cursorX;
-            promptStartYRef.current = term.buffer.active.cursorY + term.buffer.active.baseY;
+            promptStartRef.current = term.registerMarker() ?? null;
         }
-    }, [extractCurrentCommand, scheduleSave, xtermRef]);
+    }, [extractCurrentCommand, resetInput, scheduleSave, xtermRef]);
 
     const updatePrediction = useCallback((): { ghostText: string | null; activeSuggestion: string | null } => {
-        if (isInteractiveRef.current || promptStartXRef.current === -1) {
+        if (promptStartXRef.current === -1) {
             return { ghostText: null, activeSuggestion: null };
         }
 
@@ -181,9 +165,10 @@ export function useTerminalHistory(profileId: string, xtermRef: RefObject<Termin
 
     return {
         processKeystroke,
-        processOutput,
         updatePrediction,
         extractCurrentCommand,
+        getCurrentInput,
+        resetInput,
         predictor: predictorRef.current,
         isLoaded: isLoadedRef.current,
     };

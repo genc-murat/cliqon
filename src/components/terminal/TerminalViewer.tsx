@@ -11,6 +11,7 @@ import { api } from '../../services/api';
 import { isUnknownHostKey, sshErrorMessage, useHostKeyTrust } from '../../hooks/useHostKeyTrust';
 import { useTheme } from '../../hooks/useTheme';
 import { useTerminalHistory } from '../../hooks/useTerminalHistory';
+import { highlightShellInput } from '../../lib/shellHighlight';
 import { FileBrowser } from './FileBrowser';
 import { SnippetManager } from './SnippetManager';
 import { TerminalSearchBar } from './TerminalSearchBar';
@@ -44,7 +45,8 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
     const [gpuInfo, setGpuInfo] = useState<GpuInfo | null>(null);
     const [rendererActive, setRendererActive] = useState<'webgl' | 'canvas' | null>(null);
 
-    const { processKeystroke, processOutput, updatePrediction, predictor } = useTerminalHistory(profile.id, xtermRef);
+    const { processKeystroke, updatePrediction, predictor, getCurrentInput, resetInput } = useTerminalHistory(profile.id, xtermRef);
+    const refreshHighlightRef = useRef<(() => void) | null>(null);
     const [ghostText, setGhostText] = useState<string | null>(null);
     const ghostRef = useRef<HTMLDivElement>(null);
     const ghostTextRef = useRef<string | null>(null);
@@ -171,6 +173,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
     useEffect(() => {
         if (xtermRef.current) {
             xtermRef.current.options.theme = getXtermTheme();
+            refreshHighlightRef.current?.();
         }
     }, [getXtermTheme]);
 
@@ -195,6 +198,13 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         let retriedHostKey = false;
         const listeners: UnlistenFn[] = [];
         const term = xtermRef.current;
+        const commandHighlight = term && highlightShellInput(term);
+        const refreshHighlight = () => commandHighlight?.update(getCurrentInput());
+        refreshHighlightRef.current = refreshHighlight;
+        const bufferChange = term?.buffer.onBufferChange(() => {
+            resetInput();
+            commandHighlight?.clear();
+        });
         const isCurrent = () => isMounted;
 
         const addListener = async <T,>(event: string, handler: (payload: T) => void) => {
@@ -209,6 +219,8 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         const reportError = async (error: unknown) => {
             if (!isMounted) return;
             setConnected(false);
+            resetInput();
+            commandHighlight?.clear();
             onConnectionChange?.(sessionId, false);
             if (isUnknownHostKey(error) && !retriedHostKey) {
                 retriedHostKey = true;
@@ -245,7 +257,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                 const data = new Uint8Array(payload);
                 term.write(data, () => {
                     if (!isMounted) return;
-                    processOutput(new TextDecoder().decode(data));
+                    refreshHighlight();
                     const { ghostText, activeSuggestion } = updatePrediction();
                     setGhostText(ghostText);
                     ghostTextRef.current = ghostText;
@@ -254,6 +266,8 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
             });
             await addListener(`ssh_close_${sessionId}`, () => {
                 setConnected(false);
+                resetInput();
+                commandHighlight?.clear();
                 setError('Connection closed by remote host.');
                 onConnectionChange?.(sessionId, false);
             });
@@ -305,6 +319,11 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
                 setGhostText(null);
             }
 
+            if (data === '\r' || data === '\n') {
+                commandHighlight?.submit(getCurrentInput());
+            } else if (data === '\x03' || data === '\x15') {
+                commandHighlight?.clear();
+            }
             processKeystroke(data);
 
             const bytes = Array.from(encoder.encode(data));
@@ -312,6 +331,7 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
         });
 
         const onResizeDisposable = xtermRef.current?.onResize((sizes) => {
+            refreshHighlight();
             if (connectedRef.current) {
                 api.resizePty(sessionId, sizes.cols, sizes.rows).catch(console.error);
             }
@@ -322,10 +342,14 @@ export const TerminalViewer: React.FC<TerminalViewerProps> = ({ profile, session
             listeners.forEach(unlisten => unlisten());
             if (connectionRequested) api.closePty(sessionId).catch(console.error);
             onConnectionChange?.(sessionId, false);
+            refreshHighlightRef.current = null;
+            resetInput();
+            commandHighlight?.dispose();
+            bufferChange?.dispose();
             onDataDisposable?.dispose();
             onResizeDisposable?.dispose();
         };
-    }, [profile, sessionId, approveHostKey, onConnectionChange]);
+    }, [profile, sessionId, approveHostKey, onConnectionChange, getCurrentInput, resetInput]);
 
     useEffect(() => {
         const handleResize = () => {
